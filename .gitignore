@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Vite cache
+.vite/
+
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Google OAuth credentials — NEVER commit
+*.client_secret.json
+client_secret_*.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage
+coverage/

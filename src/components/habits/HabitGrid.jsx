@@ -1,0 +1,168 @@
+import HabitRow from './HabitRow';
+
+function HabitGrid({
+    currentMonth = 'Mar',
+    habits = [],
+    checks = {},
+    streaks = {},
+    mentalState = {},
+    daysInMonth = 31,
+    onToggle,
+    onDelete,
+    onUpdate,
+    onMentalStateChange
+}) {
+    const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+    // Stats calculation
+    const getDailyStats = (day) => {
+        let done = 0;
+        habits.forEach(h => {
+            if (checks[h.id]?.[day]) done++;
+        });
+        return {
+            done,
+            notDone: habits.length - done,
+            pct: habits.length > 0 ? Math.round((done / habits.length) * 100) : 0
+        };
+    };
+
+    return (
+        <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
+            <table className="w-full border-collapse">
+                <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                    {/* Row 1 — Week group headers */}
+                    <tr>
+                        <th className="sticky left-0 z-20 bg-gray-50 min-w-[200px] border-r border-gray-200 p-2">My Habits</th>
+                        <th colSpan={7} className="border-r border-gray-200 p-1 text-center">Week 1</th>
+                        <th colSpan={7} className="border-r border-gray-200 p-1 text-center">Week 2</th>
+                        <th colSpan={7} className="border-r border-gray-200 p-1 text-center">Week 3</th>
+                        <th colSpan={9} className="border-r border-gray-200 p-1 text-center">Week 4+</th>
+                        <th className="p-1 px-4 text-center">Analysis</th>
+                    </tr>
+
+                    {/* Row 2 — Day abbreviations + numbers */}
+                    <tr className="border-b border-gray-200">
+                        <th className="sticky left-0 z-20 bg-gray-50 border-r border-gray-200"></th>
+                        {days.map(day => {
+                            const isNewWeek = (day - 1) % 7 === 0 && day !== 1;
+                            return (
+                                <th
+                                    key={day}
+                                    className={`p-1 min-w-[22px] text-center ${isNewWeek ? 'border-l-2 border-gray-200' : 'border-l border-gray-100'}`}
+                                >
+                                    <div className="flex flex-col text-[8px] leading-tight">
+                                        <span>{['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'][(day - 1) % 7]}</span>
+                                        <span className="text-gray-600 font-black">{day}</span>
+                                    </div>
+                                </th>
+                            );
+                        })}
+                        <th className="border-l-2 border-gray-200"></th>
+                    </tr>
+                </thead>
+
+                {/* Habit Rows */}
+                <tbody className="bg-white">
+                    {habits.map(habit => (
+                        <HabitRow
+                            key={habit.id}
+                            habit={habit}
+                            days={days}
+                            checks={checks[habit.id]}
+                            streak={streaks[habit.id]}
+                            onToggle={onToggle}
+                            onDelete={onDelete}
+                            onUpdate={onUpdate}
+                        />
+                    ))}
+                </tbody>
+
+                {/* Footer Rows */}
+                <tfoot className="text-[9px] font-bold">
+                    {/* Progress % row */}
+                    <tr className="bg-green-50/50 border-t-2 border-gray-100 italic">
+                        <td className="sticky left-0 z-10 bg-inherit border-r border-gray-200 px-4 py-2 text-primary font-black">Progress %</td>
+                        {days.map(day => {
+                            const stats = getDailyStats(day);
+                            const isNewWeek = (day - 1) % 7 === 0 && day !== 1;
+                            return (
+                                <td
+                                    key={day}
+                                    className={`p-1 text-center ${isNewWeek ? 'border-l-2 border-gray-200' : 'border-l border-gray-100'} ${stats.pct > 0 ? 'text-primary' : 'text-gray-300'}`}
+                                >
+                                    {stats.pct > 0 ? `${stats.pct}%` : '–'}
+                                </td>
+                            );
+                        })}
+                        <td className="border-l-2 border-gray-200"></td>
+                    </tr>
+
+                    {/* Done row */}
+                    <tr className="bg-lime-50/30 border-t border-gray-100">
+                        <td className="sticky left-0 z-10 bg-inherit border-r border-gray-200 px-4 py-2 text-lime-700">Done</td>
+                        {days.map(day => {
+                            const stats = getDailyStats(day);
+                            const isNewWeek = (day - 1) % 7 === 0 && day !== 1;
+                            return (
+                                <td
+                                    key={day}
+                                    className={`p-1 text-center ${isNewWeek ? 'border-l-2 border-gray-200' : 'border-l border-gray-100'} text-lime-600`}
+                                >
+                                    {stats.done > 0 ? stats.done : '–'}
+                                </td>
+                            );
+                        })}
+                        <td className="border-l-2 border-gray-200"></td>
+                    </tr>
+
+                    {/* Not Done row */}
+                    <tr className="bg-red-50/30 border-t border-gray-100">
+                        <td className="sticky left-0 z-10 bg-inherit border-r border-gray-200 px-4 py-2 text-red-700">Not Done</td>
+                        {days.map(day => {
+                            const stats = getDailyStats(day);
+                            const isNewWeek = (day - 1) % 7 === 0 && day !== 1;
+                            return (
+                                <td
+                                    key={day}
+                                    className={`p-1 text-center ${isNewWeek ? 'border-l-2 border-gray-200' : 'border-l border-gray-100'} text-red-600`}
+                                >
+                                    {stats.notDone > 0 ? stats.notDone : '–'}
+                                </td>
+                            );
+                        })}
+                        <td className="border-l-2 border-gray-200"></td>
+                    </tr>
+
+                    {/* Mental State row */}
+                    <tr className="bg-amber-50/50 border-t border-gray-100 italic">
+                        <td className="sticky left-0 z-10 bg-inherit border-r border-gray-200 px-4 py-2 text-amber-700 flex items-center gap-1">
+                            <span>🧠</span> Mental State
+                        </td>
+                        {days.map(day => {
+                            const isNewWeek = (day - 1) % 7 === 0 && day !== 1;
+                            return (
+                                <td
+                                    key={day}
+                                    className={`p-1 text-center ${isNewWeek ? 'border-l-2 border-gray-200' : 'border-l border-gray-100'}`}
+                                >
+                                    <input
+                                        type="number"
+                                        min="1" max="10"
+                                        placeholder="–"
+                                        className="w-5 bg-transparent border-none text-center text-amber-950 font-black outline-none appearance-none"
+                                        value={mentalState[day] || ''}
+                                        onChange={(e) => onMentalStateChange(day, e.target.value)}
+                                    />
+                                </td>
+                            );
+                        })}
+                        <td className="border-l-2 border-gray-200"></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    );
+}
+
+export default HabitGrid;

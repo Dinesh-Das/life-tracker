@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Primary Meta Tags -->
+  <title>LifeTracker — Your Personal Habit & Wellness Dashboard</title>
+  <meta name="title" content="LifeTracker — Your Personal Habit & Wellness Dashboard" />
+  <meta name="description"
+    content="Track daily habits, monitor your cycle, plan weekly goals, and visualize a full year of personal progress — all synced privately to your own Google Sheet." />
+  <meta name="theme-color" content="#059669" />
+  <meta name="application-name" content="LifeTracker" />
+
+  <!-- Open Graph / Social Sharing -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="LifeTracker — Your Personal Habit & Wellness Dashboard" />
+  <meta property="og:description"
+    content="Track daily habits, monitor your cycle, plan weekly goals, and visualize a full year of personal progress." />
+  <meta property="og:image" content="/og-image.png" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- Security headers (belt + suspenders alongside server config) -->
+  <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap"
+    rel="stylesheet" />
+
+  <!-- Google API client — loaded async so they don't block render -->
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
