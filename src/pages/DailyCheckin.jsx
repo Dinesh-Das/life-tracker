@@ -75,17 +75,17 @@ function DailyCheckin() {
 
             <div className="flex-1 overflow-y-auto pb-24">
                 {/* Date & Progress Hero */}
-                <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-8 lg:p-12">
-                    <div className="max-w-4xl mx-auto flex flex-col lg:flex-row items-center gap-8">
+                <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-6 md:p-8 lg:p-12">
+                    <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-8">
                         {/* Date Display */}
-                        <div className="flex-1 text-center lg:text-left animate-fade-up">
-                            <p className="text-emerald-200 text-xs font-bold uppercase tracking-[0.2em] mb-2">
+                        <div className="flex-1 text-center md:text-left animate-fade-up">
+                            <p className="text-emerald-200 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] mb-1 md:mb-2">
                                 {format(today, 'EEEE')}
                             </p>
-                            <h1 className="text-5xl lg:text-6xl font-serif font-bold mb-1">
+                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold mb-1">
                                 {format(today, 'dd')}
                             </h1>
-                            <p className="text-emerald-100 text-lg font-medium">
+                            <p className="text-emerald-100 text-base md:text-lg font-medium">
                                 {format(today, 'MMMM yyyy')}
                             </p>
                         </div>
@@ -129,11 +129,11 @@ function DailyCheckin() {
                 </div>
 
                 {/* Habit Checklist */}
-                <div className="max-w-4xl mx-auto p-6 lg:p-8 space-y-4">
+                <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 space-y-4">
                     <div className="flex items-center justify-between mb-2">
                         <h3 className="text-lg font-serif font-bold text-gray-900">Today's Habits</h3>
                         {pct === 100 && (
-                            <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider animate-check-pop">
+                            <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider animate-check-pop">
                                 💀 All Done!
                             </span>
                         )}

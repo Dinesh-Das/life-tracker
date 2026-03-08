@@ -47,12 +47,13 @@ export function AuthProvider({ children }) {
                 }
 
                 if (!window.google || !window.gapi) {
-                    // CDN scripts failed to load (offline, blocked, etc.)
+                    console.error('Timeout waiting for Google scripts. window.google:', !!window.google, 'window.gapi:', !!window.gapi);
                     setGapiError(true);
                     setLoading(false);
                     return;
                 }
 
+                console.log("Scripts loaded, initializing GAPI client...");
                 await new Promise((resolve) => window.gapi.load('client', resolve));
                 await window.gapi.client.init({
                     apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
@@ -127,8 +128,9 @@ export function AuthProvider({ children }) {
                     },
                 });
 
+                console.log("Token client initialized successfully.");
             } catch (error) {
-                console.error('GAPI initialization error:', error);
+                console.error('GAPI/GIS full initialization error:', error);
                 setGapiError(true);
             } finally {
                 setLoading(false);
