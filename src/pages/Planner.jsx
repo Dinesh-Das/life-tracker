@@ -100,18 +100,24 @@ function Planner() {
             <Header title={`Planner — ${currentMonth} ${currentYear}`} saving={habitsSaving} />
 
             {/* Global Month Picker for Planner */}
-            <div className="bg-white px-6 py-4 border-b border-gray-100 sticky top-0 z-20">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 mb-3">Select Month</h3>
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+            <div className="bg-white px-4 md:px-6 py-5 border-b border-gray-100 sticky top-0 z-40">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em] text-gray-400">Select Month</h3>
+                    <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-600/60 animate-pulse md:hidden">
+                        <span>Swipe to navigate</span>
+                        <span className="text-lg">→</span>
+                    </div>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x h-[58px]">
                     {MONTHS.map((m, idx) => (
                         <button
                             key={m}
                             onClick={() => setMonth(idx)}
                             className={`
-                                px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shrink-0 min-w-[80px]
+                                px-6 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all shrink-0 min-w-[100px] snap-start border-2
                                 ${idx === currentMonthIndex
-                                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200'
-                                    : 'bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xl shadow-emerald-100 scale-105'
+                                    : 'bg-white text-gray-400 border-gray-50 hover:border-gray-100 hover:text-gray-600'
                                 }
                             `}
                         >
@@ -124,9 +130,9 @@ function Planner() {
             <div className="flex-1 overflow-y-auto pb-32">
 
                 {/* ---------- HABITS SECTION ---------- */}
-                <div className="p-6 space-y-6">
+                <div className="p-4 md:p-6 space-y-6">
                     <div className="flex items-center justify-between mb-2">
-                        <h2 className="text-xl font-serif font-black text-gray-800">Monthly Habits</h2>
+                        <h2 className="text-xl md:text-2xl font-serif font-black text-gray-800">Monthly Habits</h2>
                     </div>
 
                     <MonthHeader
@@ -136,18 +142,20 @@ function Planner() {
                         onAddHabit={() => addHabit({ name: 'New Habit', emoji: '✨', goal: 30, category: 'Mind' })}
                     />
 
-                    <HabitGrid
-                        currentMonth={currentMonth}
-                        habits={visibleHabits}
-                        checks={checks}
-                        streaks={habitStreaks}
-                        mentalState={mentalState}
-                        daysInMonth={daysInMonth}
-                        onToggle={toggleCheck}
-                        onDelete={deleteHabit}
-                        onUpdate={updateHabit}
-                        onMentalStateChange={updateMentalState}
-                    />
+                    <div className="overflow-x-auto pb-4 scrollbar-thin rounded-3xl">
+                        <HabitGrid
+                            currentMonth={currentMonth}
+                            habits={visibleHabits}
+                            checks={checks}
+                            streaks={habitStreaks}
+                            mentalState={mentalState}
+                            daysInMonth={daysInMonth}
+                            onToggle={toggleCheck}
+                            onDelete={deleteHabit}
+                            onUpdate={updateHabit}
+                            onMentalStateChange={updateMentalState}
+                        />
+                    </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <TrendAreaChart data={trendData} />

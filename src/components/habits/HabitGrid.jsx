@@ -33,7 +33,7 @@ function HabitGrid({
                 <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                     {/* Row 1 — Week group headers */}
                     <tr>
-                        <th className="sticky left-0 z-20 bg-gray-50 min-w-[200px] border-r border-gray-200 p-2">My Habits</th>
+                        <th className="sticky left-0 z-30 bg-gray-50 min-w-[160px] md:min-w-[200px] border-r border-gray-200 p-2 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">My Habits</th>
                         <th colSpan={7} className="border-r border-gray-200 p-1 text-center">Week 1</th>
                         <th colSpan={7} className="border-r border-gray-200 p-1 text-center">Week 2</th>
                         <th colSpan={7} className="border-r border-gray-200 p-1 text-center">Week 3</th>
@@ -51,9 +51,9 @@ function HabitGrid({
                                     key={day}
                                     className={`p-1 min-w-[22px] text-center ${isNewWeek ? 'border-l-2 border-gray-200' : 'border-l border-gray-100'}`}
                                 >
-                                    <div className="flex flex-col text-[8px] leading-tight">
-                                        <span>{['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'][(day - 1) % 7]}</span>
-                                        <span className="text-gray-600 font-black">{day}</span>
+                                    <div className="flex flex-col text-[8px] md:text-[9px] leading-tight">
+                                        <span className="opacity-60">{['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'][(day - 1) % 7]}</span>
+                                        <span className="text-gray-900 font-black">{day}</span>
                                     </div>
                                 </th>
                             );

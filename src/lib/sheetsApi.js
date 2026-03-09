@@ -88,6 +88,33 @@ export async function createSpreadsheet(title) {
 }
 
 /**
+ * Get spreadsheet details including sheets.
+ * @param {string} spreadsheetId 
+ */
+export async function getSpreadsheet(spreadsheetId) {
+    const res = await SHEETS().get({
+        spreadsheetId
+    });
+    return res.result;
+}
+
+/**
+ * Add a new sheet to a spreadsheet.
+ * @param {string} spreadsheetId 
+ * @param {string} title 
+ */
+export async function addSheet(spreadsheetId, title) {
+    return SHEETS().batchUpdate({
+        spreadsheetId,
+        resource: {
+            requests: [{
+                addSheet: { properties: { title } }
+            }]
+        }
+    });
+}
+
+/**
  * Find a spreadsheet by name in the user's Google Drive.
  * @param {string} title 
  */

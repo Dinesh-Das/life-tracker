@@ -64,7 +64,10 @@ body {
   min-height: 100vh;
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   @apply font-serif;
 }
 
@@ -74,45 +77,93 @@ h1, h2, h3, h4 {
 
 /* Checkbox click pop */
 @keyframes checkPop {
-  0%   { transform: scale(1); }
-  40%  { transform: scale(1.35); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  40% {
+    transform: scale(1.35);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* Page mount stagger */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Skeleton shimmer */
 @keyframes shimmer {
-  0%   { background-position: -400px 0; }
-  100% { background-position: 400px 0; }
+  0% {
+    background-position: -400px 0;
+  }
+
+  100% {
+    background-position: 400px 0;
+  }
 }
 
 /* Streak badge pulse */
 @keyframes streakPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 143, 0, 0.4); }
-  50%      { box-shadow: 0 0 0 8px rgba(255, 143, 0, 0); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 143, 0, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 143, 0, 0);
+  }
 }
 
 /* Task slide in */
 @keyframes slideDown {
-  from { opacity: 0; max-height: 0; }
-  to   { opacity: 1; max-height: 100px; }
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+
+  to {
+    opacity: 1;
+    max-height: 100px;
+  }
 }
 
 /* Toast slide in */
 @keyframes slideInRight {
-  from { transform: translateX(100%); opacity: 0; }
-  to   { transform: translateX(0);   opacity: 1; }
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* Gentle pulse for saving */
 @keyframes savePulse {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .animate-check-pop {
@@ -181,17 +232,79 @@ h1, h2, h3, h4 {
 /* ═══════════════════════════════════════════════════
    Typography Utility Classes
    ═══════════════════════════════════════════════════ */
-.text-hero    { font-size: 32px; line-height: 1; }
-.text-section { font-size: 18px; line-height: 1.3; }
-.text-card    { font-size: 14px; line-height: 1.4; }
-.text-body    { font-size: 13px; line-height: 1.5; }
-.text-label   { font-size: 11px; line-height: 1.4; }
-.text-micro   { font-size: 9px;  line-height: 1.3; }
+.text-hero {
+  @apply text-[28px] md:text-[32px] leading-tight;
+  font-family: var(--font-display);
+}
+
+.text-section {
+  @apply text-[18px] md:text-[20px] leading-snug;
+  font-family: var(--font-display);
+}
+
+.text-card {
+  @apply text-[15px] md:text-[14px] leading-relaxed;
+}
+
+.text-body {
+  @apply text-[14px] md:text-[13px] leading-relaxed;
+}
+
+.text-label {
+  @apply text-[12px] md:text-[11px] leading-normal font-bold uppercase tracking-wider;
+}
+
+.text-micro {
+  @apply text-[10px] md:text-[9px] leading-tight font-black uppercase tracking-widest;
+}
+
+/* Global Touch Targets */
+button,
+a,
+select,
+input[type="range"] {
+  min-height: 44px;
+  min-width: 44px;
+  @apply touch-manipulation;
+}
+
+input,
+textarea,
+select {
+  @apply text-base;
+  /* Prevents auto-zoom on iOS */
+}
+
+@screen md {
+
+  input,
+  textarea,
+  select {
+    @apply text-sm;
+  }
+}
 
 /* Stagger delay utility */
-.stagger-1 { animation-delay: 0.05s; }
-.stagger-2 { animation-delay: 0.10s; }
-.stagger-3 { animation-delay: 0.15s; }
-.stagger-4 { animation-delay: 0.20s; }
-.stagger-5 { animation-delay: 0.25s; }
-.stagger-6 { animation-delay: 0.30s; }
+.stagger-1 {
+  animation-delay: 0.05s;
+}
+
+.stagger-2 {
+  animation-delay: 0.10s;
+}
+
+.stagger-3 {
+  animation-delay: 0.15s;
+}
+
+.stagger-4 {
+  animation-delay: 0.20s;
+}
+
+.stagger-5 {
+  animation-delay: 0.25s;
+}
+
+.stagger-6 {
+  animation-delay: 0.30s;
+}

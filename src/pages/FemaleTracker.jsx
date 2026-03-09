@@ -121,19 +121,19 @@ function FemaleTracker() {
             <div className="flex-1 overflow-y-auto pb-32">
                 {/* Phase Banner */}
                 {phaseBanner ? (
-                    <div className={`px-6 py-4 ${phaseBanner.bg} border-b ${phaseBanner.border}`}>
-                        <div className="max-w-6xl mx-auto flex items-center justify-center md:justify-start gap-4">
-                            <span className="text-3xl">{phaseBanner.emoji}</span>
+                    <div className={`px-4 md:px-6 py-4 ${phaseBanner.bg} border-b ${phaseBanner.border}`}>
+                        <div className="max-w-6xl mx-auto flex items-center gap-4">
+                            <span className="text-3xl shrink-0">{phaseBanner.emoji}</span>
                             <div>
-                                <h3 className={`text-sm font-bold ${phaseBanner.text}`}>{phaseBanner.label} — Day {currentCycleDay}</h3>
-                                <p className={`text-xs ${phaseBanner.text} opacity-80 hidden md:block max-w-xl`}>{phaseBanner.desc}</p>
+                                <h3 className={`text-sm font-black uppercase tracking-wider ${phaseBanner.text}`}>{phaseBanner.label} — Day {currentCycleDay}</h3>
+                                <p className={`text-xs ${phaseBanner.text} opacity-80 max-w-xl line-clamp-2 md:line-clamp-none`}>{phaseBanner.desc}</p>
                             </div>
                         </div>
                     </div>
                 ) : (
-                    <div className="px-6 py-4 bg-sky-50 border-b border-sky-100 flex items-center justify-center gap-3">
+                    <div className="px-6 py-4 bg-sky-50 border-b border-sky-100 flex items-center gap-3">
                         <span className="text-2xl">🪄</span>
-                        <p className="text-xs font-bold text-sky-700">Log your first period to activate predictions and cycle tracking.</p>
+                        <p className="text-[11px] font-bold text-sky-700 leading-tight">Log your first period to activate predictions and cycle tracking.</p>
                     </div>
                 )}
 
@@ -168,24 +168,24 @@ function FemaleTracker() {
 
                         {/* Predictions Banner */}
                         {history.length > 0 && ovulationInfo && (
-                            <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-gray-100">
-                                <div className="flex-1 p-3 text-center">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Predicted Period</p>
-                                    <p className="font-serif font-black text-rose-600 text-lg">{format(nextPeriod, 'MMM dd')}</p>
+                            <div className="bg-white p-2 rounded-3xl border border-gray-100 shadow-sm grid grid-cols-2 md:grid-cols-4 divide-y divide-x md:divide-y-0 divide-gray-100 overflow-hidden">
+                                <div className="p-3.5 text-center">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Predicted Period</p>
+                                    <p className="font-serif font-black text-rose-600 text-lg leading-none">{format(nextPeriod, 'MMM dd')}</p>
                                 </div>
-                                <div className="flex-1 p-3 text-center">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Avg Cycle</p>
-                                    <p className="font-serif font-black text-emerald-600 text-lg">{avgCycleLength} Days</p>
+                                <div className="p-3.5 text-center">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Avg Cycle</p>
+                                    <p className="font-serif font-black text-emerald-600 text-lg leading-none">{avgCycleLength} d</p>
                                 </div>
-                                <div className="flex-1 p-3 text-center">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Fertile Window</p>
-                                    <p className="font-serif font-black text-blue-500 text-lg">
-                                        {format(ovulationInfo.fertileWindowStart, 'MMM dd')} - {format(ovulationInfo.fertileWindowEnd, 'dd')}
+                                <div className="p-3.5 text-center">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Fertile Window</p>
+                                    <p className="font-serif font-black text-blue-500 text-base leading-none">
+                                        {format(ovulationInfo.fertileWindowStart, 'MMM d')} - {format(ovulationInfo.fertileWindowEnd, 'd')}
                                     </p>
                                 </div>
-                                <div className="flex-1 p-3 text-center">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Ovulation</p>
-                                    <p className="font-serif font-black text-pink-500 text-lg">🌸 {format(ovulationInfo.ovulationDate, 'MMM dd')}</p>
+                                <div className="p-3.5 text-center">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">Ovulation</p>
+                                    <p className="font-serif font-black text-pink-500 text-base leading-none">🌸 {format(ovulationInfo.ovulationDate, 'MMM d')}</p>
                                 </div>
                             </div>
                         )}
@@ -202,19 +202,19 @@ function FemaleTracker() {
                                 />
 
                                 {/* Selected Date Context Header */}
-                                <div className="bg-gradient-to-r from-rose-500 to-pink-500 p-6 rounded-3xl text-white shadow-lg shadow-rose-200 flex justify-between items-center animate-fade-up stagger-1">
+                                <div className="bg-gradient-to-r from-rose-500 to-pink-500 p-5 md:p-6 rounded-3xl text-white shadow-lg shadow-rose-200 flex flex-col sm:flex-row gap-4 sm:items-center justify-between animate-fade-up stagger-1">
                                     <div>
-                                        <h2 className="text-2xl font-serif font-black">
-                                            {isToday(selectedDate) ? 'Track Today' : format(selectedDate, 'MMMM d, yyyy')}
+                                        <h2 className="text-xl md:text-2xl font-serif font-black">
+                                            {isToday(selectedDate) ? 'Track Today' : format(selectedDate, 'MMM d, yyyy')}
                                         </h2>
-                                        <p className="text-white/80 text-xs font-bold uppercase tracking-widest mt-1">Daily Log</p>
+                                        <p className="text-white/80 text-[10px] font-black uppercase tracking-widest mt-0.5">Daily Log Entry</p>
                                     </div>
                                     <button
                                         onClick={handleSave}
                                         disabled={saving}
-                                        className="bg-white text-rose-600 px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50 shadow-sm"
+                                        className="bg-white text-rose-600 px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50 shadow-sm"
                                     >
-                                        {saving ? 'Saving...' : 'Save Log'}
+                                        {saving ? 'Saving...' : 'Save Changes'}
                                     </button>
                                 </div>
                             </div>

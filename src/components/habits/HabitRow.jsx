@@ -25,16 +25,16 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
             onMouseLeave={() => setIsHovered(false)}
         >
             {/* Sticky Habit Name Column */}
-            <td className="sticky left-0 z-10 bg-inherit min-w-[200px] p-0 border-r border-gray-200">
-                <div className="flex items-center px-4 py-3 h-full gap-2 group/name">
-                    <span className="text-lg cursor-pointer hover:scale-125 transition-transform" title="Click to change emoji">
+            <td className="sticky left-0 z-10 bg-white min-w-[160px] md:min-w-[200px] p-0 border-r border-gray-200 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                <div className="flex items-center px-3 py-3 h-full gap-2 group/name max-w-[160px] md:max-w-[200px]">
+                    <span className="text-base md:text-lg cursor-pointer hover:scale-125 transition-transform shrink-0" title="Click to change emoji">
                         {habit.emoji}
                     </span>
 
                     {isEditing ? (
                         <input
                             autoFocus
-                            className="flex-1 bg-white border border-primary rounded px-1 py-0.5 text-sm outline-none"
+                            className="flex-1 bg-white border border-primary rounded px-1 py-0.5 text-[11px] md:text-sm outline-none w-0"
                             value={tempName}
                             onChange={(e) => setTempName(e.target.value)}
                             onBlur={handleBlur}
@@ -42,7 +42,7 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
                         />
                     ) : (
                         <span
-                            className="flex-1 text-sm font-medium text-gray-700 truncate cursor-text hover:text-primary transition-colors"
+                            className="flex-1 text-[11px] md:text-sm font-bold text-gray-700 cursor-text hover:text-primary transition-colors leading-tight line-clamp-2 whitespace-normal"
                             onClick={() => setIsEditing(true)}
                         >
                             {habit.name}
@@ -51,7 +51,7 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
 
                     <button
                         onClick={() => onDelete(habit.id)}
-                        className={`text-red-400 hover:text-red-600 transition-opacity p-1 rounded-full hover:bg-red-50 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+                        className={`text-red-400 hover:text-red-600 transition-opacity p-1 rounded-full hover:bg-red-50 shrink-0 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
                     >
                         <X size={14} />
                     </button>

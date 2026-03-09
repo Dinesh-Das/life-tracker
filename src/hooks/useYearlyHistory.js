@@ -87,11 +87,12 @@ export function useYearlyHistory(spreadsheetId, year) {
                     // 10-12 = 4
                     // 13-15 = 5
                     let intensity = 0;
-                    if (count > 0 && count <= 3) intensity = 1;
+                    if (count === 0) intensity = 0;
+                    else if (count <= 3) intensity = 1;
                     else if (count <= 6) intensity = 2;
                     else if (count <= 9) intensity = 3;
                     else if (count <= 12) intensity = 4;
-                    else if (count > 12) intensity = 5;
+                    else intensity = 5;
 
                     return { date: dateStr, count, intensity };
                 });

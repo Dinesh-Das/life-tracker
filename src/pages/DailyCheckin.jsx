@@ -4,7 +4,9 @@ import { useAppContext } from '../context/AppContext'
 import { useHabits } from '../hooks/useHabits'
 import { format, getDaysInMonth } from 'date-fns'
 import { useState, useMemo } from 'react'
-import { CheckCircle2, Circle, Brain } from 'lucide-react'
+import { CheckCircle2, Circle, Brain, Trophy, Zap, Heart, DollarSign, Star } from 'lucide-react'
+import { useWins } from '../hooks/useWins';
+import { WIN_SUGGESTIONS } from '../lib/winSuggestions';
 
 function DailyCheckin() {
     const { spreadsheetId } = useAuth();
@@ -14,11 +16,21 @@ function DailyCheckin() {
         habits,
         checks,
         mentalState,
-        loading,
-        saving,
+        loading: habitsLoading,
+        saving: habitsSaving,
         toggleCheck,
         updateMentalState,
     } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
+
+    const {
+        wins,
+        loading: winsLoading,
+        saving: winsSaving,
+        saveWin
+    } = useWins(spreadsheetId);
+
+    const loading = habitsLoading || winsLoading;
+    const saving = habitsSaving || winsSaving;
 
     const today = new Date();
     const todayDay = today.getDate();
@@ -130,10 +142,10 @@ function DailyCheckin() {
 
                 {/* Habit Checklist */}
                 <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 space-y-4">
-                    <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-serif font-bold text-gray-900">Today's Habits</h3>
+                    <div className="flex items-center justify-between mb-2 mt-2">
+                        <h3 className="text-xl font-serif font-black text-gray-900">Today's Habits</h3>
                         {pct === 100 && (
-                            <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase tracking-wider animate-check-pop">
+                            <span className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest animate-check-pop">
                                 💀 All Done!
                             </span>
                         )}
@@ -180,10 +192,7 @@ function DailyCheckin() {
                                     </span>
 
                                     {/* Category */}
-                                    <span className={`
-                                        text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-md
-                                        ${done ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-400'}
-                                    `}>
+                                    <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg bg-gray-50 text-gray-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
                                         {habit.category}
                                     </span>
                                 </button>
@@ -218,6 +227,65 @@ function DailyCheckin() {
                             <span className="text-2xl font-serif font-bold text-amber-700 min-w-[2ch] text-center" aria-live="polite">
                                 {mentalInput || '–'}
                             </span>
+                        </div>
+                    </div>
+
+                    {/* Daily Wins Tracker */}
+                    <div className="mt-12 space-y-6 animate-fade-up stagger-6">
+                        <div className="flex items-center gap-3">
+                            <Trophy className="text-emerald-600" size={24} />
+                            <h3 className="text-xl font-serif font-bold text-gray-900">Daily Wins</h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {[
+                                { id: 'Physical', icon: Zap, color: 'emerald', label: 'Physical', placeholder: 'Workout, hydration, sleep...' },
+                                { id: 'Mental', icon: Brain, color: 'amber', label: 'Mental', placeholder: 'Learning, focus, meditation...' },
+                                { id: 'Social', icon: Heart, color: 'rose', label: 'Social', placeholder: 'Family, friends, kindness...' },
+                                { id: 'Financial', icon: DollarSign, color: 'blue', label: 'Financial', placeholder: 'Savings, budget, investments...' },
+                                { id: 'Spiritual', icon: Star, color: 'purple', label: 'Spiritual', placeholder: 'Peace, nature, growth...' },
+                            ].map((cat) => (
+                                <div
+                                    key={cat.id}
+                                    className="p-5 rounded-3xl border transition-all duration-300 bg-white hover:shadow-md border-gray-100 group"
+                                >
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="p-2 rounded-xl bg-gray-50 text-gray-600 group-hover:scale-110 transition-transform">
+                                            <cat.icon size={18} />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-gray-800 flex-1">{cat.label}</h4>
+
+                                        {/* Suggestions Dropdown */}
+                                        <div className="relative">
+                                            <select
+                                                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
+                                                onChange={(e) => {
+                                                    if (e.target.value) {
+                                                        const current = wins[cat.id] || '';
+                                                        const newVal = current ? `${current}, ${e.target.value}` : e.target.value;
+                                                        saveWin(cat.id, newVal);
+                                                        e.target.value = '';
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">💡 Pick a Win</option>
+                                                {WIN_SUGGESTIONS[cat.id]?.map((s, idx) => (
+                                                    <option key={idx} value={s}>{s}</option>
+                                                ))}
+                                            </select>
+                                            <div className="text-[11px] font-black bg-emerald-50 text-emerald-600 rounded-xl px-3 py-2 flex items-center gap-1.5 whitespace-nowrap">
+                                                <span>💡 Suggestions</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <textarea
+                                        value={wins[cat.id] || ''}
+                                        onChange={(e) => saveWin(cat.id, e.target.value)}
+                                        placeholder={cat.placeholder}
+                                        className="w-full bg-gray-50/50 border border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl text-base md:text-sm text-gray-600 placeholder:text-gray-300 resize-none h-24 p-3 transition-all"
+                                    />
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

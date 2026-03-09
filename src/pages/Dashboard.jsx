@@ -50,17 +50,17 @@ function Dashboard() {
         <>
             <Header title="Yearly Dashboard" />
 
-            <div className="p-6 space-y-8 overflow-y-auto pb-24">
+            <div className="p-4 md:p-6 lg:p-8 space-y-8 overflow-y-auto pb-24">
                 {/* Stat Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                     {statCards.map((card) => (
-                        <div key={card.label} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4 hover:scale-[1.02] transition-transform cursor-default">
-                            <div className={`p-3 rounded-xl ${card.bg} ${card.color}`}>
-                                <card.icon size={24} />
+                        <div key={card.label} className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-3 md:gap-4 hover:scale-[1.02] transition-transform cursor-default">
+                            <div className={`p-2.5 md:p-3 rounded-xl ${card.bg} ${card.color}`}>
+                                <card.icon size={20} className="md:w-6 md:h-6" />
                             </div>
                             <div>
-                                <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{card.label}</p>
-                                <p className="text-xl font-serif font-black text-gray-800">{card.value}</p>
+                                <p className="text-[9px] md:text-[10px] font-black uppercase text-gray-400 tracking-widest">{card.label}</p>
+                                <p className="text-lg md:text-xl font-serif font-black text-gray-800 leading-tight">{card.value}</p>
                             </div>
                         </div>
                     ))}
@@ -68,9 +68,9 @@ function Dashboard() {
 
                 {/* Female Stats Section */}
                 {showCycleStats && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-up">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 animate-fade-up">
                         {cycleCards.map((card) => (
-                            <div key={card.label} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4 hover:scale-[1.02] transition-transform cursor-default">
+                            <div key={card.label} className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4 hover:scale-[1.02] transition-transform cursor-default">
                                 <div className={`p-3 rounded-xl ${card.bg} ${card.color}`}>
                                     <card.icon size={22} />
                                 </div>
@@ -97,8 +97,18 @@ function Dashboard() {
                 {/* Yearly Chart */}
                 <YearlyLineChart data={yearlyTrend} />
 
-                {/* Habit Heatmap */}
-                <HabitHeatmap data={heatmapData} year={currentYear} />
+                {/* Habit Heatmap with Horizontal Scroll */}
+                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest">Yearly Habit Heatmap</h3>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md md:hidden">Slide to view →</span>
+                    </div>
+                    <div className="overflow-x-auto pb-4 scrollbar-thin">
+                        <div className="min-w-[800px]">
+                            <HabitHeatmap data={heatmapData} year={currentYear} />
+                        </div>
+                    </div>
+                </div>
             </div>
         </>
     );

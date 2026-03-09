@@ -21,7 +21,7 @@ function DayColumn({ dayName, date, tasks, onToggle, onDelete, onUpdate, onAddTa
     };
 
     return (
-        <div className="flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-w-[200px] flex-1">
+        <div className="flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-w-[160px] flex-1 max-w-[280px]">
             {/* Header */}
             <div className={`
         p-4 text-center text-white transition-colors duration-500

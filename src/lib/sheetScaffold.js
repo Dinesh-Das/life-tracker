@@ -9,7 +9,7 @@ export async function scaffoldSheet(userName) {
         const spreadsheetId = newSheet.spreadsheetId;
 
         // 2. Add all necessary tabs
-        const allTabs = ['Settings', ...MONTHS, 'Female', 'Weekly', 'Streaks'];
+        const allTabs = ['Settings', ...MONTHS, 'Female', 'Weekly', 'Streaks', 'DailyWins'];
         const requests = [];
 
         // Rename default "Sheet1" to "Settings"
@@ -113,6 +113,12 @@ export async function scaffoldSheet(userName) {
             values: [['Habit ID', 'Current Streak', 'Best Streak', 'Last Done Date', 'Total Days']]
         });
 
+        // Daily Wins Tab
+        spreadsheetRanges.push({
+            range: 'DailyWins!A1:F1',
+            values: [['Date', 'Physical', 'Mental', 'Social', 'Financial', 'Spiritual']]
+        });
+
         await batchWrite(spreadsheetId, spreadsheetRanges);
         return spreadsheetId;
     } catch (e) {
@@ -120,3 +126,25 @@ export async function scaffoldSheet(userName) {
         throw e;
     }
 }
+export async function ensureDailyWinsSheet(spreadsheetId) {
+    try {
+        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        const hasDailyWins = spreadsheet.sheets.some(s => s.properties.title === 'DailyWins');
+
+        if (!hasDailyWins) {
+            console.log('DailyWins sheet missing. Adding now...');
+            await addSheet(spreadsheetId, 'DailyWins');
+
+            // Initialize headers
+            await batchWrite(spreadsheetId, [{
+                range: 'DailyWins!A1:F1',
+                values: [['Date', 'Physical', 'Mental', 'Social', 'Financial', 'Spiritual']]
+            }]);
+            console.log('DailyWins sheet initialized.');
+        }
+    } catch (e) {
+        console.error('Failed to ensure DailyWins sheet:', e);
+        throw e;
+    }
+}
+import { getSpreadsheet, addSheet } from './sheetsApi';
