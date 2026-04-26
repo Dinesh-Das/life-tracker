@@ -38,6 +38,13 @@ function Login() {
                 padding: '48px 24px',
                 animation: 'fadeUp 0.6s ease-out both',
             }}>
+                {/* Logo */}
+                <img 
+                    src="/logo.png" 
+                    alt="LifeTracker Logo" 
+                    style={{ width: '80px', height: '80px', borderRadius: '20px', marginBottom: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', objectFit: 'cover' }} 
+                />
+
                 {/* App title */}
                 <h1 style={{
                     fontFamily: 'var(--font-display)',

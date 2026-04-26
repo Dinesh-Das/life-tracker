@@ -45,17 +45,11 @@ function Sidebar() {
         >
             {/* Logo */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '22px 20px 24px' }}>
-                <div style={{
-                    width: '30px', height: '30px', borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #7db89a, #2d4f41)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                }}>
-                    {/* Lotus / zen icon */}
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#d8e6db" strokeWidth="2">
-                        <circle cx="12" cy="12" r="5"/>
-                        <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
-                    </svg>
-                </div>
+                <img 
+                    src="/logo.png" 
+                    alt="LifeTracker Logo" 
+                    style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover' }} 
+                />
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 600, color: '#d8e6db' }}>
                     LifeTracker
                 </span>
