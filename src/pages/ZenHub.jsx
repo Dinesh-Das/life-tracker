@@ -11,146 +11,183 @@ import {
     ArrowRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import Header from '../components/layout/Header';
+
 const QUOTES = [
     { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
     { text: "Quality is not an act, it is a habit.", author: "Aristotle" },
     { text: "Well begun is half done.", author: "Aristotle" },
     { text: "Your future is created by what you do today, not tomorrow.", author: "Robert Kiyosaki" },
-    { text: "Discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" }
+    { text: "Discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" },
+];
+
+const hubCards = [
+    { title: "Daily Check-in",   desc: "Log your habits and mental state for today.",     icon: CheckSquare, to: "/daily",    delay: 0.1 },
+    { title: "Planner",          desc: "View your weekly tasks and schedule.",              icon: Calendar,    to: "/planner",  delay: 0.2 },
+    { title: "Analytics",        desc: "Visualize your progress and trends.",              icon: TrendingUp,  to: "/dashboard",delay: 0.3 },
+    { title: "Reflections",      desc: "Morning gratitude and evening reviews.",           icon: JournalIcon, to: "/journal",  delay: 0.4 },
+    { title: "Focus Mode",       desc: "Minimalist timer for deep work sessions.",         icon: Timer,       to: "/focus",    delay: 0.5 },
 ];
 
 function ZenHub() {
     const { user } = useAuth();
     const { currentMonth, currentYear } = useAppContext();
     const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+    const firstName = user?.getName?.()?.split(' ')[0] || user?.firstName || 'Friend';
+
+    const todayStr = new Date().toLocaleDateString('en-US', {
+        weekday: 'long', month: 'long', day: 'numeric',
+    });
 
     const container = {
         hidden: { opacity: 0 },
-        show: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1
-            }
-        }
+        show: { opacity: 1, transition: { staggerChildren: 0.08 } },
     };
-
     const item = {
-        hidden: { opacity: 0, y: 20 },
-        show: { opacity: 1, y: 0 }
+        hidden: { opacity: 0, y: 18 },
+        show: { opacity: 1, y: 0 },
     };
 
     return (
-        <>
-            <Header title="Zen Hub" />
-            <motion.div
-                variants={container}
-                initial="hidden"
-                animate="show"
-                className="p-6 md:p-10 max-w-6xl mx-auto space-y-10 pb-24"
-            >
-                {/* Greeting Section */}
-                <motion.section variants={item} className="space-y-2">
-                    <h1 className="text-3xl md:text-5xl font-serif font-bold text-gray-900 leading-tight">
-                        Good morning, <span className="text-emerald-600">{user?.firstName || 'Friend'}</span>.
-                    </h1>
-                    <p className="text-lg text-gray-500 font-medium">
-                        Today is {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}.
-                    </p>
-                </motion.section>
-
-                {/* Quote Card */}
-                <motion.section variants={item}>
-                    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-8 rounded-3xl border border-emerald-100 shadow-sm relative overflow-hidden group">
-                        <Sparkles className="absolute -right-4 -top-4 w-32 h-32 text-emerald-100 rotate-12 group-hover:rotate-45 transition-transform duration-700" />
-                        <div className="relative z-10 space-y-4">
-                            <p className="text-xl md:text-2xl font-serif italic text-emerald-900 leading-relaxed max-w-2xl">
-                                "{quote.text}"
-                            </p>
-                            <p className="text-sm font-bold uppercase tracking-widest text-emerald-600">
-                                — {quote.author}
-                            </p>
-                        </div>
-                    </div>
-                </motion.section>
-
-                {/* Quick Actions Grid */}
-                <motion.section variants={item} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <HubCard
-                        title="Daily Check-in"
-                        description="Log your habits and mental state for today."
-                        icon={CheckSquare}
-                        to="/daily"
-                        color="bg-emerald-500"
-                        delay={0.1}
-                    />
-                    <HubCard
-                        title="Planner"
-                        description="View your weekly tasks and schedule."
-                        icon={Calendar}
-                        to="/planner"
-                        color="bg-blue-500"
-                        delay={0.2}
-                    />
-                    <HubCard
-                        title="Analytics"
-                        description="Visualize your progress and trends."
-                        icon={TrendingUp}
-                        to="/dashboard"
-                        color="bg-amber-500"
-                        delay={0.3}
-                    />
-                    <HubCard
-                        title="Reflections"
-                        description="Morning gratitude and evening reviews."
-                        icon={JournalIcon}
-                        to="/journal"
-                        color="bg-rose-500"
-                        delay={0.4}
-                    />
-                    <HubCard
-                        title="Focus Mode"
-                        description="Minimalist timer for deep work sessions."
-                        icon={Timer}
-                        to="/focus"
-                        color="bg-indigo-500"
-                        delay={0.5}
-                    />
-                </motion.section>
-
-                {/* Stats Briefing */}
-                <motion.section variants={item} className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm space-y-6">
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400">Current Focus</h3>
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                            <p className="text-2xl font-serif font-bold text-gray-800">{currentMonth} {currentYear}</p>
-                            <p className="text-sm text-gray-500">Your journey for this month is underway.</p>
-                        </div>
-                        <Link to="/dashboard" className="flex items-center gap-2 text-emerald-600 font-bold text-sm hover:underline">
-                            View Stats <ArrowRight size={16} />
-                        </Link>
-                    </div>
-                </motion.section>
+        <motion.div
+            variants={container}
+            initial="hidden"
+            animate="show"
+            style={{ padding: '36px 40px', width: '100%' }}
+        >
+            {/* Page title */}
+            <motion.div variants={item} style={{ marginBottom: '32px' }}>
+                <h1 style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '46px',
+                    fontWeight: 600,
+                    color: 'var(--text-heading)',
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1.1,
+                    marginBottom: '6px',
+                }}>
+                    Good morning, <span style={{ color: '#2d4f41' }}>{firstName}</span>.
+                </h1>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '15px', color: 'var(--text-muted)' }}>
+                    {todayStr}
+                </p>
             </motion.div>
-        </>
-    );
-}
 
-function HubCard({ title, description, icon: Icon, to, color, delay }) {
-    return (
-        <Link to={to} className="group">
-            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md hover:border-emerald-100 transition-all duration-300 h-full flex flex-col justify-between">
-                <div className="space-y-4">
-                    <div className={`${color} w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-opacity-20`}>
-                        <Icon size={24} />
+            {/* Quote card */}
+            <motion.div variants={item} className="glass-card" style={{ padding: '28px 32px', marginBottom: '28px', position: 'relative', overflow: 'hidden' }}>
+                <Sparkles
+                    style={{ position: 'absolute', right: '-8px', top: '-8px', width: '80px', height: '80px', color: 'rgba(45,79,65,0.15)', transform: 'rotate(12deg)' }}
+                />
+                <p style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '20px',
+                    fontStyle: 'italic',
+                    color: 'var(--text-heading)',
+                    lineHeight: 1.5,
+                    marginBottom: '12px',
+                    position: 'relative', zIndex: 1,
+                }}>
+                    "{quote.text}"
+                </p>
+                <p style={{
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-muted)',
+                    position: 'relative', zIndex: 1,
+                }}>
+                    — {quote.author}
+                </p>
+            </motion.div>
+
+            {/* Quick action cards */}
+            <motion.div
+                variants={item}
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                    gap: '16px',
+                    marginBottom: '28px',
+                }}
+            >
+                {hubCards.map(({ title, desc, icon: Icon, to, delay }) => (
+                    <Link
+                        key={to}
+                        to={to}
+                        style={{ textDecoration: 'none' }}
+                    >
+                        <motion.div
+                            className="glass-card"
+                            whileHover={{ scale: 1.02, boxShadow: '0 8px 32px rgba(0,0,0,0.12)' }}
+                            whileTap={{ scale: 0.98 }}
+                            style={{ padding: '20px 20px 18px', height: '100%', cursor: 'pointer' }}
+                        >
+                            <div style={{
+                                width: '40px', height: '40px', borderRadius: '10px',
+                                background: 'rgba(45,79,65,0.65)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                marginBottom: '14px',
+                            }}>
+                                <Icon size={20} color="#a9cfbc" />
+                            </div>
+                            <h3 style={{
+                                fontFamily: 'var(--font-display)',
+                                fontSize: '18px',
+                                fontWeight: 600,
+                                color: 'var(--text-heading)',
+                                marginBottom: '6px',
+                                lineHeight: 1.2,
+                            }}>
+                                {title}
+                            </h3>
+                            <p style={{
+                                fontFamily: 'var(--font-body)',
+                                fontSize: '13px',
+                                color: 'var(--text-muted)',
+                                lineHeight: 1.5,
+                            }}>
+                                {desc}
+                            </p>
+                        </motion.div>
+                    </Link>
+                ))}
+            </motion.div>
+
+            {/* Current focus card */}
+            <motion.div variants={item} className="glass-card" style={{ padding: '24px 28px' }}>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                    Current Focus
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                        <p style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600, color: 'var(--text-heading)', lineHeight: 1.1 }}>
+                            {currentMonth} {currentYear}
+                        </p>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                            Your journey for this month is underway.
+                        </p>
                     </div>
-                    <div className="space-y-1">
-                        <h3 className="text-lg font-serif font-bold text-gray-800 group-hover:text-emerald-600 transition-colors">{title}</h3>
-                        <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
-                    </div>
+                    <Link
+                        to="/dashboard"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            fontFamily: 'var(--font-body)',
+                            fontSize: '13px', fontWeight: 600,
+                            color: 'var(--text-heading)',
+                            textDecoration: 'none',
+                            padding: '8px 16px',
+                            borderRadius: 'var(--radius-full)',
+                            border: '1px solid rgba(45,79,65,0.4)',
+                            background: 'rgba(45,79,65,0.15)',
+                            transition: 'background 0.2s',
+                        }}
+                    >
+                        View Stats <ArrowRight size={14} />
+                    </Link>
                 </div>
-            </div>
-        </Link>
+            </motion.div>
+        </motion.div>
     );
 }
 

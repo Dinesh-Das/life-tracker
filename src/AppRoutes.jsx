@@ -19,22 +19,41 @@ const AuthenticatedLayout = ({ children }) => {
     const location = useLocation();
 
     return (
-        <div className="flex min-h-screen bg-background-subtle overflow-hidden">
+        <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--background)' }}>
             <Sidebar aria-label="Sidebar Navigation" />
-            <main className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-0 h-screen overflow-y-auto">
-                {userGender === 'needs_selection' && <GenderPicker />}
-                <AnimatePresence mode="wait">
-                    <motion.div
-                        key={location.pathname}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        transition={{ duration: 0.3, ease: "easeOut" }}
-                        className="flex-1 flex flex-col"
-                    >
-                        {children}
-                    </motion.div>
-                </AnimatePresence>
+            {/* Main canvas — the minty green gradient from stitch design */}
+            <main
+                className="flex-1 min-w-0 pb-20 lg:pb-0 h-screen overflow-y-auto relative"
+                style={{
+                    background: 'linear-gradient(135deg, #c2d9cc 0%, #9bbfaf 35%, #b8d2c6 60%, #8da89b 100%)',
+                }}
+            >
+                {/* Radial overlay blobs */}
+                <div
+                    aria-hidden="true"
+                    style={{
+                        position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
+                        background: `
+                            radial-gradient(ellipse 55% 45% at 75% 15%, rgba(180,220,200,0.5) 0%, transparent 65%),
+                            radial-gradient(ellipse 40% 55% at 15% 85%, rgba(45,79,65,0.25) 0%, transparent 55%)
+                        `,
+                    }}
+                />
+                <div className="relative z-10 flex flex-col min-h-full">
+                    {userGender === 'needs_selection' && <GenderPicker />}
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={location.pathname}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.3, ease: "easeOut" }}
+                            className="flex-1 flex flex-col"
+                        >
+                            {children}
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
             </main>
             <MobileNav aria-label="Mobile Navigation" />
         </div>

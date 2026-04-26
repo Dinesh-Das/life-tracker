@@ -9,75 +9,164 @@ function Sidebar() {
     const { hideFemaleData } = useAppContext();
 
     const navItems = [
-        { to: '/hub', icon: LayoutDashboard, label: 'Zen Hub' },
-        { to: '/daily', icon: CheckSquare, label: 'Daily Check-in' },
-        { to: '/planner', icon: Calendar, label: 'Planner' },
-        { to: '/journal', icon: PenLine, label: 'Reflections' },
-        { to: '/focus', icon: Timer, label: 'Focus Mode' },
-        { to: '/dashboard', icon: TrendingUp, label: 'Analytics' },
-        ...(userGender === 'female' && !hideFemaleData ? [{ to: '/female', icon: Flower2, label: 'Female Tracker' }] : []),
+        { to: '/hub',       icon: LayoutDashboard, label: 'Zen Hub' },
+        { to: '/daily',     icon: CheckSquare,     label: 'Daily Check-in' },
+        { to: '/planner',   icon: Calendar,         label: 'Planner' },
+        { to: '/journal',   icon: PenLine,          label: 'Reflections' },
+        { to: '/focus',     icon: Timer,            label: 'Focus Mode' },
+        { to: '/dashboard', icon: TrendingUp,       label: 'Analytics' },
+        ...(userGender === 'female' && !hideFemaleData
+            ? [{ to: '/female', icon: Flower2, label: 'Cycle Tracker' }]
+            : []),
+    ];
+
+    const bottomItems = [
         { to: '/settings', icon: Settings, label: 'Settings' },
     ];
 
-    return (
-        <aside className="hidden lg:flex flex-col w-64 bg-[#1B2A1C] text-white min-h-screen sticky top-0">
-            <div className="p-6">
-                {/* Logo */}
-                <div className="flex items-center space-x-2 mb-2">
-                    <span className="text-2xl">🎮</span>
-                    <span className="text-xl font-serif font-bold">LifeTracker</span>
-                </div>
-                <p className="text-[#4CAF50] text-[10px] font-bold uppercase tracking-[0.15em] mb-8 pl-9">Turn life into a game</p>
+    const userName = user?.getName?.() || user?.firstName || 'User';
+    const userEmail = user?.getEmail?.() || '';
+    const userImage = user?.getImageUrl?.();
+    const userInitial = userName.charAt(0).toUpperCase();
 
-                {/* Navigation */}
-                <nav className="space-y-1">
-                    {navItems.map((item) => (
-                        <NavLink
-                            key={item.to}
-                            to={item.to}
-                            className={({ isActive }) =>
-                                `flex items-center space-x-3 px-4 py-3 rounded-xl transition-all text-sm ${isActive
-                                    ? 'bg-[rgba(76,175,80,0.2)] text-[#66BB6A] font-semibold'
-                                    : 'text-white/60 hover:bg-white/5 hover:text-white'
-                                }`
-                            }
-                        >
-                            <item.icon size={18} />
-                            <span>{item.label}</span>
-                        </NavLink>
-                    ))}
-                </nav>
+    return (
+        <aside
+            className="hidden lg:flex flex-col"
+            style={{
+                width: '236px',
+                minWidth: '236px',
+                height: '100vh',
+                background: 'linear-gradient(180deg, #121e17 0%, #0a160f 100%)',
+                borderRight: '1px solid rgba(255,255,255,0.07)',
+                position: 'sticky',
+                top: 0,
+                zIndex: 10,
+            }}
+        >
+            {/* Logo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '22px 20px 24px' }}>
+                <div style={{
+                    width: '30px', height: '30px', borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #7db89a, #2d4f41)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                }}>
+                    {/* Lotus / zen icon */}
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#d8e6db" strokeWidth="2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+                    </svg>
+                </div>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 600, color: '#d8e6db' }}>
+                    LifeTracker
+                </span>
             </div>
 
-            {/* Month Picker Removed (Now in Planner.jsx) */}
+            {/* Navigation */}
+            <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px', padding: '0 10px' }}>
+                {navItems.map((item) => (
+                    <NavLink
+                        key={item.to}
+                        to={item.to}
+                        className={({ isActive }) => isActive ? 'sidebar-nav-item active' : 'sidebar-nav-item'}
+                        style={({ isActive }) => ({
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '11px 14px',
+                            borderRadius: '12px',
+                            textDecoration: 'none',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            fontFamily: 'var(--font-body)',
+                            transition: 'background 0.2s, color 0.2s',
+                            color: isActive ? '#d8e6db' : '#9ab0a2',
+                            background: isActive ? 'rgba(255,255,255,0.10)' : 'transparent',
+                        })}
+                        onMouseEnter={e => {
+                            if (!e.currentTarget.classList.contains('active')) {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                                e.currentTarget.style.color = '#d8e6db';
+                            }
+                        }}
+                        onMouseLeave={e => {
+                            if (!e.currentTarget.classList.contains('active')) {
+                                e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.color = '#9ab0a2';
+                            }
+                        }}
+                    >
+                        <item.icon size={17} style={{ flexShrink: 0, opacity: 0.85 }} />
+                        <span>{item.label}</span>
+                    </NavLink>
+                ))}
+            </nav>
 
-            {/* Streak */}
-            <div className="px-6 py-4 flex justify-center">
+            {/* Streak Badge */}
+            <div style={{ padding: '8px 20px', display: 'flex', justifyContent: 'center' }}>
                 <StreakBadge count={0} size="lg" />
             </div>
 
-            {/* User */}
-            <div className="mt-auto p-6 border-t border-white/5">
-                <div className="flex items-center space-x-3 mb-4">
-                    <div className="w-9 h-9 rounded-full bg-emerald-600 flex items-center justify-center text-sm font-bold overflow-hidden shrink-0">
-                        {user?.getImageUrl?.() ? (
-                            <img src={user.getImageUrl()} alt={user.getName()} className="w-full h-full object-cover" />
-                        ) : (
-                            user?.getName?.().charAt(0) || 'U'
-                        )}
+            {/* Bottom items + User */}
+            <div style={{ padding: '0 10px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                {bottomItems.map((item) => (
+                    <NavLink
+                        key={item.to}
+                        to={item.to}
+                        style={({ isActive }) => ({
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            padding: '11px 14px',
+                            borderRadius: '12px',
+                            textDecoration: 'none',
+                            fontSize: '14px',
+                            fontWeight: 500,
+                            fontFamily: 'var(--font-body)',
+                            transition: 'background 0.2s, color 0.2s',
+                            color: isActive ? '#d8e6db' : '#9ab0a2',
+                            background: isActive ? 'rgba(255,255,255,0.10)' : 'transparent',
+                        })}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                            e.currentTarget.style.color = '#d8e6db';
+                        }}
+                        onMouseLeave={e => {
+                            const isActive = e.currentTarget.getAttribute('aria-current') === 'page';
+                            e.currentTarget.style.background = isActive ? 'rgba(255,255,255,0.10)' : 'transparent';
+                            e.currentTarget.style.color = isActive ? '#d8e6db' : '#9ab0a2';
+                        }}
+                    >
+                        <item.icon size={17} style={{ flexShrink: 0, opacity: 0.85 }} />
+                        <span>{item.label}</span>
+                    </NavLink>
+                ))}
+
+                {/* User info + logout */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', marginTop: '4px', marginBottom: '8px' }}>
+                    <div style={{
+                        width: '30px', height: '30px', borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #4a6358, #2d4f41)',
+                        overflow: 'hidden', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        {userImage
+                            ? <img src={userImage} alt={userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : <span style={{ fontSize: '13px', fontWeight: 700, color: '#a9cfbc' }}>{userInitial}</span>
+                        }
                     </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold truncate">{user?.getName?.() || 'User'}</p>
-                        <p className="text-[10px] text-white/40 truncate">{user?.getEmail?.()}</p>
-                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ab0a2', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {userName}
+                    </span>
+                    <button
+                        onClick={signOut}
+                        title="Sign Out"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ab0a2', display: 'flex', alignItems: 'center', padding: '4px' }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#ffb4ab'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#9ab0a2'}
+                    >
+                        <LogOut size={17} />
+                    </button>
                 </div>
-                <button
-                    onClick={signOut}
-                    className="flex items-center space-x-2 text-white/40 hover:text-white transition-colors text-xs font-medium w-full"
-                >
-                    <LogOut size={14} />
-                    <span>Sign Out</span>
-                </button>
             </div>
         </aside>
     );

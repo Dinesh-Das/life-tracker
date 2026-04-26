@@ -12,8 +12,8 @@ const CategoryPie = ({ data = [] }) => {
     const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
 
     return (
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-[350px]">
-            <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-4">Category Distribution</h4>
+        <div className="glass-card" style={{ height: '350px', padding: '24px 28px' }}>
+            <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '16px' }}>Category Distribution</h4>
             <ResponsiveContainer width="100%" height="85%">
                 <PieChart>
                     <Pie

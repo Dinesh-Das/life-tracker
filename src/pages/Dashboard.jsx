@@ -43,36 +43,44 @@ function Dashboard() {
     if (loading) {
         return (
             <div className="flex-1 flex flex-col">
-                <Header title="Yearly Dashboard" />
-                <LoadingSkeleton type="page" />
+                <Header title="Analytics" subtitle={`Your ${currentYear} in review`} />
+                <div style={{ padding: '24px 40px', width: '100%' }}>
+                    <LoadingSkeleton type="page" />
+                </div>
             </div>
         );
     }
 
     return (
         <>
-            <Header title="Yearly Dashboard" />
+            <Header title="Analytics" subtitle={`Your ${currentYear} in review`} />
 
-            <div className="p-4 md:p-6 lg:p-8 space-y-8 overflow-y-auto pb-24">
+            <div style={{ padding: '8px 40px 40px', width: '100%' }}>
+
                 {/* AI Insights Section */}
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Sparkles className="text-emerald-500 w-4 h-4" />
-                        <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em]">Smart Insights</h3>
+                <div style={{ marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                        <Sparkles style={{ color: '#4a7a62', width: '16px', height: '16px' }} />
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                            Smart Insights
+                        </span>
                     </div>
                     <SmartInsights habits={habits} stats={stats} yearlyTrend={yearlyTrend} />
                 </div>
 
                 {/* Stat Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '14px', marginBottom: '24px' }}>
                     {statCards.map((card) => (
-                        <div key={card.label} className="bg-white p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row items-center md:items-start text-center md:text-left gap-3 md:gap-4 hover:scale-[1.02] transition-transform cursor-default">
-                            <div className={`p-2.5 md:p-3 rounded-xl ${card.bg} ${card.color}`}>
-                                <card.icon size={20} className="md:w-6 md:h-6" />
+                        <div key={card.label} className="glass-card" style={{ padding: '20px 22px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'default', transition: 'transform 0.2s' }}
+                            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                            <div style={{ padding: '10px', borderRadius: '10px', background: 'rgba(45,79,65,0.5)', color: '#a9cfbc', flexShrink: 0 }}>
+                                <card.icon size={20} />
                             </div>
                             <div>
-                                <p className="text-[9px] md:text-[10px] font-black uppercase text-gray-400 tracking-widest">{card.label}</p>
-                                <p className="text-lg md:text-xl font-serif font-black text-gray-800 leading-tight">{card.value}</p>
+                                <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '3px' }}>{card.label}</p>
+                                <p style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'var(--text-heading)', lineHeight: 1.1 }}>{card.value}</p>
                             </div>
                         </div>
                     ))}
@@ -80,43 +88,38 @@ function Dashboard() {
 
                 {/* Female Stats Section */}
                 {showCycleStats && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 animate-fade-up">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }} className="animate-fade-up">
                         {cycleCards.map((card) => (
-                            <div key={card.label} className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center space-x-4 hover:scale-[1.02] transition-transform cursor-default">
-                                <div className={`p-3 rounded-xl ${card.bg} ${card.color}`}>
-                                    <card.icon size={22} />
+                            <div key={card.label} className="glass-card" style={{ padding: '18px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                <div style={{ padding: '10px', borderRadius: '10px', background: 'rgba(180,60,100,0.45)', color: '#f0a0b8', flexShrink: 0 }}>
+                                    <card.icon size={20} />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{card.label}</p>
-                                    <p className="text-xl font-serif font-black text-gray-800">{card.value}</p>
+                                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '3px' }}>{card.label}</p>
+                                    <p style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'var(--text-heading)', lineHeight: 1.1 }}>{card.value}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Yearly Ring (Column 1) */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
                     <YearlyRing months={yearlyTrend} year={currentYear} />
-
-                    {/* Category Pie (Column 2) */}
                     <CategoryPie data={habits} />
-
-                    {/* Streak Bar (Column 3) */}
                     <StreakBarChart habits={habits} streaks={streaks} />
                 </div>
 
                 {/* Yearly Chart */}
                 <YearlyLineChart data={yearlyTrend} />
 
-                {/* Habit Heatmap with Horizontal Scroll */}
-                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-6">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-black uppercase text-gray-400 tracking-widest">Yearly Habit Heatmap</h3>
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md md:hidden">Slide to view →</span>
+                {/* Habit Heatmap */}
+                <div className="glass-card" style={{ padding: '24px 28px', marginTop: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'var(--text-heading)' }}>Yearly Habit Heatmap</h3>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, color: '#4a7a62', background: 'rgba(45,79,65,0.2)', padding: '4px 10px', borderRadius: '20px' }} className="md:hidden">Slide to view →</span>
                     </div>
                     <div className="overflow-x-auto pb-4 scrollbar-thin">
-                        <div className="min-w-[800px]">
+                        <div style={{ minWidth: '800px' }}>
                             <HabitHeatmap data={heatmapData} year={currentYear} />
                         </div>
                     </div>

@@ -63,18 +63,21 @@ export default function SmartInsights({ habits, stats, yearlyTrend }) {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.1 }}
-                    className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow"
+                    className="glass-card"
+                    style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', padding: '20px 22px' }}
                 >
-                    <div className={`p-3 rounded-2xl ${
-                        insight.type === 'success' ? 'bg-emerald-50 text-emerald-600' :
-                        insight.type === 'growth' ? 'bg-blue-50 text-blue-600' :
-                        'bg-amber-50 text-amber-600'
-                    }`}>
-                        <insight.icon size={22} />
+                    <div style={{
+                        padding: '10px', borderRadius: '10px', flexShrink: 0,
+                        background: insight.type === 'success' ? 'rgba(45,79,65,0.4)' :
+                                    insight.type === 'growth'  ? 'rgba(80,120,220,0.4)' : 'rgba(220,160,50,0.4)',
+                        color: insight.type === 'success' ? '#a9cfbc' :
+                               insight.type === 'growth'  ? '#a0b8f0' : '#f0d080',
+                    }}>
+                        <insight.icon size={20} />
                     </div>
-                    <div className="space-y-1">
-                        <h4 className="text-sm font-bold text-gray-900">{insight.title}</h4>
-                        <p className="text-xs text-gray-500 leading-relaxed">{insight.text}</p>
+                    <div>
+                        <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 600, color: 'var(--text-heading)', marginBottom: '4px' }}>{insight.title}</h4>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: 'var(--text-muted)', lineHeight: 1.55 }}>{insight.text}</p>
                     </div>
                 </motion.div>
             ))}

@@ -3,8 +3,8 @@ import React from 'react';
 const YearlyRing = ({ months = [], year }) => {
     // A SVG ring visualization of the year's progress
     return (
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center">
-            <h4 className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-6 self-start">Yearly Completion Ring</h4>
+        <div className="glass-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '20px', alignSelf: 'flex-start' }}>Yearly Completion Ring</h4>
             <div className="relative w-48 h-48">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                     <circle

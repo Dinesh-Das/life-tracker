@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Calendar, LayoutDashboard, CheckSquare, Heart, Settings, PenLine } from 'lucide-react'
+import { Calendar, LayoutDashboard, CheckSquare, Settings, PenLine, Flower2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAppContext } from '../../context/AppContext'
 
@@ -8,40 +8,79 @@ const MobileNav = () => {
     const { hideFemaleData } = useAppContext();
 
     const navItems = [
-        { to: '/hub', icon: LayoutDashboard, label: 'Hub' },
-        { to: '/daily', icon: CheckSquare, label: 'Check-in' },
-        { to: '/planner', icon: Calendar, label: 'Planner' },
-        { to: '/journal', icon: PenLine, label: 'Journal' },
-        { to: '/settings', icon: Settings, label: 'Settings' },
+        { to: '/hub',     icon: LayoutDashboard, label: 'Hub' },
+        { to: '/daily',   icon: CheckSquare,     label: 'Check-in' },
+        { to: '/planner', icon: Calendar,         label: 'Planner' },
+        { to: '/journal', icon: PenLine,          label: 'Journal' },
+        { to: '/settings',icon: Settings,         label: 'Settings' },
+        ...(userGender === 'female' && !hideFemaleData
+            ? [{ to: '/female', icon: Flower2, label: 'Cycle' }]
+            : []),
     ];
 
     return (
-        <nav className="fixed bottom-0 left-0 right-0 lg:hidden bg-[#1B2A1C] border-t border-white/10 px-2 flex justify-around items-center z-50 h-[72px]"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        <nav
+            className="fixed bottom-0 left-0 right-0 lg:hidden z-50 flex justify-around items-center"
+            style={{
+                height: '68px',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+                background: 'linear-gradient(180deg, rgba(18,30,23,0.95) 0%, rgba(10,22,15,0.98) 100%)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                borderTop: '1px solid rgba(255,255,255,0.08)',
+            }}
         >
             {navItems.map(item => (
                 <NavLink
                     key={item.to}
                     to={item.to}
-                    className={({ isActive }) =>
-                        `flex flex-col items-center justify-center gap-1.5 h-full flex-1 transition-all ${isActive ? 'text-[#4CAF50]' : 'text-white/50'}`
-                    }
+                    style={({ isActive }) => ({
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        flex: 1,
+                        height: '100%',
+                        textDecoration: 'none',
+                        color: isActive ? '#a9cfbc' : 'rgba(154,176,162,0.6)',
+                        transition: 'color 0.2s',
+                        position: 'relative',
+                    })}
                 >
                     {({ isActive }) => (
                         <>
-                            <item.icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110' : ''}`} />
-                            <span className={`text-[10px] font-black uppercase tracking-wider transition-all ${isActive ? 'opacity-100' : 'opacity-70'}`}>
+                            {isActive && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 0, left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    width: '32px', height: '2px',
+                                    background: '#a9cfbc',
+                                    borderRadius: '0 0 4px 4px',
+                                    boxShadow: '0 0 8px rgba(169,207,188,0.6)',
+                                }} />
+                            )}
+                            <item.icon
+                                size={20}
+                                style={{ transform: isActive ? 'scale(1.1)' : 'scale(1)', transition: 'transform 0.2s' }}
+                            />
+                            <span style={{
+                                fontSize: '9px',
+                                fontWeight: 700,
+                                fontFamily: 'var(--font-body)',
+                                letterSpacing: '0.06em',
+                                textTransform: 'uppercase',
+                                opacity: isActive ? 1 : 0.7,
+                            }}>
                                 {item.label}
                             </span>
-                            {isActive && (
-                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-[#4CAF50] rounded-b-full shadow-[0_0_10px_rgba(76,175,80,0.5)]" />
-                            )}
                         </>
                     )}
                 </NavLink>
             ))}
         </nav>
-    )
-}
+    );
+};
 
-export default MobileNav
+export default MobileNav;

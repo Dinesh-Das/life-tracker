@@ -64,19 +64,20 @@ export function useYearlyHistory(spreadsheetId, year) {
 
                     for (let day = 1; day <= daysInMonth; day++) {
                         let completedHabits = 0;
+                        let totalHabits = 0;
 
                         rows.forEach(row => {
                             if (!row || row.length === 0) return; // skip empty
                             // Is this a habit row? (Has an emoji + name in col 0)
                             const label = row[0];
                             if (label && label.length > 2 && !label.includes('Mental State')) {
+                                totalHabits++;
                                 const cellValue = row[day];
                                 if (cellValue === '✓' || cellValue === 'TRUE' || cellValue === true) {
                                     completedHabits++;
                                 }
                             }
                         });
-
 
                         const dateStr = [
                             year,
@@ -85,31 +86,31 @@ export function useYearlyHistory(spreadsheetId, year) {
                         ].join('-');
 
                         if (yearlyMap[dateStr] !== undefined) {
-                            yearlyMap[dateStr] = completedHabits;
+                            yearlyMap[dateStr] = {
+                                completed: completedHabits,
+                                total: totalHabits
+                            };
                         }
                     }
                 });
 
                 // Convert map to array sorted by date
                 const finalData = Object.keys(yearlyMap).sort().map(dateStr => {
-                    const count = yearlyMap[dateStr];
-                    // Map count to an intensity bucket (0 to 5)
-                    // If max habits is 15:
-                    // 0 = 0
-                    // 1-3 = 1
-                    // 4-6 = 2
-                    // 7-9 = 3
-                    // 10-12 = 4
-                    // 13-15 = 5
+                    const dataObj = yearlyMap[dateStr];
+                    const completed = dataObj?.completed || 0;
+                    const total = dataObj?.total || 0;
+                    
                     let intensity = 0;
-                    if (count === 0) intensity = 0;
-                    else if (count <= 3) intensity = 1;
-                    else if (count <= 6) intensity = 2;
-                    else if (count <= 9) intensity = 3;
-                    else if (count <= 12) intensity = 4;
-                    else intensity = 5;
+                    if (completed > 0 && total > 0) {
+                        const pct = completed / total;
+                        if (pct <= 0.2) intensity = 1;
+                        else if (pct <= 0.4) intensity = 2;
+                        else if (pct <= 0.6) intensity = 3;
+                        else if (pct <= 0.8) intensity = 4;
+                        else intensity = 5;
+                    }
 
-                    return { date: dateStr, count, intensity };
+                    return { date: dateStr, count: completed, intensity };
                 });
 
                 if (isMounted) {

@@ -77,11 +77,10 @@ function DailyCheckin() {
     if (loading) {
         return (
             <div className="flex-1 flex flex-col">
-                <Header title="Daily Check-in" />
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="text-center space-y-4 animate-pulse">
-                        <div className="text-4xl">🎮</div>
-                        <p className="text-gray-400 font-medium">Loading your habits...</p>
+                <Header title="Daily Check-in" subtitle={format(today, 'EEEE, MMMM d')} />
+                <div style={{ padding: '24px 40px' }}>
+                    <div className="text-center animate-fade-up" style={{ padding: '40px 0' }}>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--text-muted)' }}>Loading your habits...</p>
                     </div>
                 </div>
             </div>
@@ -90,75 +89,69 @@ function DailyCheckin() {
 
     return (
         <>
-            <Header title="Daily Check-in" saving={saving} />
+            <Header title="Daily Check-in" subtitle={format(today, 'EEEE, MMMM d')} saving={saving} />
 
-            <div className="flex-1 overflow-y-auto pb-24">
-                {/* Date & Progress Hero */}
-                <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-6 md:p-8 lg:p-12">
-                    <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-8">
-                        {/* Date Display */}
-                        <div className="flex-1 text-center md:text-left animate-fade-up">
-                            <p className="text-emerald-200 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] mb-1 md:mb-2">
-                                {format(today, 'EEEE')}
-                            </p>
-                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-serif font-bold mb-1">
-                                {format(today, 'dd')}
-                            </h1>
-                            <p className="text-emerald-100 text-base md:text-lg font-medium">
-                                {format(today, 'MMMM yyyy')}
-                            </p>
-                        </div>
+            <div style={{ padding: '16px 40px 80px', width: '100%' }}>
 
-                        {/* Progress Donut */}
-                        <div className="flex flex-col items-center animate-fade-up stagger-1">
-                            <svg width={donutSize} height={donutSize} className="drop-shadow-lg">
-                                <circle
-                                    cx={donutSize / 2} cy={donutSize / 2} r={donutR}
-                                    fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth={10}
-                                />
+                {/* Progress Hero Card */}
+                <div className="glass-card animate-fade-up" style={{ padding: '28px 32px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '32px' }}>
+                    <div style={{ flex: 1 }}>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
+                            {format(today, 'EEEE')}
+                        </p>
+                        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '52px', fontWeight: 600, color: 'var(--text-heading)', lineHeight: 1, marginBottom: '4px' }}>
+                            {format(today, 'dd')}
+                        </h2>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '16px', color: 'var(--text-muted)' }}>
+                            {format(today, 'MMMM yyyy')}
+                        </p>
+                    </div>
+
+                    {/* Progress Donut */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                        <div className="circle-progress" style={{ width: donutSize, height: donutSize }}>
+                            <svg width={donutSize} height={donutSize}>
+                                <circle cx={donutSize / 2} cy={donutSize / 2} r={donutR} fill="none" stroke="rgba(45,79,65,0.15)" strokeWidth={10} />
                                 {pct > 0 && (
                                     <circle
                                         cx={donutSize / 2} cy={donutSize / 2} r={donutR}
-                                        fill="none"
-                                        stroke={pct === 100 ? '#A5D6A7' : '#ffffff'}
-                                        strokeWidth={10}
-                                        strokeDasharray={circumference}
-                                        strokeDashoffset={dashOffset}
+                                        fill="none" stroke="#4a7a62" strokeWidth={10}
+                                        strokeDasharray={circumference} strokeDashoffset={dashOffset}
                                         strokeLinecap="round"
                                         transform={`rotate(-90 ${donutSize / 2} ${donutSize / 2})`}
                                         style={{ transition: 'stroke-dashoffset 0.5s ease' }}
                                     />
                                 )}
-                                <text
-                                    x={donutSize / 2} y={donutSize / 2 + 6}
-                                    textAnchor="middle"
-                                    fontSize={pct === 100 ? 22 : 20}
-                                    fontWeight="800"
-                                    fill="#ffffff"
-                                    fontFamily="'DM Sans', sans-serif"
+                                <text x={donutSize / 2} y={donutSize / 2 + 7}
+                                    textAnchor="middle" fontSize={20} fontWeight="700"
+                                    fill="#1a2e24" fontFamily="Manrope, sans-serif"
                                 >
                                     {pct}%
                                 </text>
                             </svg>
-                            <p className="text-emerald-200 text-xs font-bold mt-2 uppercase tracking-wider">
-                                {doneCount} / {totalHabits} done
-                            </p>
                         </div>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                            {doneCount} / {totalHabits} done
+                        </p>
                     </div>
                 </div>
 
                 {/* Habit Checklist */}
-                <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 space-y-4">
-                    <div className="flex items-center justify-between mb-2 mt-2">
-                        <h3 className="text-xl font-serif font-black text-gray-900">Today's Habits</h3>
+                <div style={{ marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--text-heading)' }}>Today's Habits</h3>
                         {pct === 100 && (
-                            <span className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest animate-check-pop">
-                                💀 All Done!
+                            <span style={{
+                                background: 'rgba(45,79,65,0.65)', color: '#a9cfbc',
+                                padding: '5px 14px', borderRadius: '9999px',
+                                fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
+                            }} className="animate-check-pop">
+                                All Done! 🎉
                             </span>
                         )}
                     </div>
 
-                    <div className="space-y-2">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {visibleHabits.map((habit, idx) => {
                             const done = checks[habit.id]?.[activeDay] || false;
                             return (
@@ -168,132 +161,151 @@ function DailyCheckin() {
                                     role="checkbox"
                                     aria-checked={done}
                                     aria-label={`${habit.name} — ${done ? 'completed' : 'not completed'}`}
-                                    className={`
-                                        w-full flex items-center gap-4 p-4 rounded-2xl border transition-all duration-200
-                                        animate-fade-up
-                                        ${done
-                                            ? 'bg-emerald-50 border-emerald-200 shadow-sm'
-                                            : 'bg-white border-gray-100 hover:border-emerald-200 hover:shadow-sm'
-                                        }
-                                    `}
-                                    style={{ animationDelay: `${idx * 0.03}s` }}
+                                    className="animate-fade-up"
+                                    style={{
+                                        width: '100%',
+                                        display: 'flex', alignItems: 'center', gap: '12px',
+                                        padding: '14px 16px',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: done ? '1px solid rgba(45,79,65,0.35)' : '1px solid rgba(255,255,255,0.3)',
+                                        background: done ? 'rgba(45,79,65,0.25)' : 'rgba(255,255,255,0.30)',
+                                        backdropFilter: 'blur(12px)',
+                                        WebkitBackdropFilter: 'blur(12px)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                        animationDelay: `${idx * 0.03}s`,
+                                        textAlign: 'left',
+                                    }}
                                 >
                                     {/* Checkbox */}
-                                    <div className={`
-                                        w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all
-                                        ${done
-                                            ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
-                                            : 'bg-gray-100 text-gray-300'
-                                        }
-                                    `}>
-                                        {done ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                                    <div style={{
+                                        width: '26px', height: '26px', borderRadius: '8px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                        background: done ? 'rgba(45,79,65,0.7)' : 'rgba(255,255,255,0.4)',
+                                        color: done ? '#a9cfbc' : 'rgba(45,79,65,0.4)',
+                                        transition: 'all 0.2s',
+                                    }}>
+                                        {done ? <CheckCircle2 size={16} /> : <Circle size={16} />}
                                     </div>
 
                                     {/* Emoji + Name */}
-                                    <span className="text-2xl" aria-hidden="true">{habit.emoji}</span>
-                                    <span className={`
-                                        text-sm font-semibold flex-1 text-left transition-all
-                                        ${done ? 'text-emerald-700 line-through' : 'text-gray-800'}
-                                    `}>
+                                    <span style={{ fontSize: '22px' }} aria-hidden="true">{habit.emoji}</span>
+                                    <span style={{
+                                        fontFamily: 'var(--font-body)',
+                                        fontSize: '14px', fontWeight: 500, flex: 1,
+                                        color: done ? '#3d5a4a' : 'var(--text-body)',
+                                        textDecoration: done ? 'line-through' : 'none',
+                                        opacity: done ? 0.7 : 1,
+                                        transition: 'all 0.2s',
+                                    }}>
                                         {habit.name}
                                     </span>
 
-                                    {/* Category */}
-                                    <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg bg-gray-50 text-gray-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
+                                    {/* Category badge */}
+                                    <span style={{
+                                        fontFamily: 'var(--font-body)',
+                                        fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                                        padding: '4px 10px', borderRadius: '9999px',
+                                        background: 'rgba(45,79,65,0.4)', color: '#a9cfbc',
+                                    }}>
                                         {habit.category}
                                     </span>
                                 </button>
                             );
                         })}
                     </div>
+                </div>
 
-                    {/* Mental State Input */}
-                    <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100 mt-8 animate-fade-up stagger-5">
-                        <div className="flex items-center gap-3 mb-4">
-                            <Brain className="text-amber-600" size={20} />
-                            <h4 className="text-sm font-bold text-amber-800">Mental State</h4>
-                            <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Rate 1–10</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <input
-                                type="range"
-                                min="1"
-                                max="10"
-                                value={mentalInput || 5}
-                                onChange={(e) => setMentalInput(e.target.value)}
-                                onMouseUp={handleMentalBlur}
-                                onTouchEnd={handleMentalBlur}
-                                onKeyUp={handleMentalBlur}
-                                aria-label="Mental state rating from 1 to 10"
-                                aria-valuetext={`${mentalInput || 5} out of 10`}
-                                className="flex-1 h-2 rounded-full appearance-none cursor-pointer"
-                                style={{
-                                    background: `linear-gradient(to right, #EF5350 0%, #FF8F00 50%, #4CAF50 100%)`,
-                                }}
-                            />
-                            <span className="text-2xl font-serif font-bold text-amber-700 min-w-[2ch] text-center" aria-live="polite">
-                                {mentalInput || '–'}
-                            </span>
-                        </div>
+                {/* Mental State */}
+                <div className="glass-card animate-fade-up stagger-5" style={{ padding: '22px 24px', marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                        <Brain style={{ color: '#f0c060' }} size={18} />
+                        <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'var(--text-heading)' }}>Mental State</h4>
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginLeft: '4px' }}>Rate 1–10</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <input
+                            type="range" min="1" max="10"
+                            value={mentalInput || 5}
+                            onChange={(e) => setMentalInput(e.target.value)}
+                            onMouseUp={handleMentalBlur}
+                            onTouchEnd={handleMentalBlur}
+                            onKeyUp={handleMentalBlur}
+                            aria-label="Mental state rating from 1 to 10"
+                            style={{
+                                flex: 1, height: '6px', borderRadius: '9999px', appearance: 'none', cursor: 'pointer',
+                                background: `linear-gradient(to right, #EF5350 0%, #FF8F00 50%, #4a7a62 100%)`,
+                            }}
+                        />
+                        <span style={{ fontFamily: 'var(--font-display)', fontSize: '24px', fontWeight: 600, color: 'var(--text-heading)', minWidth: '2ch', textAlign: 'center' }} aria-live="polite">
+                            {mentalInput || '–'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Daily Wins */}
+                <div className="animate-fade-up stagger-6">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                        <Trophy style={{ color: '#f0c060' }} size={20} />
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--text-heading)' }}>Daily Wins</h3>
                     </div>
 
-                    {/* Daily Wins Tracker */}
-                    <div className="mt-12 space-y-6 animate-fade-up stagger-6">
-                        <div className="flex items-center gap-3">
-                            <Trophy className="text-emerald-600" size={24} />
-                            <h3 className="text-xl font-serif font-bold text-gray-900">Daily Wins</h3>
-                        </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        {[
+                            { id: 'Physical',  icon: Zap,        label: 'Physical',  placeholder: 'Workout, hydration, sleep...' },
+                            { id: 'Mental',    icon: Brain,       label: 'Mental',    placeholder: 'Learning, focus, meditation...' },
+                            { id: 'Social',    icon: Heart,       label: 'Social',    placeholder: 'Family, friends, kindness...' },
+                            { id: 'Financial', icon: DollarSign,  label: 'Financial', placeholder: 'Savings, budget, investments...' },
+                            { id: 'Spiritual', icon: Star,        label: 'Spiritual', placeholder: 'Peace, nature, growth...' },
+                        ].map((cat) => (
+                            <div key={cat.id} className="glass-card" style={{ padding: '16px 18px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                                    <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(255,255,255,0.45)', color: 'var(--text-heading)', flexShrink: 0 }}>
+                                        <cat.icon size={16} />
+                                    </div>
+                                    <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 700, color: 'var(--text-heading)', flex: 1 }}>{cat.label}</h4>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {[
-                                { id: 'Physical', icon: Zap, color: 'emerald', label: 'Physical', placeholder: 'Workout, hydration, sleep...' },
-                                { id: 'Mental', icon: Brain, color: 'amber', label: 'Mental', placeholder: 'Learning, focus, meditation...' },
-                                { id: 'Social', icon: Heart, color: 'rose', label: 'Social', placeholder: 'Family, friends, kindness...' },
-                                { id: 'Financial', icon: DollarSign, color: 'blue', label: 'Financial', placeholder: 'Savings, budget, investments...' },
-                                { id: 'Spiritual', icon: Star, color: 'purple', label: 'Spiritual', placeholder: 'Peace, nature, growth...' },
-                            ].map((cat) => (
-                                <div
-                                    key={cat.id}
-                                    className="p-5 rounded-3xl border transition-all duration-300 bg-white hover:shadow-md border-gray-100 group"
-                                >
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <div className="p-2 rounded-xl bg-gray-50 text-gray-600 group-hover:scale-110 transition-transform">
-                                            <cat.icon size={18} />
-                                        </div>
-                                        <h4 className="text-sm font-bold text-gray-800 flex-1">{cat.label}</h4>
-
-                                        {/* Suggestions Dropdown */}
-                                        <div className="relative">
-                                            <select
-                                                className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10"
-                                                onChange={(e) => {
-                                                    if (e.target.value) {
-                                                        const current = wins[cat.id] || '';
-                                                        const newVal = current ? `${current}, ${e.target.value}` : e.target.value;
-                                                        saveWin(cat.id, newVal);
-                                                        e.target.value = '';
-                                                    }
-                                                }}
-                                            >
-                                                <option value="">💡 Pick a Win</option>
-                                                {WIN_SUGGESTIONS[cat.id]?.map((s, idx) => (
-                                                    <option key={idx} value={s}>{s}</option>
-                                                ))}
-                                            </select>
-                                            <div className="text-[11px] font-black bg-emerald-50 text-emerald-600 rounded-xl px-3 py-2 flex items-center gap-1.5 whitespace-nowrap">
-                                                <span>💡 Suggestions</span>
-                                            </div>
+                                    {/* Suggestions Dropdown */}
+                                    <div style={{ position: 'relative' }}>
+                                        <select
+                                            style={{ opacity: 0, position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 10 }}
+                                            onChange={(e) => {
+                                                if (e.target.value) {
+                                                    const current = wins[cat.id] || '';
+                                                    const newVal = current ? `${current}, ${e.target.value}` : e.target.value;
+                                                    saveWin(cat.id, newVal);
+                                                    e.target.value = '';
+                                                }
+                                            }}
+                                        >
+                                            <option value="">💡 Pick a Win</option>
+                                            {WIN_SUGGESTIONS[cat.id]?.map((s, idx) => (
+                                                <option key={idx} value={s}>{s}</option>
+                                            ))}
+                                        </select>
+                                        <div style={{ fontSize: '10px', fontWeight: 700, background: 'rgba(45,79,65,0.4)', color: '#a9cfbc', borderRadius: '9999px', padding: '4px 10px', whiteSpace: 'nowrap', fontFamily: 'var(--font-body)' }}>
+                                            💡
                                         </div>
                                     </div>
-                                    <textarea
-                                        value={wins[cat.id] || ''}
-                                        onChange={(e) => saveWin(cat.id, e.target.value)}
-                                        placeholder={cat.placeholder}
-                                        className="w-full bg-gray-50/50 border border-transparent focus:border-emerald-100 focus:bg-white rounded-2xl text-base md:text-sm text-gray-600 placeholder:text-gray-300 resize-none h-24 p-3 transition-all"
-                                    />
                                 </div>
-                            ))}
-                        </div>
+                                <textarea
+                                    value={wins[cat.id] || ''}
+                                    onChange={(e) => saveWin(cat.id, e.target.value)}
+                                    placeholder={cat.placeholder}
+                                    style={{
+                                        width: '100%', padding: '10px 12px',
+                                        borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)',
+                                        background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)',
+                                        fontFamily: 'var(--font-body)', fontSize: '13px',
+                                        color: 'var(--text-body)', lineHeight: 1.5,
+                                        resize: 'none', outline: 'none', height: '80px',
+                                        transition: 'border-color 0.2s',
+                                    }}
+                                    onFocus={e => e.target.style.borderColor = 'rgba(255,255,255,0.6)'}
+                                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.3)'}
+                                />
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

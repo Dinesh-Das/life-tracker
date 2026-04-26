@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useJournal } from '../hooks/useJournal';
 import Header from '../components/layout/Header';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
-import { Sun, Moon, Target, Sparkles, Loader2, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Sun, Moon, Target, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
 function Journal() {
     const { spreadsheetId } = useAuth();
@@ -16,102 +16,91 @@ function Journal() {
         return (
             <div className="flex-1 flex flex-col">
                 <Header title="Reflections" />
-                <LoadingSkeleton type="page" />
+                <div style={{ padding: '24px 40px' }}>
+                    <LoadingSkeleton type="page" />
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="flex-1 flex flex-col bg-background-subtle min-h-screen">
-            <Header title="Reflections" />
-            
-            <motion.div 
+        <div className="flex-1 flex flex-col">
+            <Header title="Reflections" subtitle={isToday ? "Capture your thoughts and set your intentions." : "Viewing your past entries."} saving={saving} />
+
+            <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="p-6 md:p-10 max-w-4xl mx-auto w-full space-y-8 pb-32"
+                style={{ padding: '16px 40px 80px', width: '100%' }}
             >
                 {/* Date Navigation */}
-                <div className="flex items-center justify-between bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
-                    <button 
+                <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', marginBottom: '24px' }}>
+                    <button
+                        id="journal-prev-day"
                         onClick={() => setSelectedDate(subDays(selectedDate, 1))}
-                        className="p-2 hover:bg-gray-50 rounded-xl transition-colors text-gray-400 hover:text-emerald-600"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '6px', borderRadius: '8px', display: 'flex', transition: 'background 0.2s' }}
+                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
                     >
-                        <ChevronLeft size={24} />
+                        <ChevronLeft size={22} />
                     </button>
-                    
-                    <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-2 mb-0.5">
-                            <Calendar size={14} className="text-emerald-500" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+
+                    <div style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center', marginBottom: '2px' }}>
+                            <Calendar size={12} style={{ color: '#4a7a62' }} />
+                            <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                                 {isToday ? 'Today' : format(selectedDate, 'EEEE')}
                             </span>
                         </div>
-                        <h2 className="text-lg font-serif font-bold text-gray-900">
+                        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'var(--text-heading)' }}>
                             {format(selectedDate, 'MMMM d, yyyy')}
                         </h2>
                     </div>
 
-                    <button 
+                    <button
+                        id="journal-next-day"
                         onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-                        className={`p-2 rounded-xl transition-colors ${isToday ? 'opacity-20 cursor-not-allowed' : 'hover:bg-gray-50 text-gray-400 hover:text-emerald-600'}`}
                         disabled={isToday}
+                        style={{
+                            background: 'none', border: 'none', cursor: isToday ? 'not-allowed' : 'pointer',
+                            color: 'var(--text-muted)', padding: '6px', borderRadius: '8px', opacity: isToday ? 0.25 : 1,
+                            display: 'flex', transition: 'background 0.2s',
+                        }}
+                        onMouseEnter={e => { if (!isToday) e.currentTarget.style.background = 'rgba(255,255,255,0.3)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
                     >
-                        <ChevronRight size={24} />
+                        <ChevronRight size={22} />
                     </button>
                 </div>
 
-                {/* Header Info */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-serif font-bold text-gray-900">Reflections</h2>
-                        <p className="text-sm text-gray-500">
-                            {isToday ? "Capture your thoughts and set your intentions." : "Viewing your past entries."}
-                        </p>
-                    </div>
-                    {saving && (
-                        <div className="flex items-center gap-2 text-emerald-600 animate-pulse">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-xs font-bold uppercase tracking-wider">Saving...</span>
-                        </div>
-                    )}
-                </div>
-
-                <div className="grid grid-cols-1 gap-8">
-                    {/* Primary Focus */}
-                    <JournalSection 
+                {/* Journal sections */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <JournalSection
                         title="Primary Focus"
                         subtitle="What is the one thing you want to accomplish today?"
                         icon={Target}
+                        iconColor="#a090f8"
                         value={journal.focus}
                         onChange={(val) => saveJournal('focus', val)}
                         placeholder="Write your main focus here..."
-                        color="text-indigo-600"
-                        bg="bg-indigo-50"
                     />
-
-                    {/* Morning Gratitude */}
-                    <JournalSection 
+                    <JournalSection
                         title="Morning Gratitude"
                         subtitle="What are three things you are grateful for right now?"
                         icon={Sun}
+                        iconColor="#f0c060"
                         value={journal.gratitude}
                         onChange={(val) => saveJournal('gratitude', val)}
                         placeholder="I am grateful for..."
-                        color="text-amber-600"
-                        bg="bg-amber-50"
                         isLarge
                     />
-
-                    {/* Evening Review */}
-                    <JournalSection 
+                    <JournalSection
                         title="Evening Review"
                         subtitle="What went well today? What did you learn?"
                         icon={Moon}
+                        iconColor="#f090a8"
                         value={journal.review}
                         onChange={(val) => saveJournal('review', val)}
                         placeholder="Today was..."
-                        color="text-rose-600"
-                        bg="bg-rose-50"
                         isLarge
                     />
                 </div>
@@ -120,24 +109,45 @@ function Journal() {
     );
 }
 
-function JournalSection({ title, subtitle, icon: Icon, value, onChange, placeholder, color, bg, isLarge }) {
+function JournalSection({ title, subtitle, icon: Icon, iconColor, value, onChange, placeholder, isLarge }) {
     return (
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-            <div className="flex items-start gap-4">
-                <div className={`p-3 rounded-2xl ${bg} ${color}`}>
-                    <Icon size={24} />
+        <div className="glass-card" style={{ padding: '22px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '14px' }}>
+                <div style={{
+                    width: '40px', height: '40px', borderRadius: '10px',
+                    background: 'rgba(255,255,255,0.45)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    color: iconColor || 'var(--text-heading)',
+                }}>
+                    <Icon size={20} />
                 </div>
-                <div className="space-y-1">
-                    <h3 className="text-lg font-serif font-bold text-gray-900">{title}</h3>
-                    <p className="text-sm text-gray-500">{subtitle}</p>
+                <div>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'var(--text-heading)', marginBottom: '3px' }}>{title}</h3>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-muted)' }}>{subtitle}</p>
                 </div>
             </div>
-            
             <textarea
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
-                className={`w-full p-4 rounded-2xl border border-gray-100 focus:border-emerald-200 focus:ring-0 focus:outline-none transition-all resize-none text-gray-700 leading-relaxed font-sans ${isLarge ? 'h-40' : 'h-24'}`}
+                style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                    background: 'rgba(255,255,255,0.45)',
+                    backdropFilter: 'blur(8px)',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '14px',
+                    color: 'var(--text-body)',
+                    lineHeight: 1.6,
+                    resize: 'none',
+                    outline: 'none',
+                    height: isLarge ? '140px' : '90px',
+                    transition: 'border-color 0.2s',
+                }}
+                onFocus={e => e.target.style.borderColor = 'rgba(255,255,255,0.7)'}
+                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.4)'}
             />
         </div>
     );

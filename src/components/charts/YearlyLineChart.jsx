@@ -12,8 +12,8 @@ function YearlyLineChart({ data }) {
     // data = [{ month: 'Jan', pct: 82 }, ...]
 
     return (
-        <div className="h-[250px] w-full bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-            <h3 className="text-xl font-serif font-black mb-6 text-gray-800">Yearly Completion Trend</h3>
+        <div className="glass-card" style={{ padding: '24px 28px', height: '310px', width: '100%' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'var(--text-heading)', marginBottom: '20px' }}>Yearly Completion Trend</h3>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data} margin={{ top: 0, right: 20, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />

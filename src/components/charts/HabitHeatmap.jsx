@@ -37,28 +37,28 @@ function HabitHeatmap({ data, year }) {
     }, [data, year]);
 
     const getIntensityColor = (intensity) => {
-        switch (intensity) {
-            case 0: return 'bg-gray-100';
-            case 1: return 'bg-emerald-100';
-            case 2: return 'bg-emerald-300';
-            case 3: return 'bg-emerald-500';
-            case 4: return 'bg-emerald-700';
-            case 5: return 'bg-emerald-900';
-            default: return 'bg-gray-100';
-        }
+        const colors = [
+            'rgba(45,79,65,0.08)',   // 0
+            'rgba(45,79,65,0.22)',   // 1
+            'rgba(45,79,65,0.40)',   // 2
+            'rgba(45,79,65,0.60)',   // 3
+            'rgba(45,79,65,0.80)',   // 4
+            'rgba(45,79,65,0.96)',   // 5
+        ];
+        return colors[intensity] ?? colors[0];
     };
 
     return (
-        <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-serif font-black text-gray-800">Habit Heatmap ({year})</h3>
-                <div className="flex items-center gap-1 text-[8px] font-black uppercase text-gray-400 hidden sm:flex">
+        <div className="glass-card" style={{ padding: '28px 32px', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '28px' }}>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'var(--text-heading)' }}>Habit Heatmap ({year})</h3>
+                <div className="hidden sm:flex" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'var(--font-body)', fontSize: '8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
                     <span>Less</span>
-                    <div className="w-2 h-2 rounded-sm bg-gray-100 mx-0.5" />
-                    <div className="w-2 h-2 rounded-sm bg-emerald-100 mx-0.5" />
-                    <div className="w-2 h-2 rounded-sm bg-emerald-300 mx-0.5" />
-                    <div className="w-2 h-2 rounded-sm bg-emerald-500 mx-0.5" />
-                    <div className="w-2 h-2 rounded-sm bg-emerald-700 mx-0.5" />
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(45,79,65,0.1)', margin: '0 2px' }} />
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(45,79,65,0.25)', margin: '0 2px' }} />
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(45,79,65,0.45)', margin: '0 2px' }} />
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(45,79,65,0.70)', margin: '0 2px' }} />
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(45,79,65,0.90)', margin: '0 2px' }} />
                     <span>More</span>
                 </div>
             </div>
@@ -98,7 +98,12 @@ function HabitHeatmap({ data, year }) {
                                 return (
                                     <div
                                         key={dayData.date}
-                                        className={`w-3 h-3 rounded-sm ${getIntensityColor(dayData.intensity)} transition-all hover:ring-1 hover:ring-gray-900 cursor-pointer`}
+                                        style={{
+                                            width: '12px', height: '12px', borderRadius: '3px',
+                                            background: getIntensityColor(dayData.intensity),
+                                            transition: 'all 0.15s',
+                                            cursor: 'pointer',
+                                        }}
                                         title={tooltip}
                                     />
                                 );
