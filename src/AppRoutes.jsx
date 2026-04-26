@@ -13,6 +13,8 @@ import FemaleTracker from './pages/FemaleTracker'
 import Journal from './pages/Journal'
 import Focus from './pages/Focus'
 import GenderPicker from './components/ui/GenderPicker'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import TermsOfService from './pages/TermsOfService'
 
 const AuthenticatedLayout = ({ children }) => {
     const { userGender } = useAuth();
@@ -91,6 +93,10 @@ function AppRoutes() {
                     : <Navigate to="/login" />
             } />
             <Route path="/settings" element={user ? <AuthenticatedLayout><Settings /></AuthenticatedLayout> : <Navigate to="/login" />} />
+
+            {/* Public Legal Routes */}
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfService />} />
 
             <Route path="/" element={<Navigate to="/hub" />} />
             <Route path="*" element={<Navigate to="/hub" />} />

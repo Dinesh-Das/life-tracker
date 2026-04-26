@@ -1,5 +1,6 @@
 import { useAuth } from '../context/AuthContext'
 import { Calendar, CheckSquare, BarChart3 } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 function Login() {
     const { signIn } = useAuth();
@@ -136,10 +137,17 @@ function Login() {
                     ))}
                 </div>
 
-                {/* Footer note */}
-                <p style={{ fontSize: '12px', color: 'rgba(240,247,240,0.35)', fontFamily: 'var(--font-body)' }}>
-                    Your data lives in your own Google Sheet. Transparent. Private. Yours.
-                </p>
+                {/* Footer note & Legal Links */}
+                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
+                    <p style={{ fontSize: '12px', color: 'rgba(240,247,240,0.35)', fontFamily: 'var(--font-body)' }}>
+                        Your data lives in your own Google Sheet. Transparent. Private. Yours.
+                    </p>
+                    <div style={{ display: 'flex', gap: '16px', fontSize: '12px', fontFamily: 'var(--font-body)' }}>
+                        <Link to="/privacy" style={{ color: 'rgba(240,247,240,0.5)', textDecoration: 'none' }}>Privacy Policy</Link>
+                        <span style={{ color: 'rgba(240,247,240,0.2)' }}>•</span>
+                        <Link to="/terms" style={{ color: 'rgba(240,247,240,0.5)', textDecoration: 'none' }}>Terms of Service</Link>
+                    </div>
+                </div>
             </div>
         </div>
     );
