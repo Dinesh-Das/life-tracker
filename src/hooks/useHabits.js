@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { readRange, batchWrite, colIndexToLabel } from '../lib/sheetsApi';
 import { DEFAULT_HABITS } from '../lib/constants';
-import { getDaysInMonth } from 'date-fns';
+import { getDaysInMonth, subDays } from 'date-fns';
 import toast from 'react-hot-toast';
 
 export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex) {
@@ -56,8 +56,22 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             setHabits(loadedHabits);
 
             // 2. Read month check data (Rows 6-15, Cols B-AE = indices 1-31)
+            const tabName = `${currentMonth} ${currentYear}`;
             const lastCol = colIndexToLabel(daysInMonth); // e.g., 'AF' for 31 days
-            const monthRows = await readRange(spreadsheetId, `${currentMonth}!B6:${lastCol}20`); // Read more rows to cover potential habits
+            
+            let monthRows;
+            try {
+                monthRows = await readRange(spreadsheetId, `'${tabName}'!B6:${lastCol}20`);
+            } catch (err) {
+                // If 400 (Bad Request / Missing Tab), try to create it and retry
+                if (err.status === 400 || err.code === 400) {
+                    const { ensureMonthTab } = await import('../lib/sheetScaffold');
+                    await ensureMonthTab(spreadsheetId, currentMonth, currentYear);
+                    monthRows = await readRange(spreadsheetId, `'${tabName}'!B6:${lastCol}20`);
+                } else {
+                    throw err;
+                }
+            }
 
             const checksMap = {};
             loadedHabits.forEach((habit, hIdx) => {
@@ -71,7 +85,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             setChecks(checksMap);
 
             // 3. Read mental state row (Row 22 based on new scaffold)
-            const mentalRowData = await readRange(spreadsheetId, `${currentMonth}!B22:${lastCol}22`);
+            const mentalRowData = await readRange(spreadsheetId, `'${tabName}'!B22:${lastCol}22`);
             const mentalMap = {};
             if (mentalRowData?.[0]) {
                 mentalRowData[0].forEach((val, i) => {
@@ -93,7 +107,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
         } finally {
             setLoading(false);
         }
-    }, [spreadsheetId, currentMonth, daysInMonth]);
+    }, [spreadsheetId, currentMonth, currentYear, daysInMonth]);
 
     useEffect(() => {
         loadMonthData();
@@ -122,6 +136,56 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
         }, 300);
     };
 
+    const updateStreakPersistence = async (habitId, day, isChecked) => {
+        try {
+            const date = new Date(currentYear, currentMonthIndex, day);
+            const dateStr = format(date, 'yyyy-MM-dd');
+            const yesterdayStr = format(subDays(date, 1), 'yyyy-MM-dd');
+
+            // 1. Read existing streaks
+            const streakRows = await readRange(spreadsheetId, 'Streaks!A2:E50');
+            let rowIndex = streakRows.findIndex(r => r[0] === habitId);
+            
+            let current = 0, best = 0, lastDone = '', total = 0;
+
+            if (rowIndex !== -1) {
+                const row = streakRows[rowIndex];
+                current = parseInt(row[1]) || 0;
+                best = parseInt(row[2]) || 0;
+                lastDone = row[3] || '';
+                total = parseInt(row[4]) || 0;
+            } else {
+                rowIndex = streakRows.length;
+            }
+
+            // 2. Update logic
+            if (isChecked) {
+                total++;
+                if (lastDone === yesterdayStr) {
+                    current++;
+                } else if (lastDone !== dateStr) {
+                    current = 1;
+                }
+                if (current > best) best = current;
+                lastDone = dateStr;
+            } else {
+                if (lastDone === dateStr) {
+                    total = Math.max(0, total - 1);
+                    current = Math.max(0, current - 1);
+                    lastDone = yesterdayStr; // Approximation
+                }
+            }
+
+            // 3. Save back
+            await batchWrite(spreadsheetId, [{
+                range: `Streaks!A${rowIndex + 2}:E${rowIndex + 2}`,
+                values: [[habitId, current, best, lastDone, total]]
+            }]);
+        } catch (e) {
+            console.error('Streak sync failed', e);
+        }
+    };
+
     const toggleCheck = async (habitId, day) => {
         const currentVal = checks[habitId]?.[day] || false;
         const newVal = !currentVal;
@@ -140,24 +204,26 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             const habitIdx = habits.findIndex(h => h.id === habitId);
             if (habitIdx === -1) return;
 
-            const sheetRow = 6 + habitIdx; // Data starts at row 6. Habit 1 is row 6.
-            const colLetter = colIndexToLabel(day); // day 1 -> col B (index 1)
+            const sheetRow = 6 + habitIdx; 
+            const colLetter = colIndexToLabel(day); 
 
-            // Write human-readable checkmark or clear it
             const writeVal = newVal ? '✓' : '';
+            const tabName = `${currentMonth} ${currentYear}`;
 
-            await batchWrite(spreadsheetId, [{
-                range: `${currentMonth}!${colLetter}${sheetRow}`,
-                values: [[writeVal]]
-            }]);
+            await Promise.all([
+                batchWrite(spreadsheetId, [{
+                    range: `'${tabName}'!${colLetter}${sheetRow}`,
+                    values: [[writeVal]]
+                }]),
+                updateStreakPersistence(habitId, day, newVal)
+            ]);
         } catch (error) {
             toast.error('Failed to save checkmark');
-            // Revert local state on error
             setChecks(prev => ({
                 ...prev,
                 [habitId]: {
                     ...(prev[habitId] || {}),
-                    [day]: currentVal // Revert to previous value
+                    [day]: currentVal 
                 }
             }));
         }
@@ -168,15 +234,41 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
 
         try {
             const colLetter = colIndexToLabel(day);
+            const tabName = `${currentMonth} ${currentYear}`;
             // Assuming Mental State is around row 22 based on scaffold
             await batchWrite(spreadsheetId, [{
-                range: `${currentMonth}!${colLetter}22`,
+                range: `'${tabName}'!${colLetter}22`,
                 values: [[value || '']]
             }]);
         } catch (error) {
             toast.error('Failed to save mental state');
             // Revert local state on error (this would require storing previous state or re-fetching)
             // For simplicity, not reverting mental state on error for now.
+        }
+    };
+
+    const syncHabitLabels = async (newHabits) => {
+        const tabName = `${currentMonth} ${currentYear}`;
+        const labels = newHabits.map(h => [`${h.emoji} ${h.name}`]);
+        
+        // Pad labels if they are fewer than the rows we scan (6-21 = 16 rows)
+        while (labels.length < 16) {
+            labels.push(['']);
+        }
+
+        try {
+            await batchWrite(spreadsheetId, [
+                {
+                    range: `'${tabName}'!A6:A21`,
+                    values: labels
+                },
+                {
+                    range: `'${tabName}'!A22`,
+                    values: [['🧠 Mental State (1-10)']]
+                }
+            ]);
+        } catch (e) {
+            console.error('Failed to sync habit labels to month tab', e);
         }
     };
 
@@ -188,32 +280,77 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             frequency: 'Daily',
             order: habits.length + 1,
         };
-        setHabits(prev => [...prev, newHabit]);
+        const updatedHabits = [...habits, newHabit];
+        setHabits(updatedHabits);
 
-        // Write to Settings tab
         try {
-            const rowIdx = habits.length + 2; // +2 because row 1 is header, rows start at 2
+            // 1. Update Settings tab
+            const data = updatedHabits.map(h => [
+                h.id, h.name, h.emoji, h.goal,
+                h.category, h.femaleOnly ? 'TRUE' : 'FALSE', 'Daily', h.order,
+                new Date().toISOString(), ''
+            ]);
+            
             await batchWrite(spreadsheetId, [{
-                range: `Settings!A${rowIdx}:J${rowIdx}`,
-                values: [[
-                    newHabit.id, newHabit.name, newHabit.emoji, newHabit.goal,
-                    newHabit.category, 'FALSE', 'Daily', newHabit.order,
-                    new Date().toISOString(), ''
-                ]]
+                range: `Settings!A2:J${updatedHabits.length + 1}`,
+                values: data
             }]);
+
+            // 2. Sync month tab labels
+            await syncHabitLabels(updatedHabits);
+            
             toast.success(`Habit "${habit.name}" added!`);
         } catch (e) {
             toast.error('Failed to save new habit');
+            loadMonthData(); // Revert
         }
     };
 
-    const deleteHabit = (id) => {
-        setHabits(prev => prev.filter(h => h.id !== id));
-        toast.success('Habit removed');
+    const deleteHabit = async (id) => {
+        const updatedHabits = habits.filter(h => h.id !== id);
+        setHabits(updatedHabits);
+
+        try {
+            // 1. Clear Settings tab rows and rewrite
+            const clearData = Array(20).fill(0).map(() => Array(10).fill(''));
+            await batchWrite(spreadsheetId, [{
+                range: `Settings!A2:J21`,
+                values: clearData
+            }]);
+
+            const data = updatedHabits.map(h => [
+                h.id, h.name, h.emoji, h.goal,
+                h.category, h.femaleOnly ? 'TRUE' : 'FALSE', 'Daily', h.order,
+                new Date().toISOString(), ''
+            ]);
+
+            await batchWrite(spreadsheetId, [{
+                range: `Settings!A2:J${updatedHabits.length + 1}`,
+                values: data
+            }]);
+
+            // 2. Sync month tab labels
+            await syncHabitLabels(updatedHabits);
+
+            toast.success('Habit removed');
+        } catch (e) {
+            toast.error('Failed to delete habit');
+            loadMonthData(); // Revert
+        }
     };
 
-    const updateHabit = (id, updates) => {
-        setHabits(prev => prev.map(h => h.id === id ? { ...h, ...updates } : h));
+    const updateHabit = async (id, updates) => {
+        const updatedHabits = habits.map(h => h.id === id ? { ...h, ...updates } : h);
+        setHabits(updatedHabits);
+        
+        try {
+            // Similar logic for updates if needed, for now just local + sync labels if name changed
+            if (updates.name || updates.emoji) {
+                await syncHabitLabels(updatedHabits);
+            }
+        } catch (e) {
+            // Ignore for now
+        }
     };
 
     return {

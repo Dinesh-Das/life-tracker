@@ -83,8 +83,7 @@ export async function scaffoldSheet(userName) {
                 monthData.push(row);
             });
 
-            const emptyRowsToPad = Math.max(0, 21 - monthData.length - 1);
-            for (let i = 0; i < emptyRowsToPad; i++) {
+            while (monthData.length < 21) {
                 monthData.push(Array(32).fill(''));
             }
             monthData.push(['🧠 Mental State (1-10)', ...Array(31).fill('')]);
@@ -119,10 +118,38 @@ export async function scaffoldSheet(userName) {
             values: [['Date', 'Physical', 'Mental', 'Social', 'Financial', 'Spiritual']]
         });
 
+        // Journal Tab
+        spreadsheetRanges.push({
+            range: 'JournalLogs!A1:D1',
+            values: [['Date', 'Morning Gratitude', 'Evening Review', 'Primary Focus']]
+        });
+
         await batchWrite(spreadsheetId, spreadsheetRanges);
         return spreadsheetId;
     } catch (e) {
         console.error('Sheet scaffolding failed:', e);
+        throw e;
+    }
+}
+
+export async function ensureJournalSheet(spreadsheetId) {
+    try {
+        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        const hasJournal = spreadsheet.sheets.some(s => s.properties.title === 'JournalLogs');
+
+        if (!hasJournal) {
+            console.log('JournalLogs sheet missing. Adding now...');
+            await addSheet(spreadsheetId, 'JournalLogs');
+
+            // Initialize headers
+            await batchWrite(spreadsheetId, [{
+                range: 'JournalLogs!A1:D1',
+                values: [['Date', 'Morning Gratitude', 'Evening Review', 'Primary Focus']]
+            }]);
+            console.log('JournalLogs sheet initialized.');
+        }
+    } catch (e) {
+        console.error('Failed to ensure JournalLogs sheet:', e);
         throw e;
     }
 }
@@ -144,6 +171,63 @@ export async function ensureDailyWinsSheet(spreadsheetId) {
         }
     } catch (e) {
         console.error('Failed to ensure DailyWins sheet:', e);
+        throw e;
+    }
+}
+export async function ensureMonthTab(spreadsheetId, month, year) {
+    try {
+        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        const tabName = `${month} ${year}`;
+        const hasMonthTab = spreadsheet.sheets.some(s => s.properties.title === tabName);
+
+        if (!hasMonthTab) {
+            console.log(`${tabName} sheet missing. Adding now...`);
+            await addSheet(spreadsheetId, tabName);
+
+            // Initialize headers for the new month tab
+            const isLeapYear = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+            const monthIndex = MONTHS.indexOf(month);
+            const daysInMonthTable = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+            const daysInMonth = daysInMonthTable[monthIndex];
+
+            const numHeaders = Array.from({ length: 31 }, (_, i) => i < daysInMonth ? String(i + 1) : '');
+            const dayHeaders = Array.from({ length: 31 }, (_, i) => {
+                if (i >= daysInMonth) return '';
+                const d = new Date(year, monthIndex, i + 1);
+                return ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][d.getDay()];
+            });
+
+            const monthData = [
+                [`🌟 ${month} ${year} Tracking`, ...Array(31).fill('')],
+                Array(32).fill(''),
+                ['Date', ...numHeaders],
+                ['Day', ...dayHeaders],
+                Array(32).fill('')
+            ];
+
+            // In a real scenario we might want to fetch current habits from Settings, 
+            // but for simplicity we'll use DEFAULT_HABITS here or fetch them if needed.
+            // Ideally, we'd fetch them from 'Settings!A2:J50'.
+            // Let's assume DEFAULT_HABITS for now to match the original scaffold logic.
+            DEFAULT_HABITS.forEach((h) => {
+                const row = [`${h.emoji} ${h.name}`, ...Array(31).fill('')];
+                monthData.push(row);
+            });
+
+            while (monthData.length < 21) {
+                monthData.push(Array(32).fill(''));
+            }
+            monthData.push(['🧠 Mental State (1-10)', ...Array(31).fill('')]);
+
+            await batchWrite(spreadsheetId, [{
+                range: `'${tabName}'!A1:AF25`,
+                values: monthData
+            }]);
+            console.log(`${tabName} sheet initialized.`);
+        }
+        return true;
+    } catch (e) {
+        console.error(`Failed to ensure ${month} ${year} sheet:`, e);
         throw e;
     }
 }

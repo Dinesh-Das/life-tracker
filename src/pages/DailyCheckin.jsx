@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useAppContext } from '../context/AppContext'
 import { useHabits } from '../hooks/useHabits'
 import { format, getDaysInMonth } from 'date-fns'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { CheckCircle2, Circle, Brain, Trophy, Zap, Heart, DollarSign, Star } from 'lucide-react'
 import { useWins } from '../hooks/useWins';
 import { WIN_SUGGESTIONS } from '../lib/winSuggestions';
@@ -40,6 +40,13 @@ function DailyCheckin() {
     const activeDay = isCurrentMonth ? todayDay : 1;
 
     const [mentalInput, setMentalInput] = useState(mentalState[activeDay] || '');
+
+    // Sync mental input with fetched state
+    useEffect(() => {
+        if (mentalState[activeDay] !== undefined) {
+            setMentalInput(mentalState[activeDay]);
+        }
+    }, [mentalState, activeDay]);
 
     // Filter habits by gender
     const visibleHabits = useMemo(() => {

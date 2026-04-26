@@ -127,7 +127,7 @@ function Planner() {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-32">
+            <div className="flex-1 pb-32">
 
                 {/* ---------- HABITS SECTION ---------- */}
                 <div className="p-4 md:p-6 space-y-6">

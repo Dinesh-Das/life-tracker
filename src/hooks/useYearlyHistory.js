@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { batchRead } from '../lib/sheetsApi';
+import { batchRead, getSpreadsheet } from '../lib/sheetsApi';
 import { MONTHS } from '../lib/constants';
 
 // Hook to fetch and aggregate daily habit completion counts for the entire year
@@ -11,14 +11,27 @@ export function useYearlyHistory(spreadsheetId, year) {
         let isMounted = true;
 
         const fetchYearlyData = async () => {
-            if (!spreadsheetId) return;
+            if (!spreadsheetId || !year) return;
             setLoading(true);
 
             try {
-                // Request ranges for all 12 months, starting from row 6 down to row 21 (habits limit)
-                const ranges = MONTHS.map(month => `${month}!A6:AF21`);
+                // Fetch existing sheets
+                const spreadsheet = await getSpreadsheet(spreadsheetId);
+                const existingTitles = spreadsheet.sheets.map(s => s.properties.title);
 
-                const responses = await batchRead(spreadsheetId, ranges);
+                const monthMappings = MONTHS.map(m => {
+                    const yearPrefix = `${m} ${year}`;
+                    if (existingTitles.includes(yearPrefix)) return { month: m, title: yearPrefix };
+                    if (existingTitles.includes(m)) return { month: m, title: m };
+                    return null;
+                }).filter(Boolean);
+
+                const ranges = monthMappings.map(m => `'${m.title}'!A6:AF21`);
+
+                let responses = [];
+                if (ranges.length > 0) {
+                    responses = await batchRead(spreadsheetId, ranges);
+                }
 
                 // We'll build a map from YYYY-MM-DD to completion count.
                 // Heatmaps usually expect a sorted list of days.
@@ -38,7 +51,9 @@ export function useYearlyHistory(spreadsheetId, year) {
                 }
 
                 // Process sheets
-                responses.forEach((rangeObj, monthIndex) => {
+                responses.forEach((rangeObj, idx) => {
+                    const monthName = monthMappings[idx].month;
+                    const monthIndex = MONTHS.indexOf(monthName);
                     const rows = rangeObj.values;
                     if (!rows || rows.length === 0) return;
 

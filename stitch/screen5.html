@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LifeTracker – Yearly Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Manrope',sans-serif;background:#0a160f;display:flex;height:100vh;overflow:hidden}
+.sidebar{width:236px;min-width:236px;height:100vh;background:linear-gradient(180deg,#121e17 0%,#0a160f 100%);border-right:1px solid rgba(255,255,255,0.07);display:flex;flex-direction:column;padding:22px 0}
+.sb-logo{display:flex;align-items:center;gap:10px;padding:0 20px 24px}
+.sb-logo-ic{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#7db89a,#2d4f41);display:flex;align-items:center;justify-content:center}
+.sb-logo-ic svg{width:16px;height:16px;fill:none;stroke:#d8e6db;stroke-width:2}
+.sb-logo-txt{font-size:15px;font-weight:600;color:#d8e6db}
+.sb-nav{flex:1;display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;cursor:pointer;font-size:14px;font-weight:500;color:#9ab0a2;text-decoration:none;transition:background 0.2s}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:#d8e6db}
+.nav-item.active{background:rgba(255,255,255,0.1);color:#d8e6db}
+.nav-item svg{width:17px;height:17px;flex-shrink:0;opacity:0.8}
+.sb-bottom{padding:0 10px;display:flex;flex-direction:column;gap:2px}
+.sb-user{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.user-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#4a6358,#2d4f41);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.user-av svg{width:18px;height:18px;fill:#a9cfbc}
+.user-nm{font-size:13px;font-weight:500;color:#9ab0a2;flex:1}
+.logout-btn{background:none;border:none;cursor:pointer;color:#9ab0a2}
+.logout-btn svg{width:17px;height:17px}
+.main{flex:1;height:100vh;overflow:hidden;position:relative;background:linear-gradient(135deg,#c2d9cc 0%,#9bbfaf 35%,#b8d2c6 60%,#8da89b 100%)}
+.main::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 55% 45% at 75% 15%,rgba(180,220,200,0.5) 0%,transparent 65%),radial-gradient(ellipse 40% 55% at 15% 85%,rgba(45,79,65,0.25) 0%,transparent 55%);z-index:0}
+.main-c{position:relative;z-index:1;padding:38px 44px;height:100%;display:flex;flex-direction:column}
+
+.page-title{font-family:'Newsreader',Georgia,serif;font-size:52px;font-weight:700;color:#1a2e24;letter-spacing:-0.02em;text-align:center;margin-bottom:6px}
+.page-sub{font-size:16px;color:#3d5a4a;text-align:center;margin-bottom:30px}
+
+.section-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#3d5a4a;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:16px}
+.section-icon{font-size:18px}
+
+/* Peak card */
+.peak-card{
+  background:linear-gradient(135deg,rgba(255,255,255,0.4) 0%,rgba(255,255,255,0.2) 100%);
+  backdrop-filter:blur(24px);
+  border:1px solid rgba(255,255,255,0.32);
+  border-radius:20px;
+  padding:24px 28px;
+  display:flex;
+  align-items:center;
+  gap:22px;
+  margin-bottom:20px;
+}
+
+.peak-icon{
+  width:64px;height:64px;border-radius:50%;
+  background:rgba(60,100,78,0.45);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.peak-icon svg{width:32px;height:32px;stroke:#5a9478;fill:none;stroke-width:2.5}
+
+.peak-info{}
+.peak-title{font-family:'Newsreader',Georgia,serif;font-size:22px;font-weight:600;color:#1a2e24;margin-bottom:6px}
+.peak-desc{font-size:14px;color:#4a6a58;line-height:1.5}
+
+/* Stats row */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+
+.stat-card{
+  background:linear-gradient(135deg,rgba(255,255,255,0.38) 0%,rgba(255,255,255,0.18) 100%);
+  backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,0.3);
+  border-radius:16px;
+  padding:18px 20px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.stat-icon{
+  width:40px;height:40px;border-radius:50%;
+  background:rgba(60,100,78,0.3);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.stat-icon svg{width:20px;height:20px;stroke:#5a9478;fill:none;stroke-width:2}
+
+.stat-info{}
+.stat-label{font-size:12px;color:#5a7a6a;font-weight:500;margin-bottom:3px}
+.stat-value{font-size:20px;font-weight:700;color:#1a2e24}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></div>
+    <span class="sb-logo-txt">LifeTracker</span>
+  </div>
+  <nav class="sb-nav">
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Daily Check-in</a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Planner</a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Reflections</a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Focus Mode</a>
+    <a class="nav-item active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Analytics</a>
+  </nav>
+  <div class="sb-bottom">
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>Settings</a>
+    <div class="sb-user">
+      <div class="user-av"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="#a9cfbc"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#a9cfbc"/></svg></div>
+      <span class="user-nm">Dinesh Das</span>
+      <button class="logout-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+  <div class="main-c">
+    <h1 class="page-title">Yearly Analytics</h1>
+    <p class="page-sub">Sunday, April 26, 2026</p>
+
+    <div class="section-label"><span class="section-icon">🌿</span> SMART INSIGHTS</div>
+
+    <div class="peak-card">
+      <div class="peak-icon">
+        <svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <div class="peak-info">
+        <div class="peak-title">Peak Performance</div>
+        <div class="peak-desc">In Mar, you achieved a 100% completion rate. Aim to beat this record in the coming months!</div>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <div class="stat-info">
+          <div class="stat-label">Total Completed</div>
+          <div class="stat-value">84</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+        <div class="stat-info">
+          <div class="stat-label">Best Month</div>
+          <div class="stat-value">Mar (100%)</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2zm0 0v10l4.5 4.5"/></svg></div>
+        <div class="stat-info">
+          <div class="stat-label">Best Streak</div>
+          <div class="stat-value">0 Days</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon"><svg viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+        <div class="stat-info">
+          <div class="stat-label">Active Months</div>
+          <div class="stat-value">2 / 12</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

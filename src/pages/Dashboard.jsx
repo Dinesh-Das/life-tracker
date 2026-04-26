@@ -9,19 +9,22 @@ import { useDashboard } from '../hooks/useDashboard'
 import { useYearlyHistory } from '../hooks/useYearlyHistory'
 import { useAuth } from '../context/AuthContext'
 import { useAppContext } from '../context/AppContext'
-import { Trophy, Flame, Zap, HeartPulse, ActivitySquare, CalendarHeart } from 'lucide-react'
+import { Trophy, Flame, Zap, HeartPulse, ActivitySquare, CalendarHeart, Sparkles } from 'lucide-react'
 import { CheckCircle2 } from 'lucide-react'
 import { format } from 'date-fns'
+import { Link } from 'react-router-dom'
 import { useCycleContext } from '../context/CycleContext'
+import SmartInsights from '../components/charts/SmartInsights'
 
 function Dashboard() {
     const { spreadsheetId, userGender } = useAuth();
     const { currentYear, hideFemaleData } = useAppContext();
-    const { stats, yearlyTrend, habits, streaks, loading: dashLoading } = useDashboard(spreadsheetId);
+    const { stats, yearlyTrend, habits, streaks, loading: dashLoading } = useDashboard(spreadsheetId, currentYear);
     const { heatmapData, loading: heatLoading } = useYearlyHistory(spreadsheetId, currentYear);
     const cycleData = useCycleContext();
 
     const loading = dashLoading || heatLoading;
+
 
     const statCards = [
         { label: 'Total Completed', value: stats.totalCompleted, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50' },
@@ -51,6 +54,15 @@ function Dashboard() {
             <Header title="Yearly Dashboard" />
 
             <div className="p-4 md:p-6 lg:p-8 space-y-8 overflow-y-auto pb-24">
+                {/* AI Insights Section */}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <Sparkles className="text-emerald-500 w-4 h-4" />
+                        <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em]">Smart Insights</h3>
+                    </div>
+                    <SmartInsights habits={habits} stats={stats} yearlyTrend={yearlyTrend} />
+                </div>
+
                 {/* Stat Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                     {statCards.map((card) => (
@@ -85,7 +97,7 @@ function Dashboard() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Yearly Ring (Column 1) */}
-                    <YearlyRing months={yearlyTrend} />
+                    <YearlyRing months={yearlyTrend} year={currentYear} />
 
                     {/* Category Pie (Column 2) */}
                     <CategoryPie data={habits} />

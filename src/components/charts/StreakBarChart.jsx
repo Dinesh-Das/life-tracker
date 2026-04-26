@@ -4,8 +4,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 const StreakBarChart = ({ habits = [], streaks = {} }) => {
     const data = habits.map(h => ({
         name: h.name,
-        streak: streaks[h.id]?.current || 0,
-        best: streaks[h.id]?.best || 0,
+        streak: streaks[h.name]?.current || 0,
+        best: streaks[h.name]?.best || 0,
         emoji: h.emoji
     })).sort((a, b) => b.streak - a.streak);
 

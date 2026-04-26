@@ -1,4 +1,6 @@
 const SHEETS = () => window.gapi.client.sheets.spreadsheets;
+const cache = new Map();
+const CACHE_TTL = 2000; // 2 seconds
 
 /**
  * Read a range from a Google Sheet.
@@ -6,12 +8,20 @@ const SHEETS = () => window.gapi.client.sheets.spreadsheets;
  * @param {string} range 
  */
 export async function readRange(spreadsheetId, range) {
+    const cacheKey = `${spreadsheetId}-${range}`;
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.time < CACHE_TTL) {
+        return cached.data;
+    }
+
     const res = await SHEETS().values.get({
         spreadsheetId,
         range,
         valueRenderOption: 'UNFORMATTED_VALUE'
     });
-    return res.result.values || [];
+    const data = res.result.values || [];
+    cache.set(cacheKey, { data, time: Date.now() });
+    return data;
 }
 
 /**
@@ -50,12 +60,20 @@ export async function batchWrite(spreadsheetId, data) {
  * @param {string[]} ranges 
  */
 export async function batchRead(spreadsheetId, ranges) {
+    const cacheKey = `${spreadsheetId}-${ranges.join(',')}`;
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.time < CACHE_TTL) {
+        return cached.data;
+    }
+
     const res = await SHEETS().values.batchGet({
         spreadsheetId,
         ranges,
         valueRenderOption: 'UNFORMATTED_VALUE'
     });
-    return res.result.valueRanges;
+    const data = res.result.valueRanges;
+    cache.set(cacheKey, { data, time: Date.now() });
+    return data;
 }
 
 /**

@@ -8,11 +8,11 @@ const MobileNav = () => {
     const { hideFemaleData } = useAppContext();
 
     const navItems = [
-        { to: '/daily', icon: PenLine, label: 'Today' },
+        { to: '/hub', icon: LayoutDashboard, label: 'Hub' },
+        { to: '/daily', icon: CheckSquare, label: 'Check-in' },
         { to: '/planner', icon: Calendar, label: 'Planner' },
-        { to: '/dashboard', icon: LayoutDashboard, label: 'Stats' },
-        ...(userGender === 'female' && !hideFemaleData ? [{ to: '/female', icon: Heart, label: 'Cycle' }] : []),
-        { to: '/settings', icon: Settings, label: 'Setup' },
+        { to: '/journal', icon: PenLine, label: 'Journal' },
+        { to: '/settings', icon: Settings, label: 'Settings' },
     ];
 
     return (

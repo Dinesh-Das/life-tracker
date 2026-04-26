@@ -1,6 +1,6 @@
 import React from 'react';
 
-const YearlyRing = ({ months = [] }) => {
+const YearlyRing = ({ months = [], year }) => {
     // A SVG ring visualization of the year's progress
     return (
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center">
@@ -33,7 +33,7 @@ const YearlyRing = ({ months = [] }) => {
                     })}
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-2xl font-serif font-black text-gray-800">2025</span>
+                    <span className="text-2xl font-serif font-black text-gray-800">{year}</span>
                     <span className="text-[8px] font-black text-gray-400 uppercase">Yearly Avg</span>
                 </div>
             </div>

@@ -78,7 +78,7 @@ function Settings() {
         <>
             <Header title="Settings" saving={saving} />
 
-            <div className="p-6 max-w-4xl mx-auto w-full space-y-6 overflow-y-auto pb-24">
+            <div className="p-6 max-w-4xl mx-auto w-full space-y-6 pb-24">
                 {/* Profile Section */}
                 <section className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm animate-fade-up">
                     <div className="flex items-center gap-4 mb-6">

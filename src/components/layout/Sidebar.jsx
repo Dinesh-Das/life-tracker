@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Calendar, CheckSquare, LayoutDashboard, Settings, Flower2, LogOut, PenLine } from 'lucide-react'
+import { Calendar, CheckSquare, LayoutDashboard, Settings, Flower2, LogOut, PenLine, Timer, TrendingUp } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAppContext } from '../../context/AppContext'
 import StreakBadge from '../ui/StreakBadge'
@@ -9,9 +9,12 @@ function Sidebar() {
     const { hideFemaleData } = useAppContext();
 
     const navItems = [
-        { to: '/daily', icon: PenLine, label: 'Daily Check-in' },
+        { to: '/hub', icon: LayoutDashboard, label: 'Zen Hub' },
+        { to: '/daily', icon: CheckSquare, label: 'Daily Check-in' },
         { to: '/planner', icon: Calendar, label: 'Planner' },
-        { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { to: '/journal', icon: PenLine, label: 'Reflections' },
+        { to: '/focus', icon: Timer, label: 'Focus Mode' },
+        { to: '/dashboard', icon: TrendingUp, label: 'Analytics' },
         ...(userGender === 'female' && !hideFemaleData ? [{ to: '/female', icon: Flower2, label: 'Female Tracker' }] : []),
         { to: '/settings', icon: Settings, label: 'Settings' },
     ];

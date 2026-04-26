@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zen Hub – Level Up!</title>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Manrope',sans-serif;background:#0a160f;display:flex;height:100vh;overflow:hidden}
+.sidebar{width:236px;min-width:236px;height:100vh;background:linear-gradient(180deg,#121e17 0%,#0a160f 100%);border-right:1px solid rgba(255,255,255,0.07);display:flex;flex-direction:column;padding:22px 0;position:relative;z-index:1}
+.sb-logo{display:flex;align-items:center;gap:10px;padding:0 20px 24px}
+.sb-logo-ic{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#7db89a,#2d4f41);display:flex;align-items:center;justify-content:center}
+.sb-logo-ic svg{width:16px;height:16px;fill:none;stroke:#d8e6db;stroke-width:2}
+.sb-logo-txt{font-size:15px;font-weight:600;color:#d8e6db}
+.sb-nav{flex:1;display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;cursor:pointer;font-size:14px;font-weight:500;color:#9ab0a2;text-decoration:none;transition:background 0.2s}
+.nav-item:hover{background:rgba(255,255,255,0.06);color:#d8e6db}
+.nav-item.active{background:rgba(255,255,255,0.1);color:#d8e6db}
+.nav-item svg{width:17px;height:17px;flex-shrink:0;opacity:0.8}
+.sb-bottom{padding:0 10px;display:flex;flex-direction:column;gap:2px}
+.sb-user{display:flex;align-items:center;gap:10px;padding:10px 14px}
+.user-av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#4a6358,#2d4f41);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.user-av svg{width:18px;height:18px;fill:#a9cfbc}
+.user-nm{font-size:13px;font-weight:500;color:#9ab0a2;flex:1}
+.logout-btn{background:none;border:none;cursor:pointer;color:#9ab0a2}
+.logout-btn svg{width:17px;height:17px}
+
+/* BACKGROUND - blurred weekly planner */
+.main{flex:1;height:100vh;overflow:hidden;position:relative;background:linear-gradient(135deg,#c2d9cc 0%,#9bbfaf 35%,#b8d2c6 60%,#8da89b 100%)}
+.main::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 55% 45% at 75% 15%,rgba(180,220,200,0.5) 0%,transparent 65%),radial-gradient(ellipse 40% 55% at 15% 85%,rgba(45,79,65,0.25) 0%,transparent 55%);z-index:0}
+.main-c{position:relative;z-index:1;padding:36px 36px;height:100%;display:flex;flex-direction:column;filter:blur(2px);pointer-events:none}
+
+.page-title{font-family:'Newsreader',Georgia,serif;font-size:42px;font-weight:700;color:#1a2e24;letter-spacing:-0.02em;margin-bottom:4px}
+.page-sub{font-size:15px;color:#3d5a4a;margin-bottom:28px}
+
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;flex:1;min-height:0}
+.day-col{background:linear-gradient(135deg,rgba(255,255,255,0.38) 0%,rgba(255,255,255,0.18) 100%);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.32);border-radius:16px;padding:14px 10px;display:flex;flex-direction:column;gap:8px}
+.day-col.today{background:linear-gradient(135deg,rgba(255,255,255,0.48) 0%,rgba(255,255,255,0.28) 100%)}
+.day-header{text-align:center;margin-bottom:6px}
+.day-name{font-size:13px;font-weight:600;color:#3d5a4a;letter-spacing:0.04em;margin-bottom:2px}
+.day-num{font-size:26px;font-weight:700;color:#1a2e24;line-height:1}
+.task-card{border-radius:10px;padding:8px 10px;font-size:12px;font-weight:600;color:#1a2e24;line-height:1.3;display:flex;flex-direction:column;gap:3px}
+.task-card.green{background:rgba(120,180,148,0.55)}
+.task-card.green-dark{background:rgba(60,110,80,0.6);color:#d8e6db}
+.task-card.light{background:rgba(200,230,215,0.6)}
+.task-sub{font-size:10px;font-weight:500;color:#5a7a6a}
+.task-sub-light{font-size:10px;font-weight:500;color:rgba(216,230,219,0.7)}
+
+/* OVERLAY */
+.overlay{position:absolute;inset:0;background:rgba(0,0,0,0.35);backdrop-filter:blur(2px);z-index:20;display:flex;align-items:center;justify-content:center}
+
+/* CONFETTI */
+.confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.confetti-piece{position:absolute;width:10px;height:14px;border-radius:2px;animation:fall linear infinite}
+@keyframes fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0.3}}
+
+/* MODAL */
+.modal{
+  background:linear-gradient(135deg,rgba(255,255,255,0.55) 0%,rgba(255,255,255,0.35) 100%);
+  backdrop-filter:blur(28px);
+  -webkit-backdrop-filter:blur(28px);
+  border:1px solid rgba(255,255,255,0.5);
+  border-radius:24px;
+  padding:40px 48px;
+  width:420px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:20px;
+  position:relative;
+  z-index:21;
+  box-shadow:0 20px 60px rgba(0,0,0,0.2);
+}
+
+/* Badge/Medal */
+.medal-wrap{position:relative;width:120px;height:120px}
+.medal-outer{width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,#ffd700,#c8a000,#ffd700);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(200,160,0,0.5)}
+.medal-inner{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#3d6b50,#2d4f41);display:flex;align-items:center;justify-content:center}
+.medal-inner svg{width:36px;height:36px;fill:none;stroke:#a9cfbc;stroke-width:2}
+.medal-ribbon-l,.medal-ribbon-r{position:absolute;bottom:-12px;width:18px;height:28px;border-radius:3px}
+.medal-ribbon-l{left:28px;background:linear-gradient(180deg,#c8a000,#ffd700);transform:rotate(-10deg)}
+.medal-ribbon-r{right:28px;background:linear-gradient(180deg,#c8a000,#ffd700);transform:rotate(10deg)}
+
+/* Notch decoration on medal */
+.medal-outer-ring{position:absolute;inset:-4px;border-radius:50%;border:4px solid transparent;background:linear-gradient(135deg,#ffd700,#c8a000) border-box;mask:linear-gradient(#fff 0 0) padding-box,linear-gradient(#fff 0 0);mask-composite:exclude}
+
+.modal-title{font-family:'Newsreader',Georgia,serif;font-size:28px;font-weight:700;color:#1a2e24;text-align:center}
+
+.xp-bar-wrap{width:100%;height:10px;background:rgba(0,0,0,0.1);border-radius:9999px;overflow:hidden}
+.xp-bar-fill{height:100%;width:64%;background:linear-gradient(90deg,#4a7a62,#6aaa82);border-radius:9999px}
+
+.xp-label{font-size:14px;color:#4a6a58;font-weight:500}
+
+.great-btn{
+  width:100%;padding:16px;
+  background:#4a7a62;color:#d8e6db;
+  border:none;border-radius:14px;
+  font-family:'Manrope',sans-serif;font-size:16px;font-weight:600;
+  cursor:pointer;transition:opacity 0.2s;
+}
+.great-btn:hover{opacity:0.9}
+</style>
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></div>
+    <span class="sb-logo-txt">Zen Hub</span>
+  </div>
+  <nav class="sb-nav">
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>Daily Check-in</a>
+    <a class="nav-item active" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Planner</a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Reflections</a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>Focus Mode</a>
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Analytics</a>
+  </nav>
+  <div class="sb-bottom">
+    <a class="nav-item" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>Settings</a>
+    <div class="sb-user">
+      <div class="user-av"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" fill="#a9cfbc"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" fill="#a9cfbc"/></svg></div>
+      <span class="user-nm">Dinesh Das</span>
+      <button class="logout-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+    </div>
+  </div>
+</aside>
+
+<div style="position:relative;flex:1;height:100vh;overflow:hidden">
+  <!-- Blurred background -->
+  <main class="main">
+    <div class="main-c">
+      <h1 class="page-title">Weekly Planner</h1>
+      <p class="page-sub">April 26 – May 2, 2026</p>
+      <div class="week-grid">
+        <div class="day-col today">
+          <div class="day-header"><div class="day-name">Sun</div><div class="day-num">26</div></div>
+          <div class="task-card green">Meal Prep<span class="task-sub">Personal</span></div>
+          <div class="task-card light">Read<span class="task-sub">Personal</span></div>
+        </div>
+        <div class="day-col">
+          <div class="day-header"><div class="day-name">Mon</div><div class="day-num">27</div></div>
+          <div class="task-card green-dark">Team Sync<span class="task-sub-light">Work</span></div>
+          <div class="task-card green">Gym<span class="task-sub">Health</span></div>
+        </div>
+        <div class="day-col">
+          <div class="day-header"><div class="day-name">Tue</div><div class="day-num">28</div></div>
+          <div class="task-card green">Dentist<span class="task-sub">Health</span></div>
+          <div class="task-card green-dark">Design Review</div>
+        </div>
+        <div class="day-col">
+          <div class="day-header"><div class="day-name">Wed</div><div class="day-num">29</div></div>
+          <div class="task-card green-dark">Focus Session</div>
+          <div class="task-card light">Relax</div>
+        </div>
+        <div class="day-col">
+          <div class="day-header"><div class="day-name">Thu</div><div class="day-num">30</div></div>
+          <div class="task-card green-dark">Client Call<span class="task-sub-light">Work</span></div>
+          <div class="task-card light">Grocery Run<span class="task-sub">Personal</span></div>
+        </div>
+        <div class="day-col">
+          <div class="day-header"><div class="day-name">Fri</div><div class="day-num">1</div></div>
+          <div class="task-card green-dark">Project Deadline</div>
+          <div class="task-card light">Date Night<span class="task-sub">Personal</span></div>
+        </div>
+        <div class="day-col">
+          <div class="day-header"><div class="day-name">Sat</div><div class="day-num">2</div></div>
+          <div class="task-card green">Hiking<span class="task-sub">Health</span></div>
+          <div class="task-card light">Relax<span class="task-sub">Personal</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal overlay -->
+  <div class="overlay">
+    <!-- Confetti -->
+    <div class="confetti" id="confetti"></div>
+
+    <div class="modal">
+      <!-- Medal -->
+      <div class="medal-wrap">
+        <div class="medal-outer">
+          <div class="medal-inner">
+            <svg viewBox="0 0 24 24"><path d="M12 2l2 5h5l-4 3 1.5 5L12 12l-4.5 3L9 10 5 7h5z" fill="#a9cfbc" stroke="none"/></svg>
+          </div>
+        </div>
+        <div class="medal-ribbon-l"></div>
+        <div class="medal-ribbon-r"></div>
+      </div>
+
+      <div class="modal-title">Level 6 Reached!</div>
+
+      <div style="width:100%;display:flex;flex-direction:column;gap:8px">
+        <div class="xp-bar-wrap"><div class="xp-bar-fill"></div></div>
+        <div class="xp-label" style="text-align:center">320 / 500 XP</div>
+      </div>
+
+      <button class="great-btn">Great!</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Generate confetti pieces
+const container = document.getElementById('confetti');
+const colors = ['#ffd700','#a9cfbc','#4a7a62','#f0c060','#c8e0d0','#7db89a','#e8d070'];
+for(let i=0;i<60;i++){
+  const el=document.createElement('div');
+  el.style.cssText=`
+    position:absolute;
+    left:${Math.random()*100}%;
+    top:${-10-Math.random()*30}px;
+    width:${6+Math.random()*10}px;
+    height:${8+Math.random()*12}px;
+    background:${colors[Math.floor(Math.random()*colors.length)]};
+    border-radius:${Math.random()>0.5?'50%':'2px'};
+    animation:fall ${2+Math.random()*3}s ${Math.random()*2}s linear infinite;
+    opacity:${0.5+Math.random()*0.5};
+    transform:rotate(${Math.random()*360}deg);
+  `;
+  container.appendChild(el);
+}
+</script>
+</body>
+</html>

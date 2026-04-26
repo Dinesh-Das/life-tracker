@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getMonthName } from '../lib/dateUtils';
 import { useAuth } from './AuthContext';
 
@@ -17,6 +17,22 @@ export function AppProvider({ children }) {
         return localStorage.getItem('hideFemaleData') === 'true';
     });
 
+    // Auto-update to "Today" if the date changes while the app is open,
+    // but only if the user is currently looking at "Today's" month.
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = new Date();
+            const today = new Date();
+            const isLookingAtToday = currentDate.getMonth() === today.getMonth() && 
+                                   currentDate.getFullYear() === today.getFullYear();
+
+            if (isLookingAtToday && now.getDate() !== currentDate.getDate()) {
+                setCurrentDate(now);
+            }
+        }, 30000); // Check every 30s
+        return () => clearInterval(interval);
+    }, [currentDate]);
+
     const toggleHideFemaleData = (val) => {
         setHideFemaleData(val);
         localStorage.setItem('hideFemaleData', val);
@@ -28,20 +44,43 @@ export function AppProvider({ children }) {
 
     const setMonth = (monthIndex) => {
         const d = new Date(currentDate);
+        // Fix: Set day to 1 first to avoid rollover bugs (e.g. March 31 -> April 31 = May 1)
+        d.setDate(1);
         d.setMonth(monthIndex);
-        setCurrentDate(d);
+        
+        // If we are moving to the current real-world month, set it to the real "today"
+        const today = new Date();
+        if (d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
+            setCurrentDate(today);
+        } else {
+            setCurrentDate(d);
+        }
     };
 
     const nextMonth = () => {
         const next = new Date(currentDate);
+        next.setDate(1);
         next.setMonth(next.getMonth() + 1);
-        setCurrentDate(next);
+        
+        const today = new Date();
+        if (next.getMonth() === today.getMonth() && next.getFullYear() === today.getFullYear()) {
+            setCurrentDate(today);
+        } else {
+            setCurrentDate(next);
+        }
     };
 
     const prevMonth = () => {
         const prev = new Date(currentDate);
+        prev.setDate(1);
         prev.setMonth(prev.getMonth() - 1);
-        setCurrentDate(prev);
+
+        const today = new Date();
+        if (prev.getMonth() === today.getMonth() && prev.getFullYear() === today.getFullYear()) {
+            setCurrentDate(today);
+        } else {
+            setCurrentDate(prev);
+        }
     };
 
     return (
