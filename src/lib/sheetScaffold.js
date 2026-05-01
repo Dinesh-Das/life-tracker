@@ -1,15 +1,19 @@
-import { createSpreadsheet, batchWrite } from './sheetsApi';
+import { createSpreadsheet, batchWrite, getSpreadsheet, addSheet } from './sheetsApi';
 import { MONTHS, DEFAULT_HABITS } from './constants';
 
 export async function scaffoldSheet(userName) {
     try {
+        const currentYear = new Date().getFullYear();
+        const isLeapYear = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+
         // 1. Create the new Spreadsheet
         const title = `LifeTracker — ${userName}`;
         const newSheet = await createSpreadsheet(title);
         const spreadsheetId = newSheet.spreadsheetId;
 
         // 2. Add all necessary tabs
-        const allTabs = ['Settings', ...MONTHS, 'Female', 'Weekly', 'Streaks', 'DailyWins'];
+        // JournalLogs MUST be in this list — it's written to in batchWrite below
+        const allTabs = ['Settings', ...MONTHS.map(m => `${m} ${currentYear}`), 'Female', 'Weekly', 'Streaks', 'DailyWins', 'JournalLogs'];
         const requests = [];
 
         // Rename default "Sheet1" to "Settings"
@@ -56,8 +60,6 @@ export async function scaffoldSheet(userName) {
         });
 
         // Month Tabs — correctly handle leap years for February
-        const currentYear = new Date().getFullYear();
-        const isLeapYear = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
         const daysInMonthTable = [31, isLeapYear(currentYear) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
         MONTHS.forEach((month, idx) => {
@@ -88,8 +90,9 @@ export async function scaffoldSheet(userName) {
             }
             monthData.push(['🧠 Mental State (1-10)', ...Array(31).fill('')]);
 
+            // Use "Month YYYY" naming to match how the app reads tabs throughout
             spreadsheetRanges.push({
-                range: `${month}!A1:AF25`,
+                range: `'${month} ${currentYear}'!A1:AF25`,
                 values: monthData
             });
         });
@@ -231,4 +234,4 @@ export async function ensureMonthTab(spreadsheetId, month, year) {
         throw e;
     }
 }
-import { getSpreadsheet, addSheet } from './sheetsApi';
+
