@@ -18,9 +18,10 @@ export function useJournal(spreadsheetId) {
     const currentRowIndex = useRef(null);
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-    const loadJournal = useCallback(async () => {
+    // silent=true → refresh row index without triggering the loading skeleton
+    const loadJournal = useCallback(async (silent = false) => {
         if (!spreadsheetId) return;
-        setLoading(true);
+        if (!silent) setLoading(true);
         try {
             await ensureJournalSheet(spreadsheetId);
             const rows = await readRange(spreadsheetId, 'JournalLogs!A2:D500');
@@ -30,19 +31,24 @@ export function useJournal(spreadsheetId) {
             if (rowIndex !== -1) {
                 const row = rows[rowIndex];
                 currentRowIndex.current = rowIndex + 2;
-                setJournal({
-                    gratitude: row[1] || '',
-                    review: row[2] || '',
-                    focus: row[3] || ''
-                });
+                // Only overwrite displayed text on initial (non-silent) loads
+                if (!silent) {
+                    setJournal({
+                        gratitude: row[1] || '',
+                        review: row[2] || '',
+                        focus: row[3] || ''
+                    });
+                }
             } else {
                 currentRowIndex.current = null;
-                setJournal({ gratitude: '', review: '', focus: '' });
+                if (!silent) {
+                    setJournal({ gratitude: '', review: '', focus: '' });
+                }
             }
         } catch (error) {
             console.error('Failed to load journal', error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [spreadsheetId, dateStr]);
 
@@ -50,7 +56,7 @@ export function useJournal(spreadsheetId) {
         loadJournal();
     }, [loadJournal]);
 
-    const saveJournal = async (field, text) => {
+    const saveJournal = useCallback((field, text) => {
         setJournal(prev => ({ ...prev, [field]: text }));
         setSaving(true);
 
@@ -73,7 +79,8 @@ export function useJournal(spreadsheetId) {
                     const newRow = [dateStr, '', '', ''];
                     newRow[colIndex + 1] = text;
                     await appendRows(spreadsheetId, 'JournalLogs!A:D', [newRow]);
-                    await loadJournal();
+                    // Silent reload — get the new row index without showing the loading skeleton
+                    await loadJournal(true);
                 }
             } catch (error) {
                 toast.error('Failed to save reflection');
@@ -81,7 +88,7 @@ export function useJournal(spreadsheetId) {
                 setSaving(false);
             }
         }, 1000);
-    };
+    }, [spreadsheetId, dateStr, loadJournal]);
 
     return { journal, loading, saving, saveJournal, selectedDate, setSelectedDate };
 }

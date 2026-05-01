@@ -15,46 +15,50 @@ export function useWins(spreadsheetId) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
-    const pendingWins = useRef({});
     const batchTimer = useRef(null);
     const currentRowIndex = useRef(null);
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-    const loadDailyWins = useCallback(async () => {
+    // silent=true → refresh row index in background without triggering the loading state
+    const loadDailyWins = useCallback(async (silent = false) => {
         if (!spreadsheetId) return;
-        setLoading(true);
+        if (!silent) setLoading(true);
         try {
             await ensureDailyWinsSheet(spreadsheetId);
-            const rows = await readRange(spreadsheetId, 'DailyWins!A2:F500'); // Load recent wins
+            const rows = await readRange(spreadsheetId, 'DailyWins!A2:F500');
 
-            // Find today's row
             const rowIndex = rows.findIndex(row => row[0] === todayStr);
 
             if (rowIndex !== -1) {
                 const row = rows[rowIndex];
                 currentRowIndex.current = rowIndex + 2; // +2 for header and 0-indexing
-                setWins({
-                    Physical: row[1] || '',
-                    Mental: row[2] || '',
-                    Social: row[3] || '',
-                    Financial: row[4] || '',
-                    Spiritual: row[5] || ''
-                });
+                // Only update wins state on non-silent loads to avoid overwriting typed text
+                if (!silent) {
+                    setWins({
+                        Physical: row[1] || '',
+                        Mental: row[2] || '',
+                        Social: row[3] || '',
+                        Financial: row[4] || '',
+                        Spiritual: row[5] || ''
+                    });
+                }
             } else {
                 currentRowIndex.current = null;
-                setWins({
-                    Physical: '',
-                    Mental: '',
-                    Social: '',
-                    Financial: '',
-                    Spiritual: ''
-                });
+                if (!silent) {
+                    setWins({
+                        Physical: '',
+                        Mental: '',
+                        Social: '',
+                        Financial: '',
+                        Spiritual: ''
+                    });
+                }
             }
         } catch (error) {
             console.error('Failed to load daily wins', error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, [spreadsheetId, todayStr]);
 
@@ -62,7 +66,7 @@ export function useWins(spreadsheetId) {
         loadDailyWins();
     }, [loadDailyWins]);
 
-    const saveWin = async (category, text) => {
+    const saveWin = useCallback((category, text) => {
         setWins(prev => ({ ...prev, [category]: text }));
         setSaving(true);
 
@@ -86,14 +90,10 @@ export function useWins(spreadsheetId) {
                     // Create new row for today
                     const newRow = [todayStr, '', '', '', '', ''];
                     newRow[colIndex + 1] = text;
-
-                    // We use append here to avoid finding the next empty row manually
-                    const res = await appendRows(spreadsheetId, 'DailyWins!A:F', [newRow]);
-
-                    // Try to extract row index from response if needed, 
-                    // but for simplicity, we'll just reload or assume it worked.
-                    // Actually, let's just reload to be safe and get the correct index for future updates
-                    await loadDailyWins();
+                    await appendRows(spreadsheetId, 'DailyWins!A:F', [newRow]);
+                    // Silent reload — only refresh the row index, don't show loading state
+                    // so the user's textarea doesn't unmount/remount
+                    await loadDailyWins(true);
                 }
             } catch (error) {
                 console.error('Failed to save win', error);
@@ -102,7 +102,7 @@ export function useWins(spreadsheetId) {
                 setSaving(false);
             }
         }, 1000); // 1s debounce
-    };
+    }, [spreadsheetId, todayStr, loadDailyWins]);
 
     return { wins, loading, saving, saveWin };
 }

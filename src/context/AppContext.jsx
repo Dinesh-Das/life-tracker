@@ -8,6 +8,9 @@ export function AppProvider({ children }) {
     const { userGender } = useAuth();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState('daily');
+    // Tracks whether the user is "live" (following today) vs browsing a historical month.
+    // When true, the interval will auto-advance across day/month/year boundaries.
+    const [isFollowingToday, setIsFollowingToday] = useState(true);
 
     const currentMonth = getMonthName(currentDate.getMonth());
     const currentYear = currentDate.getFullYear();
@@ -17,21 +20,22 @@ export function AppProvider({ children }) {
         return localStorage.getItem('hideFemaleData') === 'true';
     });
 
-    // Auto-update to "Today" if the date changes while the app is open,
-    // but only if the user is currently looking at "Today's" month.
+    // Auto-sync with real clock every 30s.
+    // If the user is in "follow today" mode this catches day, month AND year rollovers.
     useEffect(() => {
         const interval = setInterval(() => {
+            if (!isFollowingToday) return;
             const now = new Date();
-            const today = new Date();
-            const isLookingAtToday = currentDate.getMonth() === today.getMonth() && 
-                                   currentDate.getFullYear() === today.getFullYear();
-
-            if (isLookingAtToday && now.getDate() !== currentDate.getDate()) {
+            const sameDay =
+                now.getFullYear() === currentDate.getFullYear() &&
+                now.getMonth()    === currentDate.getMonth()    &&
+                now.getDate()     === currentDate.getDate();
+            if (!sameDay) {
                 setCurrentDate(now);
             }
         }, 30000); // Check every 30s
         return () => clearInterval(interval);
-    }, [currentDate]);
+    }, [currentDate, isFollowingToday]);
 
     const toggleHideFemaleData = (val) => {
         setHideFemaleData(val);
@@ -43,17 +47,19 @@ export function AppProvider({ children }) {
     const gender = userGender || 'needs_selection';
 
     const setMonth = (monthIndex) => {
+        const today = new Date();
+        // Set day=1 first to prevent rollover bugs (e.g. March 31 → April 31 → May 1)
         const d = new Date(currentDate);
-        // Fix: Set day to 1 first to avoid rollover bugs (e.g. March 31 -> April 31 = May 1)
         d.setDate(1);
         d.setMonth(monthIndex);
-        
-        // If we are moving to the current real-world month, set it to the real "today"
-        const today = new Date();
+
         if (d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
+            // Navigating back to real today — resume live-following
             setCurrentDate(today);
+            setIsFollowingToday(true);
         } else {
             setCurrentDate(d);
+            setIsFollowingToday(false);
         }
     };
 
@@ -61,12 +67,14 @@ export function AppProvider({ children }) {
         const next = new Date(currentDate);
         next.setDate(1);
         next.setMonth(next.getMonth() + 1);
-        
+
         const today = new Date();
         if (next.getMonth() === today.getMonth() && next.getFullYear() === today.getFullYear()) {
             setCurrentDate(today);
+            setIsFollowingToday(true);
         } else {
             setCurrentDate(next);
+            setIsFollowingToday(false);
         }
     };
 
@@ -78,8 +86,10 @@ export function AppProvider({ children }) {
         const today = new Date();
         if (prev.getMonth() === today.getMonth() && prev.getFullYear() === today.getFullYear()) {
             setCurrentDate(today);
+            setIsFollowingToday(true);
         } else {
             setCurrentDate(prev);
+            setIsFollowingToday(false);
         }
     };
 

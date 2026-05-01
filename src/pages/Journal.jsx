@@ -5,10 +5,33 @@ import { useJournal } from '../hooks/useJournal';
 import Header from '../components/layout/Header';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import { Sun, Moon, Target, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+
+const EMPTY_JOURNAL = { gratitude: '', review: '', focus: '' };
 
 function Journal() {
     const { spreadsheetId } = useAuth();
     const { journal, loading, saving, saveJournal, selectedDate, setSelectedDate } = useJournal(spreadsheetId);
+
+    // Local buffer — decouples typing from hook state so no re-renders on every keystroke
+    const [localJournal, setLocalJournal] = useState(EMPTY_JOURNAL);
+
+    // Sync from sheet whenever loading finishes (initial load) or selected date changes
+    useEffect(() => {
+        if (!loading) {
+            setLocalJournal({ ...EMPTY_JOURNAL, ...journal });
+        }
+    }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Also reset local state immediately when the date changes (before load completes)
+    useEffect(() => {
+        setLocalJournal(EMPTY_JOURNAL);
+    }, [selectedDate]);
+
+    const handleJournalChange = useCallback((field, text) => {
+        setLocalJournal(prev => ({ ...prev, [field]: text }));
+        saveJournal(field, text);
+    }, [saveJournal]);
 
     const isToday = isSameDay(selectedDate, new Date());
 
@@ -79,8 +102,8 @@ function Journal() {
                         subtitle="What is the one thing you want to accomplish today?"
                         icon={Target}
                         iconColor="#a090f8"
-                        value={journal.focus}
-                        onChange={(val) => saveJournal('focus', val)}
+                        value={localJournal.focus}
+                        onChange={(val) => handleJournalChange('focus', val)}
                         placeholder="Write your main focus here..."
                     />
                     <JournalSection
@@ -88,8 +111,8 @@ function Journal() {
                         subtitle="What are three things you are grateful for right now?"
                         icon={Sun}
                         iconColor="#f0c060"
-                        value={journal.gratitude}
-                        onChange={(val) => saveJournal('gratitude', val)}
+                        value={localJournal.gratitude}
+                        onChange={(val) => handleJournalChange('gratitude', val)}
                         placeholder="I am grateful for..."
                         isLarge
                     />
@@ -98,8 +121,8 @@ function Journal() {
                         subtitle="What went well today? What did you learn?"
                         icon={Moon}
                         iconColor="#f090a8"
-                        value={journal.review}
-                        onChange={(val) => saveJournal('review', val)}
+                        value={localJournal.review}
+                        onChange={(val) => handleJournalChange('review', val)}
                         placeholder="Today was..."
                         isLarge
                     />

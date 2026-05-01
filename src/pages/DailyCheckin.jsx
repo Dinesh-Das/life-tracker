@@ -3,10 +3,12 @@ import { useAuth } from '../context/AuthContext'
 import { useAppContext } from '../context/AppContext'
 import { useHabits } from '../hooks/useHabits'
 import { format, getDaysInMonth } from 'date-fns'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { CheckCircle2, Circle, Brain, Trophy, Zap, Heart, DollarSign, Star } from 'lucide-react'
 import { useWins } from '../hooks/useWins';
 import { WIN_SUGGESTIONS } from '../lib/winSuggestions';
+
+const EMPTY_WINS = { Physical: '', Mental: '', Social: '', Financial: '', Spiritual: '' };
 
 function DailyCheckin() {
     const { spreadsheetId } = useAuth();
@@ -28,6 +30,20 @@ function DailyCheckin() {
         saving: winsSaving,
         saveWin
     } = useWins(spreadsheetId);
+
+    // Local buffer so typing in the textarea doesn't re-render via hook state on every keystroke.
+    // Synced from `wins` once when wins loads from the sheet.
+    const [localWins, setLocalWins] = useState(EMPTY_WINS);
+    useEffect(() => {
+        if (!winsLoading) {
+            setLocalWins({ ...EMPTY_WINS, ...wins });
+        }
+    }, [winsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleWinChange = useCallback((catId, text) => {
+        setLocalWins(prev => ({ ...prev, [catId]: text }));
+        saveWin(catId, text);
+    }, [saveWin]);
 
     const loading = habitsLoading || winsLoading;
     const saving = habitsSaving || winsSaving;
@@ -271,9 +287,9 @@ function DailyCheckin() {
                                             style={{ opacity: 0, position: 'absolute', inset: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 10 }}
                                             onChange={(e) => {
                                                 if (e.target.value) {
-                                                    const current = wins[cat.id] || '';
+                                                    const current = localWins[cat.id] || '';
                                                     const newVal = current ? `${current}, ${e.target.value}` : e.target.value;
-                                                    saveWin(cat.id, newVal);
+                                                    handleWinChange(cat.id, newVal);
                                                     e.target.value = '';
                                                 }
                                             }}
@@ -289,8 +305,8 @@ function DailyCheckin() {
                                     </div>
                                 </div>
                                 <textarea
-                                    value={wins[cat.id] || ''}
-                                    onChange={(e) => saveWin(cat.id, e.target.value)}
+                                    value={localWins[cat.id] || ''}
+                                    onChange={(e) => handleWinChange(cat.id, e.target.value)}
                                     placeholder={cat.placeholder}
                                     style={{
                                         width: '100%', padding: '10px 12px',
