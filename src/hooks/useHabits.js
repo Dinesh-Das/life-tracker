@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { readRange, batchWrite, colIndexToLabel } from '../lib/sheetsApi';
 import { DEFAULT_HABITS } from '../lib/constants';
-import { getDaysInMonth, subDays } from 'date-fns';
+import { getDaysInMonth, subDays, format } from 'date-fns';
 import toast from 'react-hot-toast';
 
 export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex) {
@@ -9,12 +9,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
     const [checks, setChecks] = useState({});
     const [mentalState, setMentalState] = useState({});
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-
-    // Buffer for debounced writes
-    const pendingWrites = useRef({});
-    const batchTimer = useRef(null);
-
+    const [saving] = useState(false);
     const daysInMonth = currentYear && currentMonthIndex !== undefined
         ? getDaysInMonth(new Date(currentYear, currentMonthIndex))
         : 31;
@@ -107,34 +102,11 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
         } finally {
             setLoading(false);
         }
-    }, [spreadsheetId, currentMonth, currentYear, daysInMonth]);
+    }, [spreadsheetId, currentMonth, currentYear, daysInMonth, habits.length]);
 
     useEffect(() => {
         loadMonthData();
     }, [loadMonthData]);
-
-    const queueWrite = (range, value) => {
-        pendingWrites.current[range] = value;
-        setSaving(true);
-
-        if (batchTimer.current) clearTimeout(batchTimer.current);
-
-        batchTimer.current = setTimeout(async () => {
-            const data = Object.entries(pendingWrites.current).map(([r, val]) => ({
-                range: r,
-                values: [[val]]
-            }));
-            pendingWrites.current = {};
-
-            try {
-                await batchWrite(spreadsheetId, data);
-            } catch (error) {
-                toast.error('Failed to save changes');
-            } finally {
-                setSaving(false);
-            }
-        }, 300);
-    };
 
     const updateStreakPersistence = async (habitId, day, isChecked) => {
         try {

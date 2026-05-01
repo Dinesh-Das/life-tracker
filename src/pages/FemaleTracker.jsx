@@ -11,7 +11,7 @@ import FlowCalendar from '../components/female/FlowCalendar'
 import PhaseInfoCard from '../components/female/PhaseInfoCard'
 import LoadingSkeleton from '../components/ui/LoadingSkeleton'
 import { useCycleContext } from '../context/CycleContext'
-import { useAuth } from '../context/AuthContext'
+
 import { useAppContext } from '../context/AppContext'
 import { format, isToday, differenceInDays } from 'date-fns'
 
@@ -23,7 +23,7 @@ const PHASE_BANNERS = {
 };
 
 function FemaleTracker() {
-    const { spreadsheetId } = useAuth();
+
     const { hideFemaleData } = useAppContext();
     const {
         history, loading, saving, logDay,
@@ -146,7 +146,7 @@ function FemaleTracker() {
                                 onClick={() => setShowPhaseInfo(!showPhaseInfo)}
                                 className="text-xs font-bold text-gray-500 hover:text-emerald-600 transition-colors flex items-center gap-1 bg-white/50 px-4 py-2 rounded-full border border-gray-100 shadow-sm"
                             >
-                                <span>Wanted to know what's happening?</span>
+                                <span>Wanted to know what&apos;s happening?</span>
                                 <span className={`transform transition-transform ${showPhaseInfo ? 'rotate-180' : ''}`}>▼</span>
                             </button>
 

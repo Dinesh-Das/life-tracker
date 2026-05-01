@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 
 function Settings() {
     const { spreadsheetId, user, userGender, updateUserGender } = useAuth();
-    const { gender, hideFemaleData, toggleHideFemaleData } = useAppContext();
+    const { hideFemaleData, toggleHideFemaleData } = useAppContext();
     const { habits, loading, saving, saveHabits } = useSettings(spreadsheetId);
 
     const [localGender, setLocalGender] = useState(userGender || 'male');

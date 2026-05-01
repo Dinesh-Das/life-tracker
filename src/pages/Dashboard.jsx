@@ -12,7 +12,7 @@ import { useAppContext } from '../context/AppContext'
 import { Trophy, Flame, Zap, HeartPulse, ActivitySquare, CalendarHeart, Sparkles } from 'lucide-react'
 import { CheckCircle2 } from 'lucide-react'
 import { format } from 'date-fns'
-import { Link } from 'react-router-dom'
+
 import { useCycleContext } from '../context/CycleContext'
 import SmartInsights from '../components/charts/SmartInsights'
 

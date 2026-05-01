@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
     startOfMonth, endOfMonth, eachDayOfInterval, format, isSameDay,
-    isToday, addMonths, subMonths, addDays, parseISO, differenceInDays
+    isToday, addMonths, subMonths, addDays, parseISO
 } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 

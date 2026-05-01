@@ -25,7 +25,6 @@ function Sidebar() {
     ];
 
     const userName = user?.getName?.() || user?.firstName || 'User';
-    const userEmail = user?.getEmail?.() || '';
     const userImage = user?.getImageUrl?.();
     const userInitial = userName.charAt(0).toUpperCase();
 

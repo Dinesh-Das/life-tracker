@@ -1,7 +1,6 @@
 import HabitRow from './HabitRow';
 
 function HabitGrid({
-    currentMonth = 'Mar',
     habits = [],
     checks = {},
     streaks = {},

@@ -2,7 +2,7 @@ import Header from '../components/layout/Header'
 import { useAuth } from '../context/AuthContext'
 import { useAppContext } from '../context/AppContext'
 import { useHabits } from '../hooks/useHabits'
-import { format, getDaysInMonth } from 'date-fns'
+import { format } from 'date-fns'
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { CheckCircle2, Circle, Brain, Trophy, Zap, Heart, DollarSign, Star } from 'lucide-react'
 import { useWins } from '../hooks/useWins';
@@ -155,7 +155,7 @@ function DailyCheckin() {
                 {/* Habit Checklist */}
                 <div style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--text-heading)' }}>Today's Habits</h3>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--text-heading)' }}>Today&apos;s Habits</h3>
                         {pct === 100 && (
                             <span style={{
                                 background: 'rgba(45,79,65,0.65)', color: '#a9cfbc',

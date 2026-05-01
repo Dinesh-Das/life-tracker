@@ -141,7 +141,7 @@ export async function ensureJournalSheet(spreadsheetId) {
         const hasJournal = spreadsheet.sheets.some(s => s.properties.title === 'JournalLogs');
 
         if (!hasJournal) {
-            console.log('JournalLogs sheet missing. Adding now...');
+            console.info('JournalLogs sheet missing. Adding now...');
             await addSheet(spreadsheetId, 'JournalLogs');
 
             // Initialize headers
@@ -149,7 +149,7 @@ export async function ensureJournalSheet(spreadsheetId) {
                 range: 'JournalLogs!A1:D1',
                 values: [['Date', 'Morning Gratitude', 'Evening Review', 'Primary Focus']]
             }]);
-            console.log('JournalLogs sheet initialized.');
+            console.info('JournalLogs sheet initialized.');
         }
     } catch (e) {
         console.error('Failed to ensure JournalLogs sheet:', e);
@@ -162,7 +162,7 @@ export async function ensureDailyWinsSheet(spreadsheetId) {
         const hasDailyWins = spreadsheet.sheets.some(s => s.properties.title === 'DailyWins');
 
         if (!hasDailyWins) {
-            console.log('DailyWins sheet missing. Adding now...');
+            console.info('DailyWins sheet missing. Adding now...');
             await addSheet(spreadsheetId, 'DailyWins');
 
             // Initialize headers
@@ -170,7 +170,7 @@ export async function ensureDailyWinsSheet(spreadsheetId) {
                 range: 'DailyWins!A1:F1',
                 values: [['Date', 'Physical', 'Mental', 'Social', 'Financial', 'Spiritual']]
             }]);
-            console.log('DailyWins sheet initialized.');
+            console.info('DailyWins sheet initialized.');
         }
     } catch (e) {
         console.error('Failed to ensure DailyWins sheet:', e);
@@ -184,7 +184,7 @@ export async function ensureMonthTab(spreadsheetId, month, year) {
         const hasMonthTab = spreadsheet.sheets.some(s => s.properties.title === tabName);
 
         if (!hasMonthTab) {
-            console.log(`${tabName} sheet missing. Adding now...`);
+            console.info(`${tabName} sheet missing. Adding now...`);
             await addSheet(spreadsheetId, tabName);
 
             // Initialize headers for the new month tab
@@ -226,7 +226,7 @@ export async function ensureMonthTab(spreadsheetId, month, year) {
                 range: `'${tabName}'!A1:AF25`,
                 values: monthData
             }]);
-            console.log(`${tabName} sheet initialized.`);
+            console.info(`${tabName} sheet initialized.`);
         }
         return true;
     } catch (e) {

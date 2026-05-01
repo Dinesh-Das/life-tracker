@@ -109,7 +109,7 @@ function PhaseInfoCard({ phase }) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* What's Happening */}
                 <div className="bg-white/70 backdrop-blur-sm rounded-2xl p-4">
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2.5">🔬 What's Happening</h4>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-2.5">🔬 What&apos;s Happening</h4>
                     <ul className="space-y-1.5">
                         {info.body.map((item, i) => (
                             <li key={i} className="text-xs text-gray-700 font-medium flex items-start gap-1.5">

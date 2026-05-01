@@ -18,7 +18,7 @@ function TermsOfService() {
                 <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>You are responsible for maintaining the security of your Google account. Because LifeTracker stores data in your personal Google Drive, you are solely responsible for the content you store and generate using this service.</p>
 
                 <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px' }}>4. Disclaimer of Warranties</h2>
-                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>LifeTracker is provided "as is" without warranty of any kind. We do not guarantee that the service will be uninterrupted or error-free. We are not responsible for any data loss that may occur within your Google Sheets.</p>
+                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>LifeTracker is provided &quot;as is&quot; without warranty of any kind. We do not guarantee that the service will be uninterrupted or error-free. We are not responsible for any data loss that may occur within your Google Sheets.</p>
 
                 <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px' }}>5. Changes to Terms</h2>
                 <p style={{ marginBottom: '24px', lineHeight: 1.6 }}>We reserve the right to modify these terms at any time. Continued use of the application constitutes your acceptance of the revised terms.</p>

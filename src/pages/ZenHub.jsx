@@ -86,7 +86,7 @@ function ZenHub() {
                     marginBottom: '12px',
                     position: 'relative', zIndex: 1,
                 }}>
-                    "{quote.text}"
+                    &quot;{quote.text}&quot;
                 </p>
                 <p style={{
                     fontFamily: 'var(--font-body)',
@@ -111,7 +111,7 @@ function ZenHub() {
                     marginBottom: '28px',
                 }}
             >
-                {hubCards.map(({ title, desc, icon: Icon, to, delay }) => (
+                {hubCards.map(({ title, desc, icon: Icon, to }) => (
                     <Link
                         key={to}
                         to={to}

@@ -1,4 +1,4 @@
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, isSameMonth, getWeek, getYear, getMonth } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, getWeek, getYear, getMonth } from 'date-fns';
 
 /**
  * Returns an array of weeks for a given month, where each week starts on Monday.

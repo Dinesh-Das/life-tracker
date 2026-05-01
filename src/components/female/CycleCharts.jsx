@@ -1,6 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { subDays, parseISO } from 'date-fns';
+const moodMap = {
+    'happy': 6, 'energetic': 5, 'calm': 4,
+    'anxious': 3, 'sad': 2, 'irritable': 1, 'none': null
+};
 
 const CycleCharts = ({ history = [], avgCycleLength, avgPeriodLength }) => {
     const [viewMode, setViewMode] = useState('quarterly');
@@ -12,11 +16,7 @@ const CycleCharts = ({ history = [], avgCycleLength, avgPeriodLength }) => {
         return history.filter(h => parseISO(h.date) >= cutoffDate);
     }, [history, viewMode]);
 
-    // 1. Mood vs Cycle Day
-    const moodMap = {
-        'happy': 6, 'energetic': 5, 'calm': 4,
-        'anxious': 3, 'sad': 2, 'irritable': 1, 'none': null
-    };
+
 
     const moodData = useMemo(() => {
         return filteredHistory

@@ -19,7 +19,7 @@ function PrivacyPolicy() {
                 </ul>
 
                 <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px' }}>3. Google Sheets Integration</h2>
-                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>LifeTracker requires access to your Google Drive to create and modify a spreadsheet named "LifeTracker Data". We ONLY read and write to this specific spreadsheet created by the app. We do not access, read, or modify any other files in your Google Drive.</p>
+                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>LifeTracker requires access to your Google Drive to create and modify a spreadsheet named &quot;LifeTracker Data&quot;. We ONLY read and write to this specific spreadsheet created by the app. We do not access, read, or modify any other files in your Google Drive.</p>
 
                 <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px' }}>4. Data Storage</h2>
                 <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>All your habit tracking data, journal entries, and personal statistics are stored directly in your own Google Sheet. LifeTracker does not store your personal data on external servers.</p>

@@ -1,6 +1,6 @@
 import HabitCheckbox from './HabitCheckbox';
 import StreakBadge from '../ui/StreakBadge';
-import { X, Edit2 } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useState } from 'react';
 
 function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate }) {

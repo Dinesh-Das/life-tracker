@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { findSpreadsheet } from '../lib/sheetsApi';
 import { scaffoldSheet } from '../lib/sheetScaffold';
@@ -53,7 +54,7 @@ export function AuthProvider({ children }) {
                     return;
                 }
 
-                console.log("Scripts loaded, initializing GAPI client...");
+                console.info("Scripts loaded, initializing GAPI client...");
                 await new Promise((resolve) => window.gapi.load('client', resolve));
                 await window.gapi.client.init({
                     apiKey: import.meta.env.VITE_GOOGLE_API_KEY,
@@ -128,7 +129,7 @@ export function AuthProvider({ children }) {
                     },
                 });
 
-                console.log("Token client initialized successfully.");
+                console.info("Token client initialized successfully.");
             } catch (error) {
                 console.error('GAPI/GIS full initialization error:', error);
                 setGapiError(true);

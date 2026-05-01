@@ -1,4 +1,5 @@
-import React, { createContext, useContext } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext } from 'react';
 import { useCycle } from '../hooks/useCycle';
 import { useAuth } from './AuthContext';
 
