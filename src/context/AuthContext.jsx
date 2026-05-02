@@ -67,6 +67,7 @@ export function AuthProvider({ children }) {
                 tokenClient.current = window.google.accounts.oauth2.initTokenClient({
                     client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
                     scope: SCOPES,
+                    include_granted_scopes: true,
                     callback: async (response) => {
                         if (response.error) {
                             toast.error('Authentication failed. Please try again.');
