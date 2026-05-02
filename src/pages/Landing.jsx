@@ -21,7 +21,7 @@ function Landing() {
                 </div>
                 <div className="flex gap-8 items-center text-sm font-bold uppercase tracking-widest text-[#f0f7f0]/60">
                     <button onClick={signIn} className="hover:text-[#f0f7f0] transition-colors">Login</button>
-                    <button 
+                    <button
                         onClick={signIn}
                         className="bg-[#f0f7f0] text-[#1a3828] px-6 py-2.5 rounded-full hover:scale-105 active:scale-95 transition-all shadow-xl shadow-emerald-900/20"
                     >
@@ -38,10 +38,10 @@ function Landing() {
                         <span className="text-emerald-400 font-serif">Your Life, Visualized.</span>
                     </h1>
                     <p className="text-xl md:text-2xl text-[#f0f7f0]/70 max-w-2xl mx-auto mb-12 leading-relaxed">
-                        LifeTracker is a personal habit tracking dashboard and weekly planner. 
+                        LifeTracker is a personal habit tracking dashboard and weekly planner.
                         We help you monitor daily progress and achieve goals, all while storing your data privately in your own Google Sheets.
                     </p>
-                    <button 
+                    <button
                         onClick={signIn}
                         className="group relative inline-flex items-center gap-4 bg-white text-[#1a3828] px-10 py-5 rounded-full text-xl font-black hover:bg-emerald-50 transition-all shadow-2xl shadow-black/20"
                     >
@@ -57,11 +57,12 @@ function Landing() {
                     <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500 rounded-full blur-[128px]" />
                     <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-700 rounded-full blur-[128px]" />
                 </div>
+            </header>
             {/* Purpose/About Section for Google Verification */}
             <section className="px-6 py-12 max-w-4xl mx-auto text-center border-t border-white/5">
                 <h2 className="text-sm font-black uppercase tracking-[0.3em] text-emerald-400 mb-4">About LifeTracker</h2>
                 <p className="text-[#f0f7f0]/50 text-sm leading-relaxed italic">
-                    Our mission is to empower individuals to take control of their personal data through transparent, self-hosted habit tracking. 
+                    Our mission is to empower individuals to take control of their personal data through transparent, self-hosted habit tracking.
                     LifeTracker provides a visual interface for your Google Sheets, turning raw numbers into meaningful progress insights.
                 </p>
             </section>
@@ -133,7 +134,7 @@ function Landing() {
                 <div className="max-w-7xl mx-auto">
                     <h3 className="font-serif text-3xl font-black mb-12">Ready to master your life?</h3>
                     <div className="flex flex-col items-center gap-12">
-                        <button 
+                        <button
                             onClick={signIn}
                             className="bg-emerald-500 text-white px-12 py-5 rounded-full text-xl font-black hover:bg-emerald-400 transition-all shadow-2xl shadow-emerald-500/20"
                         >
@@ -146,7 +147,7 @@ function Landing() {
                                 <Link to="/terms" className="hover:text-emerald-400 transition-colors border-b-2 border-transparent hover:border-emerald-400">Terms of Service</Link>
                             </div>
                             <p className="text-xs text-[#f0f7f0]/20 max-w-md mx-auto">
-                                LifeTracker adheres to the Google API Services User Data Policy, including Limited Use requirements. 
+                                LifeTracker adheres to the Google API Services User Data Policy, including Limited Use requirements.
                                 We never see, store, or sell your personal habits.
                             </p>
                         </div>
