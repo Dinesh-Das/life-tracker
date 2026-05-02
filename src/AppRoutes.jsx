@@ -16,6 +16,8 @@ import GenderPicker from './components/ui/GenderPicker'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import TermsOfService from './pages/TermsOfService'
 
+import Landing from './pages/Landing'
+
 const AuthenticatedLayout = ({ children }) => {
     const { userGender } = useAuth();
     const location = useLocation();
@@ -105,8 +107,8 @@ function AppRoutes() {
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<TermsOfService />} />
 
-            <Route path="/" element={<Navigate to="/hub" />} />
-            <Route path="*" element={<Navigate to="/hub" />} />
+            <Route path="/" element={<Landing />} />
+            <Route path="*" element={<Navigate to="/" />} />
         </Routes>
     );
 }
