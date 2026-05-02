@@ -56,6 +56,13 @@ const AuthenticatedLayout = ({ children }) => {
                         </motion.div>
                     </AnimatePresence>
                 </div>
+                
+                {/* Legal Footer for Compliance */}
+                <footer className="mt-auto py-6 text-center text-[10px] uppercase tracking-widest font-bold text-gray-500/50 relative z-10">
+                    <Link to="/privacy" className="hover:text-gray-800 transition-colors">Privacy Policy</Link>
+                    <span className="mx-3 opacity-30">•</span>
+                    <Link to="/terms" className="hover:text-gray-800 transition-colors">Terms of Service</Link>
+                </footer>
             </main>
             <MobileNav aria-label="Mobile Navigation" />
         </div>

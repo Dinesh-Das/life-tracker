@@ -145,14 +145,13 @@ function Login() {
                 </div>
 
                 {/* Footer note & Legal Links */}
-                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-                    <p style={{ fontSize: '12px', color: 'rgba(240,247,240,0.35)', fontFamily: 'var(--font-body)' }}>
+                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px', width: '100%' }}>
+                    <p style={{ fontSize: '13px', color: 'rgba(240,247,240,0.6)', fontFamily: 'var(--font-body)', fontWeight: 500 }}>
                         Your data lives in your own Google Sheet. Transparent. Private. Yours.
                     </p>
-                    <div style={{ display: 'flex', gap: '16px', fontSize: '12px', fontFamily: 'var(--font-body)' }}>
-                        <Link to="/privacy" style={{ color: 'rgba(240,247,240,0.5)', textDecoration: 'none' }}>Privacy Policy</Link>
-                        <span style={{ color: 'rgba(240,247,240,0.2)' }}>•</span>
-                        <Link to="/terms" style={{ color: 'rgba(240,247,240,0.5)', textDecoration: 'none' }}>Terms of Service</Link>
+                    <div style={{ display: 'flex', gap: '24px', fontSize: '14px', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
+                        <Link to="/privacy" style={{ color: '#f0f7f0', textDecoration: 'underline' }}>Privacy Policy</Link>
+                        <Link to="/terms" style={{ color: '#f0f7f0', textDecoration: 'underline' }}>Terms of Service</Link>
                     </div>
                 </div>
             </div>
