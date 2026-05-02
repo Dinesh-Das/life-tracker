@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from './context/AuthContext'
 import Sidebar from './components/layout/Sidebar'
@@ -73,8 +73,13 @@ const AuthenticatedLayout = ({ children }) => {
 
 function AppRoutes() {
     const { user, loading, userGender } = useAuth();
+    const location = useLocation();
 
-    if (loading) {
+    // NEVER block public routes with a loading screen.
+    // Google's bot needs to see the Landing page immediately to pass verification.
+    const isPublicRoute = ['/', '/privacy', '/terms'].includes(location.pathname);
+
+    if (loading && !isPublicRoute) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-background-dark text-white">
                 <div className="animate-pulse text-2xl font-serif">Loading LifeTracker...</div>

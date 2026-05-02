@@ -147,6 +147,10 @@ export function AuthProvider({ children }) {
     }, [scheduleTokenRefresh]);
 
     const signIn = () => {
+        if (gapiError) {
+            toast.error('Cannot login: Google services are blocked by your browser or network. Please disable adblockers and refresh.');
+            return;
+        }
         if (tokenClient.current) {
             tokenClient.current.requestAccessToken({ prompt: 'consent' });
         } else {
@@ -183,28 +187,8 @@ export function AuthProvider({ children }) {
         }
     };
 
-    // Show a user-friendly screen if Google CDN scripts failed to load
-    if (gapiError) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8 text-center">
-                <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center text-4xl mb-6 shadow-sm border border-amber-100">📡</div>
-                <h1 className="text-2xl font-serif font-black text-gray-800 mb-2">Connection Required</h1>
-                <p className="text-sm text-gray-500 max-w-sm mb-6 leading-relaxed">
-                    LifeTracker couldn&apos;t connect to Google services. This usually happens when:
-                </p>
-                <ul className="text-sm text-left text-gray-500 max-w-xs mb-6 space-y-1 list-disc list-inside">
-                    <li>You&apos;re offline or have a slow connection</li>
-                    <li>A browser extension is blocking Google scripts</li>
-                </ul>
-                <button
-                    onClick={() => window.location.reload()}
-                    className="bg-emerald-600 text-white px-8 py-3 rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-700 active:scale-95 transition-all shadow-lg shadow-emerald-200"
-                >
-                    Try Again
-                </button>
-            </div>
-        );
-    }
+    // We removed the full-screen gapiError blocker here.
+    // The public landing page MUST render for Google's bot, even if Google's own scripts are blocked.
 
     return (
         <AuthContext.Provider value={{
