@@ -40,23 +40,46 @@
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <!-- Root Cause Fix: Physical HTML content for Google Bots & SEO -->
+    <div style="background-color: #1a3828; color: #f0f7f0; min-height: 100vh; font-family: sans-serif; padding: 40px 20px; text-align: center;">
+      <header>
+        <h1 style="font-size: 3rem; margin-bottom: 20px;">LifeTracker: Your Life, Visualized.</h1>
+        <p style="font-size: 1.25rem; max-width: 800px; margin: 0 auto 40px auto; opacity: 0.8;">
+          LifeTracker is a personal habit tracking dashboard and weekly planner. 
+          We help you monitor daily progress and achieve goals, all while storing your data privately in your own Google Sheets.
+        </p>
+      </header>
 
-  <!-- Static content for Google OAuth Verification Bots -->
-  <div style="display:none;" aria-hidden="true">
-    <h1>LifeTracker</h1>
-    <p>LifeTracker is a personal productivity dashboard that helps you track daily habits, manage weekly planners, and visualize personal growth. All data is stored privately in your own Google Sheet.</p>
-    <a href="/privacy">Privacy Policy</a>
-    <a href="/terms">Terms of Service</a>
-  </div>
+      <section style="max-width: 1000px; margin: 0 auto; display: grid; gap: 40px; padding: 40px 0;">
+        <div>
+          <h2 style="color: #10b981;">Comprehensive Habits</h2>
+          <p style="opacity: 0.6;">Monitor your physical, mental, and social growth with a beautiful year-at-a-glance habit grid.</p>
+        </div>
+        <div>
+          <h2 style="color: #10b981;">Weekly Planner</h2>
+          <p style="opacity: 0.6;">Focus on what matters. Set primary weekly goals and track daily wins to stay aligned with your vision.</p>
+        </div>
+      </section>
 
-  <noscript>
-    <div style="padding: 20px; text-align: center;">
-      <h1>LifeTracker</h1>
-      <p>LifeTracker is a personal productivity dashboard that helps you track daily habits, manage weekly planners, and visualize personal growth. All data is stored privately in your own Google Sheet.</p>
-      <p>To use this application, please enable JavaScript or visit our <a href="/privacy">Privacy Policy</a>.</p>
+      <section style="padding: 40px 0; border-top: 1px solid rgba(255,255,255,0.1);">
+        <h2 style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.2em; color: #10b981;">About LifeTracker</h2>
+        <p style="max-width: 600px; margin: 20px auto; opacity: 0.5; font-style: italic;">
+          Our mission is to empower individuals to take control of their personal data through transparent, self-hosted habit tracking.
+        </p>
+      </section>
+
+      <footer style="margin-top: 60px; padding: 40px 0; background: rgba(0,0,0,0.2);">
+        <div style="margin-bottom: 20px;">
+          <a href="/privacy" style="color: #f0f7f0; margin: 0 20px;">Privacy Policy</a>
+          <a href="/terms" style="color: #f0f7f0; margin: 0 20px;">Terms of Service</a>
+        </div>
+        <p style="font-size: 0.75rem; opacity: 0.3; max-width: 600px; margin: 0 auto;">
+          LifeTracker adheres to the Google API Services User Data Policy, including Limited Use requirements. We never see, store, or sell your personal habits.
+        </p>
+      </footer>
     </div>
-  </noscript>
+  </div>
 
   <script type="module" src="/src/main.jsx"></script>
 </body>
