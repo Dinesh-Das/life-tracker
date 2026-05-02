@@ -18,6 +18,11 @@ export default defineConfig({
     // Raise chunk warning limit slightly (recharts is large)
     chunkSizeWarningLimit: 750,
     rollupOptions: {
+      input: {
+        main: './index.html',
+        privacy: './privacy.html',
+        terms: './terms.html'
+      },
       output: {
         // Manual code splitting to keep initial bundle small
         manualChunks: {

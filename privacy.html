@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Primary Meta Tags -->
+  <title>LifeTracker — Privacy Policy</title>
+  <meta name="title" content="LifeTracker — Privacy Policy" />
+  <meta name="description"
+    content="LifeTracker Privacy Policy. Learn how we handle your data, use Google APIs, and keep your habits private." />
+  <meta name="theme-color" content="#0a160f" />
+  <meta name="application-name" content="LifeTracker" />
+  <!-- Open Graph / Social Sharing -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="LifeTracker — Privacy Policy" />
+  <meta property="og:description"
+    content="LifeTracker Privacy Policy and Google API Services User Data Policy compliance." />
+  <meta property="og:image" content="/og-image.png" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/logo.png" />
+
+  <!-- Security headers (belt + suspenders alongside server config) -->
+  <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups" />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <meta name="google-site-verification" content="oJtbytfMhvP7e5yu4lG80n2z2pnEehz3Ybyx37aocyQ" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Manrope:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+
+  <!-- Google API client — loaded async so they don't block render -->
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+
+<body>
+  <div id="root">
+    <!-- Root Cause Fix: Physical HTML content for Google Bots & SEO -->
+    <div style="background-color: #f9fafb; color: #111827; min-height: 100vh; font-family: sans-serif; padding: 40px 20px;">
+      <div style="max-width: 800px; margin: 0 auto;">
+        <header style="margin-bottom: 40px;">
+          <h1 style="font-size: 2.5rem; margin-bottom: 10px;">Privacy Policy</h1>
+          <p style="color: #6b7280;">Last updated: May 2026</p>
+        </header>
+
+        <section style="margin-bottom: 30px;">
+          <h2 style="font-size: 1.5rem; margin-bottom: 15px;">1. Google API Services Usage</h2>
+          <p style="line-height: 1.6; margin-bottom: 15px;">
+            LifeTracker's use and transfer to any other app of information received from Google APIs will adhere to the 
+            <strong>Google API Services User Data Policy</strong>, including the Limited Use requirements.
+          </p>
+        </section>
+
+        <section style="margin-bottom: 30px;">
+          <h2 style="font-size: 1.5rem; margin-bottom: 15px;">2. What Data We Collect</h2>
+          <p style="line-height: 1.6; margin-bottom: 15px;">
+            We do not store your data on our servers. LifeTracker acts exclusively as a visual interface for your own Google Sheets.
+            We only request access to the specific "LifeTracker Data" spreadsheet that the application creates in your Google Drive.
+          </p>
+        </section>
+        
+        <footer style="margin-top: 60px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+          <a href="/" style="color: #10b981; text-decoration: none; font-weight: bold;">← Back to LifeTracker</a>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
