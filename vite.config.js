@@ -20,22 +20,11 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Manual code splitting to keep initial bundle small
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-              return 'react-vendor';
-            }
-            if (id.includes('recharts')) {
-              return 'charts';
-            }
-            if (id.includes('date-fns')) {
-              return 'date-utils';
-            }
-            if (id.includes('lucide-react')) {
-              return 'icons';
-            }
-            return 'vendor';
-          }
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'charts': ['recharts'],
+          'date-utils': ['date-fns'],
+          'icons': ['lucide-react'],
         }
       }
     }
