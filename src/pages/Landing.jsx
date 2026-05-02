@@ -34,12 +34,12 @@ function Landing() {
             <header className="px-6 pt-20 pb-32 max-w-5xl mx-auto text-center relative overflow-hidden">
                 <div className="relative z-10">
                     <h1 className="font-serif text-6xl md:text-8xl font-black mb-8 leading-[0.9] tracking-tighter">
-                        Your life, <br />
-                        <span className="text-emerald-400">visualized.</span>
+                        LifeTracker: <br />
+                        <span className="text-emerald-400 font-serif">Your Life, Visualized.</span>
                     </h1>
                     <p className="text-xl md:text-2xl text-[#f0f7f0]/70 max-w-2xl mx-auto mb-12 leading-relaxed">
-                        The ultimate dashboard for your daily habits, weekly goals, and long-term progress. 
-                        Transparently powered by your own Google Sheets.
+                        LifeTracker is a personal habit tracking dashboard and weekly planner. 
+                        We help you monitor daily progress and achieve goals, all while storing your data privately in your own Google Sheets.
                     </p>
                     <button 
                         onClick={signIn}
@@ -57,7 +57,14 @@ function Landing() {
                     <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500 rounded-full blur-[128px]" />
                     <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-700 rounded-full blur-[128px]" />
                 </div>
-            </header>
+            {/* Purpose/About Section for Google Verification */}
+            <section className="px-6 py-12 max-w-4xl mx-auto text-center border-t border-white/5">
+                <h2 className="text-sm font-black uppercase tracking-[0.3em] text-emerald-400 mb-4">About LifeTracker</h2>
+                <p className="text-[#f0f7f0]/50 text-sm leading-relaxed italic">
+                    Our mission is to empower individuals to take control of their personal data through transparent, self-hosted habit tracking. 
+                    LifeTracker provides a visual interface for your Google Sheets, turning raw numbers into meaningful progress insights.
+                </p>
+            </section>
 
             {/* Purpose & Features Section */}
             <section className="bg-white/5 backdrop-blur-3xl py-32 px-6 border-y border-white/10">
