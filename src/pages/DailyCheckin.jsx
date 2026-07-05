@@ -4,15 +4,17 @@ import { useAppContext } from '../context/AppContext'
 import { useHabits } from '../hooks/useHabits'
 import { format } from 'date-fns'
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { CheckCircle2, Circle, Brain, Trophy, Zap, Heart, DollarSign, Star } from 'lucide-react'
+import { CheckCircle2, Circle, Brain, Trophy, Zap, Heart, DollarSign, Star, ChevronLeft, ChevronRight, CalendarClock, Info } from 'lucide-react'
 import { useWins } from '../hooks/useWins';
+import { useStreaks } from '../hooks/useStreaks';
+import HabitDetailModal from '../components/ui/HabitDetailModal';
 import { WIN_SUGGESTIONS } from '../lib/winSuggestions';
 
 const EMPTY_WINS = { Physical: '', Mental: '', Social: '', Financial: '', Spiritual: '' };
 
 function DailyCheckin() {
     const { spreadsheetId } = useAuth();
-    const { currentMonth, currentYear, currentMonthIndex, gender } = useAppContext();
+    const { currentMonth, currentYear, currentMonthIndex, gender, prevMonth, nextMonth, setMonth } = useAppContext();
 
     const {
         habits,
@@ -20,19 +22,39 @@ function DailyCheckin() {
         mentalState,
         loading: habitsLoading,
         saving: habitsSaving,
+        daysInMonth,
         toggleCheck,
         updateMentalState,
     } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
+
+    const today = new Date();
+    const todayDay = today.getDate();
+    const isCurrentMonth = today.getMonth() === currentMonthIndex && today.getFullYear() === currentYear;
+    const isFutureMonth = new Date(currentYear, currentMonthIndex, 1) > today;
+
+    // Selected day — defaults to today. Past days can be picked to backfill
+    // entries that were missed (habits, mental state, and daily wins).
+    const [selectedDay, setSelectedDay] = useState(isCurrentMonth ? todayDay : 1);
+
+    // When the month changes, snap the selection to a sensible day
+    useEffect(() => {
+        setSelectedDay(isCurrentMonth ? todayDay : (isFutureMonth ? 1 : daysInMonth));
+    }, [currentMonthIndex, currentYear]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const activeDay = selectedDay;
+    const selectedDate = new Date(currentYear, currentMonthIndex, activeDay);
+    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+    const isBackfilling = !isCurrentMonth || activeDay !== todayDay;
 
     const {
         wins,
         loading: winsLoading,
         saving: winsSaving,
         saveWin
-    } = useWins(spreadsheetId);
+    } = useWins(spreadsheetId, selectedDateStr);
 
     // Local buffer so typing in the textarea doesn't re-render via hook state on every keystroke.
-    // Synced from `wins` once when wins loads from the sheet.
+    // Synced from `wins` when the selected day's wins load from the sheet.
     const [localWins, setLocalWins] = useState(EMPTY_WINS);
     useEffect(() => {
         if (!winsLoading) {
@@ -48,20 +70,12 @@ function DailyCheckin() {
     const loading = habitsLoading || winsLoading;
     const saving = habitsSaving || winsSaving;
 
-    const today = new Date();
-    const todayDay = today.getDate();
-    const todayMonth = today.getMonth();
-    const todayYear = today.getFullYear();
-    const isCurrentMonth = todayMonth === currentMonthIndex && todayYear === currentYear;
-    const activeDay = isCurrentMonth ? todayDay : 1;
 
     const [mentalInput, setMentalInput] = useState(mentalState[activeDay] || '');
 
-    // Sync mental input with fetched state
+    // Sync mental input with fetched state (clears when switching to an empty day)
     useEffect(() => {
-        if (mentalState[activeDay] !== undefined) {
-            setMentalInput(mentalState[activeDay]);
-        }
+        setMentalInput(mentalState[activeDay] !== undefined ? mentalState[activeDay] : '');
     }, [mentalState, activeDay]);
 
     // Filter habits by gender
@@ -69,6 +83,9 @@ function DailyCheckin() {
         if (gender === 'female') return habits;
         return habits.filter(h => !h.femaleOnly);
     }, [habits, gender]);
+
+    const { habitStreaks } = useStreaks(visibleHabits, checks);
+    const [detailHabit, setDetailHabit] = useState(null);
 
     const doneCount = useMemo(() => {
         return visibleHabits.filter(h => checks[h.id]?.[activeDay]).length;
@@ -89,12 +106,17 @@ function DailyCheckin() {
             updateMentalState(activeDay, val);
         }
     };
+    
+    const jumpToToday = () => {
+        if (!isCurrentMonth) setMonth(today.getMonth());
+        setSelectedDay(todayDay);
+    };
 
     if (loading) {
         return (
             <div className="flex-1 flex flex-col">
                 <Header title="Daily Check-in" subtitle={format(today, 'EEEE, MMMM d')} />
-                <div style={{ padding: '24px 40px' }}>
+                <div className="px-4 py-6 sm:px-10">
                     <div className="text-center animate-fade-up" style={{ padding: '40px 0' }}>
                         <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--text-muted)' }}>Loading your habits...</p>
                     </div>
@@ -105,21 +127,104 @@ function DailyCheckin() {
 
     return (
         <>
-            <Header title="Daily Check-in" subtitle={format(today, 'EEEE, MMMM d')} saving={saving} />
+            <Header title="Daily Check-in" subtitle={format(selectedDate, 'EEEE, MMMM d')} saving={saving} />
 
-            <div style={{ padding: '16px 40px 80px', width: '100%' }}>
+            <div className="w-full px-4 pt-4 pb-20 sm:px-10">
+
+                {/* Day Picker — pick a past day to backfill missed entries */}
+                <div className="glass-card animate-fade-up" style={{ padding: '12px 14px', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <button
+                            className="glass-button"
+                            onClick={prevMonth}
+                            aria-label="Previous month"
+                            style={{ borderRadius: '9999px', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-heading)' }}
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                            {currentMonth} {currentYear}
+                        </p>
+                        <button
+                            className="glass-button"
+                            onClick={nextMonth}
+                            disabled={isCurrentMonth}
+                            aria-label="Next month"
+                            style={{ borderRadius: '9999px', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isCurrentMonth ? 'not-allowed' : 'pointer', opacity: isCurrentMonth ? 0.35 : 1, color: 'var(--text-heading)' }}
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                    <div className="scrollbar-thin" style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
+                            const isFuture = isCurrentMonth ? d > todayDay : isFutureMonth;
+                            const isSelected = d === activeDay;
+                            const isToday = isCurrentMonth && d === todayDay;
+                            return (
+                                <button
+                                    key={d}
+                                    onClick={() => !isFuture && setSelectedDay(d)}
+                                    disabled={isFuture}
+                                    aria-label={`Select day ${d}`}
+                                    aria-pressed={isSelected}
+                                    style={{
+                                        minWidth: '44px', height: '52px', flexShrink: 0,
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px',
+                                        borderRadius: '12px',
+                                        border: isSelected ? '1px solid rgba(45,79,65,0.5)' : '1px solid rgba(255,255,255,0.3)',
+                                        background: isSelected ? 'rgba(45,79,65,0.7)' : (isToday ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)'),
+                                        color: isSelected ? '#a9cfbc' : (isFuture ? 'rgba(61,90,74,0.35)' : 'var(--text-body)'),
+                                        cursor: isFuture ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', opacity: 0.8 }}>
+                                        {format(new Date(currentYear, currentMonthIndex, d), 'EEE')}
+                                    </span>
+                                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '15px', fontWeight: 700 }}>{d}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Backfill banner — shown when editing a past day */}
+                {isBackfilling && (
+                    <div className="animate-fade-up" style={{
+                        display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
+                        padding: '10px 16px', marginBottom: '16px', borderRadius: 'var(--radius-md)',
+                        background: 'rgba(160,96,48,0.22)', border: '1px solid rgba(160,96,48,0.35)',
+                    }}>
+                        <CalendarClock size={16} style={{ color: '#7a4a20', flexShrink: 0 }} />
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#7a4a20', flex: 1, minWidth: '160px' }}>
+                            Backfilling {format(selectedDate, 'EEEE, MMMM d')} — entries save to that day.
+                        </p>
+                        <button
+                            onClick={jumpToToday}
+                            style={{
+                                fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700,
+                                letterSpacing: '0.06em', textTransform: 'uppercase',
+                                padding: '6px 14px', borderRadius: '9999px', border: 'none', cursor: 'pointer',
+                                background: 'rgba(122,74,32,0.85)', color: '#f0c898',
+                            }}
+                        >
+                            Back to Today
+                        </button>
+                    </div>
+                )}
+
 
                 {/* Progress Hero Card */}
                 <div className="glass-card animate-fade-up" style={{ padding: '28px 32px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '32px' }}>
                     <div style={{ flex: 1 }}>
                         <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                            {format(today, 'EEEE')}
+                            {format(selectedDate, 'EEEE')}
                         </p>
                         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '52px', fontWeight: 600, color: 'var(--text-heading)', lineHeight: 1, marginBottom: '4px' }}>
-                            {format(today, 'dd')}
+                            {format(selectedDate, 'dd')}
                         </h2>
                         <p style={{ fontFamily: 'var(--font-body)', fontSize: '16px', color: 'var(--text-muted)' }}>
-                            {format(today, 'MMMM yyyy')}
+                            {format(selectedDate, 'MMMM yyyy')}
                         </p>
                     </div>
 
@@ -155,7 +260,9 @@ function DailyCheckin() {
                 {/* Habit Checklist */}
                 <div style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
-                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--text-heading)' }}>Today&apos;s Habits</h3>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--text-heading)' }}>
+                            {isBackfilling ? `Habits — ${format(selectedDate, 'MMM d')}` : "Today's Habits"}
+                        </h3>
                         {pct === 100 && (
                             <span style={{
                                 background: 'rgba(45,79,65,0.65)', color: '#a9cfbc',
@@ -171,62 +278,82 @@ function DailyCheckin() {
                         {visibleHabits.map((habit, idx) => {
                             const done = checks[habit.id]?.[activeDay] || false;
                             return (
-                                <button
+                                <div
                                     key={habit.id}
-                                    onClick={() => toggleCheck(habit.id, activeDay)}
-                                    role="checkbox"
-                                    aria-checked={done}
-                                    aria-label={`${habit.name} — ${done ? 'completed' : 'not completed'}`}
                                     className="animate-fade-up"
-                                    style={{
-                                        width: '100%',
-                                        display: 'flex', alignItems: 'center', gap: '12px',
-                                        padding: '14px 16px',
-                                        borderRadius: 'var(--radius-md)',
-                                        border: done ? '1px solid rgba(45,79,65,0.35)' : '1px solid rgba(255,255,255,0.3)',
-                                        background: done ? 'rgba(45,79,65,0.25)' : 'rgba(255,255,255,0.30)',
-                                        backdropFilter: 'blur(12px)',
-                                        WebkitBackdropFilter: 'blur(12px)',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                        animationDelay: `${idx * 0.03}s`,
-                                        textAlign: 'left',
-                                    }}
+                                    style={{ display: 'flex', gap: '8px', animationDelay: `${idx * 0.03}s` }}
                                 >
-                                    {/* Checkbox */}
-                                    <div style={{
-                                        width: '26px', height: '26px', borderRadius: '8px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                                        background: done ? 'rgba(45,79,65,0.7)' : 'rgba(255,255,255,0.4)',
-                                        color: done ? '#a9cfbc' : 'rgba(45,79,65,0.4)',
-                                        transition: 'all 0.2s',
-                                    }}>
-                                        {done ? <CheckCircle2 size={16} /> : <Circle size={16} />}
-                                    </div>
+<button
+                                        onClick={() => toggleCheck(habit.id, activeDay)}
+                                        role="checkbox"
+                                        aria-checked={done}
+                                        aria-label={`${habit.name} — ${done ? 'completed' : 'not completed'}`}
+                                        style={{
+                                            flex: 1, minWidth: 0,
+                                            display: 'flex', alignItems: 'center', gap: '12px',
+                                            padding: '14px 16px',
+                                            borderRadius: 'var(--radius-md)',
+                                            border: done ? '1px solid rgba(45,79,65,0.35)' : '1px solid rgba(255,255,255,0.3)',
+                                            background: done ? 'rgba(45,79,65,0.25)' : 'rgba(255,255,255,0.30)',
+                                            backdropFilter: 'blur(12px)',
+                                            WebkitBackdropFilter: 'blur(12px)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            textAlign: 'left',
+                                        }}
+                                    >
+                                        {/* Checkbox */}
+                                        <div style={{
+                                            width: '26px', height: '26px', borderRadius: '8px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                                            background: done ? 'rgba(45,79,65,0.7)' : 'rgba(255,255,255,0.4)',
+                                            color: done ? '#a9cfbc' : 'rgba(45,79,65,0.4)',
+                                            transition: 'all 0.2s',
+                                        }}>
+                                            {done ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                                        </div>
+                                        
+                                        {/* Emoji + Name */}
+                                        <span style={{ fontSize: '22px' }} aria-hidden="true">{habit.emoji}</span>
+                                        <span style={{
+                                            fontFamily: 'var(--font-body)',
+                                            fontSize: '14px', fontWeight: 500, flex: 1,
+                                            color: done ? '#3d5a4a' : 'var(--text-body)',
+                                            textDecoration: done ? 'line-through' : 'none',
+                                            opacity: done ? 0.7 : 1,
+                                            transition: 'all 0.2s',
+                                        }}>
+                                            {habit.name}
+                                        </span>
 
-                                    {/* Emoji + Name */}
-                                    <span style={{ fontSize: '22px' }} aria-hidden="true">{habit.emoji}</span>
-                                    <span style={{
-                                        fontFamily: 'var(--font-body)',
-                                        fontSize: '14px', fontWeight: 500, flex: 1,
-                                        color: done ? '#3d5a4a' : 'var(--text-body)',
-                                        textDecoration: done ? 'line-through' : 'none',
-                                        opacity: done ? 0.7 : 1,
-                                        transition: 'all 0.2s',
-                                    }}>
-                                        {habit.name}
-                                    </span>
+                                        {/* Category badge */}
+                                        <span style={{
+                                            fontFamily: 'var(--font-body)',
+                                            fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                                            padding: '4px 10px', borderRadius: '9999px',
+                                            background: 'rgba(45,79,65,0.4)', color: '#a9cfbc',
+                                        }}>
+                                            {habit.category}
+                                        </span>
+                                    </button>
 
-                                    {/* Category badge */}
-                                    <span style={{
-                                        fontFamily: 'var(--font-body)',
-                                        fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-                                        padding: '4px 10px', borderRadius: '9999px',
-                                        background: 'rgba(45,79,65,0.4)', color: '#a9cfbc',
-                                    }}>
-                                        {habit.category}
-                                    </span>
-                                </button>
+                                    {/* Detail view trigger */}
+                                    <button
+                                        onClick={() => setDetailHabit(habit)}
+                                        aria-label={`View details for ${habit.name}`}
+                                        className="glass-button"
+                                        style={{
+                                            width: '46px', flexShrink: 0,
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            borderRadius: 'var(--radius-md)',
+                                            border: '1px solid rgba(255,255,255,0.3)',
+                                            color: 'var(--text-muted)', cursor: 'pointer',
+                                        }}
+                                    >
+                                        <Info size={16} />
+                                    </button>
+                                </div>
+
                             );
                         })}
                     </div>
@@ -266,7 +393,7 @@ function DailyCheckin() {
                         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--text-heading)' }}>Daily Wins</h3>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {[
                             { id: 'Physical',  icon: Zap,        label: 'Physical',  placeholder: 'Workout, hydration, sleep...' },
                             { id: 'Mental',    icon: Brain,       label: 'Mental',    placeholder: 'Learning, focus, meditation...' },
@@ -325,6 +452,18 @@ function DailyCheckin() {
                     </div>
                 </div>
             </div>
+            
+            <HabitDetailModal
+                isOpen={!!detailHabit}
+                onClose={() => setDetailHabit(null)}
+                habit={detailHabit}
+                checks={checks}
+                mentalState={mentalState}
+                daysInMonth={daysInMonth}
+                streak={detailHabit ? habitStreaks[detailHabit.id] : null}
+                spreadsheetId={spreadsheetId}
+                monthLabel={`${currentMonth} ${currentYear}`}
+            />
         </>
     );
 }

@@ -1,9 +1,13 @@
+import { cacheGet, cacheSet } from './localCache';
+
 const SHEETS = () => window.gapi.client.sheets.spreadsheets;
 const cache = new Map();
 const CACHE_TTL = 2000; // 2 seconds
 
 /**
  * Read a range from a Google Sheet.
+ * Successful reads are persisted to IndexedDB; when the network fails
+ * (offline / transient error) the last known data is served instead.
  * @param {string} spreadsheetId 
  * @param {string} range 
  */
@@ -14,14 +18,21 @@ export async function readRange(spreadsheetId, range) {
         return cached.data;
     }
 
-    const res = await SHEETS().values.get({
-        spreadsheetId,
-        range,
-        valueRenderOption: 'UNFORMATTED_VALUE'
-    });
-    const data = res.result.values || [];
-    cache.set(cacheKey, { data, time: Date.now() });
-    return data;
+    try {
+        const res = await SHEETS().values.get({
+            spreadsheetId,
+            range,
+            valueRenderOption: 'UNFORMATTED_VALUE'
+        });
+        const data = res.result.values || [];
+        cache.set(cacheKey, { data, time: Date.now() });
+        cacheSet(`read:${cacheKey}`, data); // fire-and-forget offline copy
+        return data;
+    } catch (err) {
+        const fallback = await cacheGet(`read:${cacheKey}`);
+        if (fallback !== undefined) return fallback;
+        throw err;
+    }
 }
 
 /**
@@ -56,6 +67,7 @@ export async function batchWrite(spreadsheetId, data) {
 
 /**
  * Batch read multiple ranges.
+ * Persists successful reads and falls back to the last known data offline.
  * @param {string} spreadsheetId 
  * @param {string[]} ranges 
  */
@@ -66,14 +78,21 @@ export async function batchRead(spreadsheetId, ranges) {
         return cached.data;
     }
 
-    const res = await SHEETS().values.batchGet({
-        spreadsheetId,
-        ranges,
-        valueRenderOption: 'UNFORMATTED_VALUE'
-    });
-    const data = res.result.valueRanges;
-    cache.set(cacheKey, { data, time: Date.now() });
-    return data;
+    try {
+        const res = await SHEETS().values.batchGet({
+            spreadsheetId,
+            ranges,
+            valueRenderOption: 'UNFORMATTED_VALUE'
+        });
+        const data = res.result.valueRanges;
+        cache.set(cacheKey, { data, time: Date.now() });
+        cacheSet(`batch:${cacheKey}`, data); // fire-and-forget offline copy
+        return data;
+    } catch (err) {
+        const fallback = await cacheGet(`batch:${cacheKey}`);
+        if (fallback !== undefined) return fallback;
+        throw err;
+    }
 }
 
 /**

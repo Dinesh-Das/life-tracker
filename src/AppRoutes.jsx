@@ -1,33 +1,43 @@
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from './context/AuthContext'
 import Sidebar from './components/layout/Sidebar'
 import MobileNav from './components/layout/MobileNav'
-import Login from './pages/Login'
-import ZenHub from './pages/ZenHub'
-import DailyCheckin from './pages/DailyCheckin'
-import Planner from './pages/Planner'
-import Dashboard from './pages/Dashboard'
-import Settings from './pages/Settings'
-import FemaleTracker from './pages/FemaleTracker'
-import Journal from './pages/Journal'
-import Focus from './pages/Focus'
 import GenderPicker from './components/ui/GenderPicker'
-import PrivacyPolicy from './pages/PrivacyPolicy'
-import TermsOfService from './pages/TermsOfService'
-
+import Login from './pages/Login'
 import Landing from './pages/Landing'
+
+// Route-level code splitting: heavy pages (recharts, cycle tracker, etc.)
+// are fetched on demand so the initial mobile bundle stays small.
+// Login and Landing stay eager — they are the app entry points.
+const ZenHub = lazy(() => import('./pages/ZenHub'))
+const DailyCheckin = lazy(() => import('./pages/DailyCheckin'))
+const Planner = lazy(() => import('./pages/Planner'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Settings = lazy(() => import('./pages/Settings'))
+const FemaleTracker = lazy(() => import('./pages/FemaleTracker'))
+const Journal = lazy(() => import('./pages/Journal'))
+const Focus = lazy(() => import('./pages/Focus'))
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
+const TermsOfService = lazy(() => import('./pages/TermsOfService'))
+
+const PageFallback = () => (
+    <div className="flex-1 flex items-center justify-center" style={{ minHeight: '40vh' }}>
+        <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--text-muted)' }}>Loading…</p>
+    </div>
+);
 
 const AuthenticatedLayout = ({ children }) => {
     const { userGender } = useAuth();
     const location = useLocation();
 
     return (
-        <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--background)' }}>
+        <div className="app-shell">
             <Sidebar aria-label="Sidebar Navigation" />
             {/* Main canvas — the minty green gradient from stitch design */}
             <main
-                className="flex-1 min-w-0 pb-20 lg:pb-0 h-screen overflow-y-auto relative"
+                className="app-main flex-1 min-w-0 pb-20 lg:pb-0 overflow-y-auto relative"
                 style={{
                     background: 'linear-gradient(135deg, #c2d9cc 0%, #9bbfaf 35%, #b8d2c6 60%, #8da89b 100%)',
                 }}
@@ -54,7 +64,9 @@ const AuthenticatedLayout = ({ children }) => {
                             transition={{ duration: 0.3, ease: "easeOut" }}
                             className="flex-1 flex flex-col"
                         >
-                            {children}
+                            <Suspense fallback={<PageFallback />}>
+                                {children}
+                            </Suspense>
                         </motion.div>
                     </AnimatePresence>
                 </div>
@@ -75,6 +87,24 @@ function AppRoutes() {
     const { user, loading, userGender } = useAuth();
     const location = useLocation();
 
+    
+    // Prefetch the most likely next pages while the browser is idle,
+    // so navigation from the Hub feels instant.
+    useEffect(() => {
+        if (!user) return;
+        const prefetch = () => {
+            import('./pages/DailyCheckin');
+            import('./pages/Dashboard');
+            import('./pages/Planner');
+        };
+        if ('requestIdleCallback' in window) {
+            const id = window.requestIdleCallback(prefetch, { timeout: 3000 });
+            return () => window.cancelIdleCallback(id);
+        }
+        const t = setTimeout(prefetch, 2000);
+        return () => clearTimeout(t);
+    }, [user]);
+
     // NEVER block public routes with a loading screen.
     // Google's bot needs to see the Landing page immediately to pass verification.
     const isPublicRoute = ['/', '/privacy', '/terms'].includes(location.pathname);
@@ -87,18 +117,23 @@ function AppRoutes() {
         );
     }
 
+     // Shared guard: authenticated users get the app shell, others go to login
+    const protect = (page) => (user
+        ? <AuthenticatedLayout>{page}</AuthenticatedLayout>
+        : <Navigate to="/login" />
+    );
+
     return (
         <Routes>
             <Route path="/login" element={!user ? <Login /> : <Navigate to="/hub" />} />
 
             {/* Protected Routes */}
-            <Route path="/hub" element={user ? <AuthenticatedLayout><ZenHub /></AuthenticatedLayout> : <Navigate to="/login" />} />
-            <Route path="/daily" element={user ? <AuthenticatedLayout><DailyCheckin /></AuthenticatedLayout> : <Navigate to="/login" />} />
-            <Route path="/planner" element={user ? <AuthenticatedLayout><Planner /></AuthenticatedLayout> : <Navigate to="/login" />} />
-            <Route path="/journal" element={user ? <AuthenticatedLayout><Journal /></AuthenticatedLayout> : <Navigate to="/login" />} />
-            <Route path="/focus" element={user ? <AuthenticatedLayout><Focus /></AuthenticatedLayout> : <Navigate to="/login" />} />
-            <Route path="/dashboard" element={user ? <AuthenticatedLayout><Dashboard /></AuthenticatedLayout> : <Navigate to="/login" />} />
-            <Route path="/female" element={
+            <Route path="/hub" element={protect(<ZenHub />)} />
+            <Route path="/daily" element={protect(<DailyCheckin />)} />
+            <Route path="/planner" element={protect(<Planner />)} />
+            <Route path="/journal" element={protect(<Journal />)} />
+            <Route path="/focus" element={protect(<Focus />)} />
+            <Route path="/dashboard" element={protect(<Dashboard />)} /><Route path="/female" element={
                 user
                     ? (userGender === 'female'
                         ? <AuthenticatedLayout><FemaleTracker /></AuthenticatedLayout>
@@ -106,11 +141,10 @@ function AppRoutes() {
                     )
                     : <Navigate to="/login" />
             } />
-            <Route path="/settings" element={user ? <AuthenticatedLayout><Settings /></AuthenticatedLayout> : <Navigate to="/login" />} />
-
+            <Route path="/settings" element={protect(<Settings />)} />
             {/* Public Legal Routes */}
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/privacy" element={<Suspense fallback={<PageFallback />}><PrivacyPolicy /></Suspense>} />
+            <Route path="/terms" element={<Suspense fallback={<PageFallback />}><TermsOfService /></Suspense>} />
 
             <Route path="/" element={<Landing />} />
             <Route path="*" element={<Navigate to="/" />} />

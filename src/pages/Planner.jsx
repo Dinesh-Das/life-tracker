@@ -12,6 +12,7 @@ import HabitGrid from '../components/habits/HabitGrid'
 import TrendAreaChart from '../components/charts/TrendAreaChart'
 import MoodLineChart from '../components/charts/MoodLineChart'
 import AnalysisPanel from '../components/habits/AnalysisPanel'
+import CorrelationInsights from '../components/charts/CorrelationInsights'
 import { useHabits } from '../hooks/useHabits'
 import { useStreaks } from '../hooks/useStreaks'
 
@@ -90,7 +91,7 @@ function Planner() {
         return (
             <div className="flex-1 flex flex-col">
                 <Header title="Planner" subtitle={`${currentMonth} ${currentYear}`} saving={habitsSaving} />
-                <div style={{ padding: '24px 40px' }}>
+                <div className="px-4 py-6 sm:px-10">
                     <LoadingSkeleton type="page" />
                 </div>
             </div>
@@ -102,8 +103,9 @@ function Planner() {
             <Header title="Planner" subtitle={`${currentMonth} ${currentYear}`} saving={habitsSaving} />
 
             {/* Month Picker */}
-            <div style={{
-                padding: '12px 40px 16px',
+            <div className="px-4 sm:px-10" style={{
+                paddingTop: '12px',
+                paddingBottom: '16px',
                 backdropFilter: 'blur(8px)',
                 WebkitBackdropFilter: 'blur(8px)',
                 borderBottom: '1px solid rgba(255,255,255,0.18)',
@@ -140,7 +142,7 @@ function Planner() {
                 </div>
             </div>
 
-            <div style={{ padding: '24px 40px 80px', flex: 1 }}>
+            <div className="px-4 pt-6 pb-20 sm:px-10" style={{ flex: 1 }}>
 
                 {/* HABITS SECTION */}
                 <div style={{ marginBottom: '32px' }}>
@@ -168,12 +170,21 @@ function Planner() {
                         />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '20px' }}>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ marginTop: '20px' }}>
                         <TrendAreaChart data={trendData} />
                         <MoodLineChart data={moodData} />
                     </div>
 
                     <AnalysisPanel habits={visibleHabits} checks={checks} daysInMonth={daysInMonth} />
+                    
+                    <CorrelationInsights
+                        habits={visibleHabits}
+                        checks={checks}
+                        mentalState={mentalState}
+                        daysInMonth={daysInMonth}
+                        year={currentYear}
+                        monthIndex={currentMonthIndex}
+                    />
                 </div>
 
                 {/* Divider */}

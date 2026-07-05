@@ -39,7 +39,7 @@ function Journal() {
         return (
             <div className="flex-1 flex flex-col">
                 <Header title="Reflections" />
-                <div style={{ padding: '24px 40px' }}>
+                <div className="px-4 py-6 sm:px-10">
                     <LoadingSkeleton type="page" />
                 </div>
             </div>
@@ -53,7 +53,7 @@ function Journal() {
             <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                style={{ padding: '16px 40px 80px', width: '100%' }}
+                className="w-full px-4 pt-4 pb-20 sm:px-10"
             >
                 {/* Date Navigation */}
                 <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', marginBottom: '24px' }}>

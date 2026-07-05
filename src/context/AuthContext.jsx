@@ -16,6 +16,10 @@ const SCOPES = [
 // Token expires in 3600s — refresh 5 minutes early to avoid mid-session failures
 const TOKEN_REFRESH_MS = (3600 - 300) * 1000;
 
+// localStorage flag: the user has signed in before, so we can attempt a
+// silent re-auth on launch (no tap needed — important for the installed PWA).
+const SIGNED_IN_KEY = 'lt_signed_in';
+
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
     const [token, setToken] = useState(null);
@@ -25,6 +29,7 @@ export function AuthProvider({ children }) {
     const [userGender, setUserGender] = useState(null);
     const tokenClient = useRef(null);
     const tokenRefreshTimer = useRef(null);
+    const silentAttempt = useRef(false);
 
     // Silently refresh the access token before it expires
     const scheduleTokenRefresh = useCallback(() => {
@@ -70,12 +75,28 @@ export function AuthProvider({ children }) {
                     include_granted_scopes: true,
                     callback: async (response) => {
                         if (response.error) {
-                            toast.error('Authentication failed. Please try again.');
+                            if (silentAttempt.current) {
+                                // Silent re-auth failed (revoked/expired grant) — require a manual sign-in
+                                silentAttempt.current = false;
+                                localStorage.removeItem(SIGNED_IN_KEY);
+                            } else {
+                                toast.error('Authentication failed. Please try again.');
+                            }
+                            setLoading(false);
                             return;
                         }
+                        
+                        const wasSilent = silentAttempt.current;
+                        silentAttempt.current = false;
+                        localStorage.setItem(SIGNED_IN_KEY, '1');
 
                         setToken(response.access_token);
                         scheduleTokenRefresh(); // start the refresh countdown
+                        // Replay any writes queued while offline / signed out
+                        import('../lib/syncQueue').then(({ initSyncQueue, flush }) => {
+                            initSyncQueue();
+                            flush();
+                        });
 
                         try {
                             const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -114,7 +135,8 @@ export function AuthProvider({ children }) {
                                 } catch {
                                     setUserGender('needs_selection');
                                 }
-                                toast.success('Synced with your LifeTracker!');
+                                // Skip the toast on silent launches — only show it for explicit sign-ins
+                                if (!wasSilent) toast.success('Synced with your LifeTracker!');
                             } else {
                                 toast('Setting up your LifeTracker for the first time...', { icon: '🏗️' });
                                 const newId = await scaffoldSheet(profile.name);
@@ -126,11 +148,24 @@ export function AuthProvider({ children }) {
                         } catch (err) {
                             console.error('Login flow error:', err);
                             toast.error('Failed to initialize your data. Please try again.');
+                        } finally {
+                            setLoading(false);
                         }
                     },
                 });
 
                 console.info("Token client initialized successfully.");
+                // Silent re-auth on launch for returning users — restores the session
+                // without a tap (important for the installed PWA experience).
+                if (localStorage.getItem(SIGNED_IN_KEY) === '1') {
+                    silentAttempt.current = true;
+                    tokenClient.current.requestAccessToken({ prompt: '' });
+                    // Safety net: if the silent attempt never calls back (e.g. popup
+                    // blocked), stop blocking the UI after 8 seconds.
+                    setTimeout(() => setLoading(false), 8000);
+                } else {
+                    setLoading(false);
+                }
             } catch (error) {
                 console.error('GAPI/GIS full initialization error:', error);
                 setGapiError(true);
@@ -161,6 +196,7 @@ export function AuthProvider({ children }) {
 
     const signOut = () => {
         if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current);
+        localStorage.removeItem(SIGNED_IN_KEY);
         if (token) {
             window.google.accounts.oauth2.revoke(token, () => {
                 setUser(null);

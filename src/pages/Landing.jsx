@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link, Navigate } from 'react-router-dom';
-import { Calendar, CheckSquare, BarChart3, Shield, Database, Layout } from 'lucide-react';
+import { CheckSquare, BarChart3, Shield, Database, Layout } from 'lucide-react';
 
 function Landing() {
     const { user, signIn } = useAuth();
@@ -115,14 +115,14 @@ function Landing() {
                             <Database className="text-emerald-400 mb-6" size={32} />
                             <h4 className="text-xl font-bold mb-4">No Database</h4>
                             <p className="text-[#f0f7f0]/50 text-sm leading-relaxed">
-                                We don't store your personal logs. Everything lives in a Google Sheet that you own and control completely.
+                                We don&apos;t store your personal logs. Everything lives in a Google Sheet that you own and control completely.
                             </p>
                         </div>
                         <div className="bg-[#1a3828] p-8 rounded-3xl border border-white/5">
                             <Shield className="text-emerald-400 mb-6" size={32} />
                             <h4 className="text-xl font-bold mb-4">OAuth Secure</h4>
                             <p className="text-[#f0f7f0]/50 text-sm leading-relaxed">
-                                Using Google's secure authentication, we only request permission to manage the "LifeTracker Data" file we create.
+                                Using Google&apos;s secure authentication, we only request permission to manage the &quot;LifeTracker Data&quot; file we create.
                             </p>
                         </div>
                     </div>

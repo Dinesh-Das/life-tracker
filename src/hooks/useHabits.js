@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { readRange, batchWrite, colIndexToLabel } from '../lib/sheetsApi';
+import { resilientBatchWrite } from '../lib/syncQueue';
 import { DEFAULT_HABITS } from '../lib/constants';
-import { getDaysInMonth, subDays, format } from 'date-fns';
+import { getDaysInMonth, format } from 'date-fns';
+import { applyDailyToggle } from '../lib/streakLogic';
+import { recomputeStreaksForHabit } from '../lib/streakRecompute';
 import toast from 'react-hot-toast';
 
 export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex) {
@@ -108,50 +111,42 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
         loadMonthData();
     }, [loadMonthData]);
 
-    const updateStreakPersistence = async (habitId, day, isChecked) => {
+const updateStreakPersistence = async (habitId, habitIdx, day, isChecked) => {
         try {
             const date = new Date(currentYear, currentMonthIndex, day);
             const dateStr = format(date, 'yyyy-MM-dd');
-            const yesterdayStr = format(subDays(date, 1), 'yyyy-MM-dd');
+            const todayStr = format(new Date(), 'yyyy-MM-dd');
 
-            // 1. Read existing streaks
+            if (dateStr !== todayStr) {
+                // Backfilled (past-day) entry: recompute streaks from the full
+                // history so past entries retroactively repair current/best.
+                await recomputeStreaksForHabit(spreadsheetId, habitId, habitIdx);
+                return;
+            }
+
+            // Fast incremental path for today's toggle
             const streakRows = await readRange(spreadsheetId, 'Streaks!A2:E50');
             let rowIndex = streakRows.findIndex(r => r[0] === habitId);
             
-            let current = 0, best = 0, lastDone = '', total = 0;
+            let stats = { current: 0, best: 0, lastDone: '', total: 0 };
 
             if (rowIndex !== -1) {
                 const row = streakRows[rowIndex];
-                current = parseInt(row[1]) || 0;
-                best = parseInt(row[2]) || 0;
-                lastDone = row[3] || '';
-                total = parseInt(row[4]) || 0;
+                stats = {
+                    current: parseInt(row[1]) || 0,
+                    best: parseInt(row[2]) || 0,
+                    lastDone: row[3] || '',
+                    total: parseInt(row[4]) || 0,
+                };
             } else {
                 rowIndex = streakRows.length;
             }
 
-            // 2. Update logic
-            if (isChecked) {
-                total++;
-                if (lastDone === yesterdayStr) {
-                    current++;
-                } else if (lastDone !== dateStr) {
-                    current = 1;
-                }
-                if (current > best) best = current;
-                lastDone = dateStr;
-            } else {
-                if (lastDone === dateStr) {
-                    total = Math.max(0, total - 1);
-                    current = Math.max(0, current - 1);
-                    lastDone = yesterdayStr; // Approximation
-                }
-            }
+const next = applyDailyToggle(stats, dateStr, isChecked);
 
-            // 3. Save back
             await batchWrite(spreadsheetId, [{
                 range: `Streaks!A${rowIndex + 2}:E${rowIndex + 2}`,
-                values: [[habitId, current, best, lastDone, total]]
+                values: [[habitId, next.current, next.best, next.lastDone, next.total]]
             }]);
         } catch (e) {
             console.error('Streak sync failed', e);
@@ -183,11 +178,12 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             const tabName = `${currentMonth} ${currentYear}`;
 
             await Promise.all([
-                batchWrite(spreadsheetId, [{
+                // Offline-resilient: queued and replayed if the network drops
+                resilientBatchWrite(spreadsheetId, [{
                     range: `'${tabName}'!${colLetter}${sheetRow}`,
                     values: [[writeVal]]
                 }]),
-                updateStreakPersistence(habitId, day, newVal)
+                updateStreakPersistence(habitId, habitIdx, day, newVal)
             ]);
         } catch (error) {
             toast.error('Failed to save checkmark');
@@ -208,7 +204,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             const colLetter = colIndexToLabel(day);
             const tabName = `${currentMonth} ${currentYear}`;
             // Assuming Mental State is around row 22 based on scaffold
-            await batchWrite(spreadsheetId, [{
+            await resilientBatchWrite(spreadsheetId, [{
                 range: `'${tabName}'!${colLetter}22`,
                 values: [[value || '']]
             }]);

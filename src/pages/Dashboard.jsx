@@ -44,7 +44,7 @@ function Dashboard() {
         return (
             <div className="flex-1 flex flex-col">
                 <Header title="Analytics" subtitle={`Your ${currentYear} in review`} />
-                <div style={{ padding: '24px 40px', width: '100%' }}>
+                <div className="w-full px-4 py-6 sm:px-10">
                     <LoadingSkeleton type="page" />
                 </div>
             </div>
@@ -55,7 +55,7 @@ function Dashboard() {
         <>
             <Header title="Analytics" subtitle={`Your ${currentYear} in review`} />
 
-            <div style={{ padding: '8px 40px 40px', width: '100%' }}>
+            <div className="w-full px-4 pt-2 pb-10 sm:px-10">
 
                 {/* AI Insights Section */}
                 <div style={{ marginBottom: '24px' }}>

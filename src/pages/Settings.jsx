@@ -69,7 +69,7 @@ function Settings() {
         return (
             <div className="flex-1 flex flex-col">
                 <Header title="Settings" />
-                <div style={{ padding: '24px 40px' }}>
+                <div className="px-4 py-6 sm:px-10">
                     <LoadingSkeleton type="page" />
                 </div>
             </div>
@@ -80,7 +80,7 @@ function Settings() {
         <>
             <Header title="Settings" saving={saving} />
 
-            <div style={{ padding: '8px 40px 80px', width: '100%' }}>
+            <div className="w-full px-4 pt-2 pb-20 sm:px-10">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
                     {/* Profile Section */}

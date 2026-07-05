@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Calendar, LayoutDashboard, CheckSquare, Settings, PenLine, Flower2 } from 'lucide-react'
+import { Calendar, LayoutDashboard, CheckSquare, Settings, PenLine, Flower2, TrendingUp } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAppContext } from '../../context/AppContext'
 
@@ -8,14 +8,15 @@ const MobileNav = () => {
     const { hideFemaleData } = useAppContext();
 
     const navItems = [
-        { to: '/hub',     icon: LayoutDashboard, label: 'Hub' },
-        { to: '/daily',   icon: CheckSquare,     label: 'Check-in' },
-        { to: '/planner', icon: Calendar,         label: 'Planner' },
-        { to: '/journal', icon: PenLine,          label: 'Journal' },
-        { to: '/settings',icon: Settings,         label: 'Settings' },
+        { to: '/hub',       icon: LayoutDashboard, label: 'Hub' },
+        { to: '/daily',     icon: CheckSquare,     label: 'Daily' },
+        { to: '/planner',   icon: Calendar,        label: 'Plan' },
+        { to: '/dashboard', icon: TrendingUp,      label: 'Stats' },
+        { to: '/journal',   icon: PenLine,         label: 'Journal' },
         ...(userGender === 'female' && !hideFemaleData
             ? [{ to: '/female', icon: Flower2, label: 'Cycle' }]
             : []),
+        { to: '/settings',  icon: Settings,        label: 'Settings' },
     ];
 
     return (

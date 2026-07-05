@@ -11,6 +11,7 @@ import {
     ArrowRight
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import WeeklyReviewCard from '../components/ui/WeeklyReviewCard';
 
 const QUOTES = [
     { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
@@ -52,13 +53,14 @@ function ZenHub() {
             variants={container}
             initial="hidden"
             animate="show"
-            style={{ padding: '36px 40px', width: '100%' }}
+            className="px-4 py-6 sm:px-10 sm:py-9"
+            style={{ width: '100%' }}
         >
             {/* Page title */}
             <motion.div variants={item} style={{ marginBottom: '32px' }}>
                 <h1 style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: '46px',
+                    fontSize: 'clamp(30px, 6vw, 46px)',
                     fontWeight: 600,
                     color: 'var(--text-heading)',
                     letterSpacing: '-0.02em',
@@ -99,6 +101,11 @@ function ZenHub() {
                 }}>
                     — {quote.author}
                 </p>
+            </motion.div>
+
+            {/* Weekly review — last 7 days at a glance */}
+            <motion.div variants={item}>
+                <WeeklyReviewCard />
             </motion.div>
 
             {/* Quick action cards */}

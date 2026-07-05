@@ -1,10 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { readRange, batchWrite, appendRows } from '../lib/sheetsApi';
+import { readRange } from '../lib/sheetsApi';
+import { resilientBatchWrite, resilientAppendRows } from '../lib/syncQueue';
 import { ensureDailyWinsSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
-export function useWins(spreadsheetId) {
+/**
+ * Daily Wins for a given date (defaults to today).
+ * Pass a 'yyyy-MM-dd' string as dateStr to read/write a past day (backfill).
+ * Writes are offline-resilient — queued and replayed if the network drops.
+ */
+export function useWins(spreadsheetId, dateStr) {
     const [wins, setWins] = useState({
         Physical: '',
         Mental: '',
@@ -18,7 +24,7 @@ export function useWins(spreadsheetId) {
     const batchTimer = useRef(null);
     const currentRowIndex = useRef(null);
 
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const targetDateStr = dateStr || format(new Date(), 'yyyy-MM-dd');
 
     // silent=true → refresh row index in background without triggering the loading state
     const loadDailyWins = useCallback(async (silent = false) => {
@@ -28,7 +34,7 @@ export function useWins(spreadsheetId) {
             await ensureDailyWinsSheet(spreadsheetId);
             const rows = await readRange(spreadsheetId, 'DailyWins!A2:F500');
 
-            const rowIndex = rows.findIndex(row => row[0] === todayStr);
+            const rowIndex = rows.findIndex(row => row[0] === targetDateStr);
 
             if (rowIndex !== -1) {
                 const row = rows[rowIndex];
@@ -60,7 +66,7 @@ export function useWins(spreadsheetId) {
         } finally {
             if (!silent) setLoading(false);
         }
-    }, [spreadsheetId, todayStr]);
+    }, [spreadsheetId, targetDateStr]);
 
     useEffect(() => {
         loadDailyWins();
@@ -82,15 +88,15 @@ export function useWins(spreadsheetId) {
 
                 if (currentRowIndex.current) {
                     // Update existing row
-                    await batchWrite(spreadsheetId, [{
+                    await resilientBatchWrite(spreadsheetId, [{
                         range: `DailyWins!${colLetter}${currentRowIndex.current}`,
                         values: [[text]]
                     }]);
                 } else {
-                    // Create new row for today
-                    const newRow = [todayStr, '', '', '', '', ''];
+                    // Create new row for the target date
+                    const newRow = [targetDateStr, '', '', '', '', ''];
                     newRow[colIndex + 1] = text;
-                    await appendRows(spreadsheetId, 'DailyWins!A:F', [newRow]);
+                    await resilientAppendRows(spreadsheetId, 'DailyWins!A:F', [newRow]);
                     // Silent reload — only refresh the row index, don't show loading state
                     // so the user's textarea doesn't unmount/remount
                     await loadDailyWins(true);
@@ -102,7 +108,7 @@ export function useWins(spreadsheetId) {
                 setSaving(false);
             }
         }, 1000); // 1s debounce
-    }, [spreadsheetId, todayStr, loadDailyWins]);
+    }, [spreadsheetId, targetDateStr, loadDailyWins]);
 
     return { wins, loading, saving, saveWin };
 }
