@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import Header from '../components/layout/Header'
 import YearlyLineChart from '../components/charts/YearlyLineChart'
 import LoadingSkeleton from '../components/ui/LoadingSkeleton'
@@ -9,20 +10,29 @@ import { useDashboard } from '../hooks/useDashboard'
 import { useYearlyHistory } from '../hooks/useYearlyHistory'
 import { useAuth } from '../context/AuthContext'
 import { useAppContext } from '../context/AppContext'
-import { Trophy, Flame, Zap, HeartPulse, ActivitySquare, CalendarHeart, Sparkles } from 'lucide-react'
+import { Trophy, Flame, Zap, HeartPulse, ActivitySquare, CalendarHeart, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
 import { CheckCircle2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 import { useCycleContext } from '../context/CycleContext'
 import SmartInsights from '../components/charts/SmartInsights'
+import WinBalanceChart from '../components/charts/WinBalanceChart'
+import SleepTrendChart from '../components/charts/SleepTrendChart'
+import { useReflectionInsights } from '../hooks/useReflectionInsights'
+import { useSleepHistory } from '../hooks/useSleepHistory'
+import { sleepHabitInsights } from '../lib/sleepCorrelations'
 
 function Dashboard() {
     const { spreadsheetId, userGender } = useAuth();
-    const { currentYear, hideFemaleData } = useAppContext();
+    const { currentYear, setYear, hideFemaleData } = useAppContext();
     const { stats, yearlyTrend, habits, streaks, loading: dashLoading } = useDashboard(spreadsheetId, currentYear);
     const { heatmapData, loading: heatLoading } = useYearlyHistory(spreadsheetId, currentYear);
+    const { balance, insights: reflectionInsights, loading: refLoading } = useReflectionInsights(spreadsheetId);
+    const { sleepRows } = useSleepHistory(spreadsheetId);
     const cycleData = useCycleContext();
 
+    const sleepInsights = useMemo(() => sleepHabitInsights(sleepRows, heatmapData), [sleepRows, heatmapData]);
+    const isLatestYear = currentYear >= new Date().getFullYear();
     const loading = dashLoading || heatLoading;
 
 
@@ -56,6 +66,30 @@ function Dashboard() {
             <Header title="Analytics" subtitle={`Your ${currentYear} in review`} />
 
             <div className="w-full px-4 pt-2 pb-10 sm:px-10">
+
+                    {/* Year Switcher — browse previous years */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
+                    <button
+                        onClick={() => setYear(currentYear - 1)}
+                        aria-label="Previous year"
+                        className="glass-button"
+                        style={{ borderRadius: '9999px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-heading)', border: '1px solid rgba(255,255,255,0.3)' }}
+                    >
+                        <ChevronLeft size={14} />
+                    </button>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'var(--text-heading)', minWidth: '4ch', textAlign: 'center' }}>
+                        {currentYear}
+                    </span>
+                    <button
+                        onClick={() => setYear(currentYear + 1)}
+                        disabled={isLatestYear}
+                        aria-label="Next year"
+                        className="glass-button"
+                        style={{ borderRadius: '9999px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isLatestYear ? 'not-allowed' : 'pointer', opacity: isLatestYear ? 0.35 : 1, color: 'var(--text-heading)', border: '1px solid rgba(255,255,255,0.3)' }}
+                    >
+                        <ChevronRight size={14} />
+                    </button>
+                </div>
 
                 {/* AI Insights Section */}
                 <div style={{ marginBottom: '24px' }}>
@@ -103,10 +137,16 @@ function Dashboard() {
                     </div>
                 )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
                     <YearlyRing months={yearlyTrend} year={currentYear} />
                     <CategoryPie data={habits} />
                     <StreakBarChart habits={habits} streaks={streaks} />
+                </div>
+
+                {/* Wins/Reflections insights + Sleep trend */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                    <WinBalanceChart balance={balance} insights={reflectionInsights} loading={refLoading} />
+                    <SleepTrendChart rows={sleepRows} insights={sleepInsights} />
                 </div>
 
                 {/* Yearly Chart */}

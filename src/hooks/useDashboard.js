@@ -113,9 +113,18 @@ export function useDashboard(spreadsheetId, year) {
             // Finalize habits list with percentages
             habitList.forEach(h => {
                 h.pct = h.total > 0 ? Math.round((h.done / h.total) * 100) : 0;
-                // Try to infer category from name if it matches defaults
-                const def = DEFAULT_HABITS.find(dh => h.name.includes(dh.name));
-                if (def) h.category = def.category;
+                // Prefer real category and id from Settings, matched by name
+                const settingsHabit = loadedHabits.find(lh =>
+                    lh.name === h.name || h.name.includes(lh.name) || lh.name.includes(h.name)
+                );
+                if (settingsHabit) {
+                    h.id = settingsHabit.id;
+                    h.category = settingsHabit.category;
+                    h.emoji = settingsHabit.emoji;
+                } else {
+                    const def = DEFAULT_HABITS.find(dh => h.name.includes(dh.name));
+                    if (def) h.category = def.category;
+                }
             });
             setHabits(habitList);
 

@@ -64,6 +64,21 @@ export function AppProvider({ children }) {
         }
     };
 
+    // Multi-year support: jump to any year. Returning to the real current
+    // year resumes live-following of today.
+    const setYear = (year) => {
+        const today = new Date();
+        if (year === today.getFullYear()) {
+            setCurrentDate(today);
+            setIsFollowingToday(true);
+        } else {
+            const d = new Date(currentDate);
+            d.setDate(1);
+            d.setFullYear(year);
+            setCurrentDate(d);
+            setIsFollowingToday(false);
+        }
+    };
     const nextMonth = () => {
         const next = new Date(currentDate);
         next.setDate(1);
@@ -104,6 +119,7 @@ export function AppProvider({ children }) {
             view,
             setView,
             setMonth,
+            setYear,
             nextMonth,
             prevMonth,
             hideFemaleData,

@@ -77,7 +77,10 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
                 const row = monthRows?.[hIdx] || [];
                 for (let d = 0; d < daysInMonth; d++) {
                     const val = row[d];
-                    checksMap[habit.id][d + 1] = val === true || val === 'TRUE' || val === '✓';
+                    // 'S' marks a skipped (streak-frozen) day
+                    checksMap[habit.id][d + 1] = (val === 'S' || val === 's')
+                        ? 'skip'
+                        : (val === true || val === 'TRUE' || val === '✓');
                 }
             });
             setChecks(checksMap);

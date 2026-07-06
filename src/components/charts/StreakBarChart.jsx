@@ -2,12 +2,16 @@ import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const StreakBarChart = ({ habits = [], streaks = {} }) => {
-    const data = habits.map(h => ({
-        name: h.name,
-        streak: streaks[h.name]?.current || 0,
-        best: streaks[h.name]?.best || 0,
-        emoji: h.emoji
-    })).sort((a, b) => b.streak - a.streak);
+const data = habits.map(h => {
+        // Streaks are keyed by habit ID in the Streaks sheet; fall back to name
+        const s = streaks[h.id] || streaks[h.name] || {};
+        return {
+            name: h.name,
+            streak: s.current || 0,
+            best: s.best || 0,
+            emoji: h.emoji
+        };
+    }).sort((a, b) => b.streak - a.streak);
 
     return (
         <div className="glass-card" style={{ height: '350px', padding: '24px 28px' }}>

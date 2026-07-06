@@ -88,4 +88,46 @@ export function weekdayCompletion(habits, checks, upToDay, year, monthIndex) {
 
     const sorted = [...rates].sort((a, b) => b.pct - a.pct);
     return { best: sorted[0], worst: sorted[sorted.length - 1] };
+    }
+
+/**
+ * Next-day causality: average mood the day AFTER completing a habit vs
+ * the day after missing it. Highlights habits whose effect carries over
+ * into the next day (e.g. evening workouts → better mornings).
+ */
+export function habitNextDayMoodCorrelations(habits, checks, mentalState, daysInMonth, minSamples = 3) {
+    const results = [];
+
+    for (const habit of habits) {
+        let doneSum = 0, doneN = 0, missSum = 0, missN = 0;
+
+        for (let d = 1; d < daysInMonth; d++) {
+            const nextMood = mentalState[d + 1];
+            if (nextMood === undefined || nextMood === null) continue;
+            if (checks[habit.id]?.[d] === true) {
+                doneSum += nextMood;
+                doneN++;
+            } else {
+                missSum += nextMood;
+                missN++;
+            }
+        }
+
+        if (doneN >= minSamples && missN >= minSamples) {
+            const doneAvg = doneSum / doneN;
+            const missAvg = missSum / missN;
+            results.push({
+                habitId: habit.id,
+                habitName: habit.name,
+                emoji: habit.emoji,
+                doneAvg: Math.round(doneAvg * 10) / 10,
+                missAvg: Math.round(missAvg * 10) / 10,
+                delta: Math.round((doneAvg - missAvg) * 10) / 10,
+                samples: doneN + missN,
+            });
+        }
+    }
+
+    return results.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
 }

@@ -2,6 +2,7 @@ import { format, subDays, addDays, isSameDay } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useJournal } from '../hooks/useJournal';
+import { promptsForDate } from '../lib/reflectionPrompts';
 import Header from '../components/layout/Header';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import { Sun, Moon, Target, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
@@ -34,6 +35,7 @@ function Journal() {
     }, [saveJournal]);
 
     const isToday = isSameDay(selectedDate, new Date());
+    const prompts = promptsForDate(selectedDate);
 
     if (loading) {
         return (
@@ -99,7 +101,7 @@ function Journal() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <JournalSection
                         title="Primary Focus"
-                        subtitle="What is the one thing you want to accomplish today?"
+                        subtitle={prompts.focus}
                         icon={Target}
                         iconColor="#a090f8"
                         value={localJournal.focus}
@@ -108,7 +110,7 @@ function Journal() {
                     />
                     <JournalSection
                         title="Morning Gratitude"
-                        subtitle="What are three things you are grateful for right now?"
+                        subtitle={prompts.gratitude}
                         icon={Sun}
                         iconColor="#f0c060"
                         value={localJournal.gratitude}
@@ -118,7 +120,7 @@ function Journal() {
                     />
                     <JournalSection
                         title="Evening Review"
-                        subtitle="What went well today? What did you learn?"
+                        subtitle={prompts.review}
                         icon={Moon}
                         iconColor="#f090a8"
                         value={localJournal.review}

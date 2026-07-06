@@ -79,6 +79,23 @@
 }
 
 /* ═══════════════════════════════════════════════════
+   Dark theme — toggled via data-theme on <html>
+   ═══════════════════════════════════════════════════ */
+[data-theme="dark"] {
+  --main-bg: linear-gradient(135deg, #101c15 0%, #0c1811 45%, #14261b 100%);
+  --main-overlay-1: radial-gradient(ellipse 55% 45% at 75% 15%, rgba(45,79,65,0.35) 0%, transparent 65%);
+  --main-overlay-2: radial-gradient(ellipse 40% 55% at 15% 85%, rgba(0,0,0,0.35) 0%, transparent 55%);
+
+  --glass-bg:     linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
+  --glass-border: 1px solid rgba(255,255,255,0.12);
+  --glass-shadow: 0 4px 24px rgba(0,0,0,0.35);
+
+  --text-heading:  #e2efe6;
+  --text-body:     #c3d6ca;
+  --text-muted:    #93ab9c;
+}
+
+/* ═══════════════════════════════════════════════════
    Base Styles
    ═══════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; }

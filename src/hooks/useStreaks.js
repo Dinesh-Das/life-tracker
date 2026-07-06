@@ -3,6 +3,11 @@ import { useMemo } from 'react';
 
 /**
  * Hook to calculate streaks from habit checks.
+ * Check values may be:
+ *   true   — habit completed that day
+ *   'skip' — day was frozen with a skip token (bridges the streak,
+ *            but does not increment it)
+ *   falsy  — not completed
  */
 export function useStreaks(habits, checks) {
     const habitStreaks = useMemo(() => {
@@ -15,30 +20,26 @@ export function useStreaks(habits, checks) {
             let best = 0;
             let tempStreak = 0;
 
-            // 1. Calculate Best Streak in current month
+            // 1. Calculate Best Streak in current month.
+            // Skip days keep the run alive without adding to it.
             for (let d = 1; d <= 31; d++) {
-                if (habitChecks[d]) {
+                if (habitChecks[d] === true) { 
                     tempStreak++;
                     if (tempStreak > best) best = tempStreak;
+                } else if (habitChecks[d] === 'skip') {
+                    // bridge — keep tempStreak as-is
                 } else {
                     tempStreak = 0;
                 }
             }
 
             // 2. Calculate Current Streak (counting backwards from today)
-            // If today is checked, start from today. If not, check if yesterday was.
+            const active = (d) => habitChecks[d] === true || habitChecks[d] === 'skip';
             let d = todayDay;
-            if (habitChecks[d]) {
-                while (d > 0 && habitChecks[d]) {
-                    current++;
-                    d--;
-                }
-            } else if (habitChecks[d - 1]) {
-                d = todayDay - 1;
-                while (d > 0 && habitChecks[d]) {
-                    current++;
-                    d--;
-                }
+             if (!active(d)) d = todayDay - 1; // today not logged yet — try yesterday
+            while (d > 0 && active(d)) {
+                if (habitChecks[d] === true) current++;
+                d--;
             }
 
             streaks[habit.id] = { current, best };

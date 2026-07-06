@@ -19,6 +19,7 @@ const Settings = lazy(() => import('./pages/Settings'))
 const FemaleTracker = lazy(() => import('./pages/FemaleTracker'))
 const Journal = lazy(() => import('./pages/Journal'))
 const Focus = lazy(() => import('./pages/Focus'))
+const Wrapped = lazy(() => import('./pages/Wrapped'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const TermsOfService = lazy(() => import('./pages/TermsOfService'))
 
@@ -39,7 +40,7 @@ const AuthenticatedLayout = ({ children }) => {
             <main
                 className="app-main flex-1 min-w-0 pb-20 lg:pb-0 overflow-y-auto relative"
                 style={{
-                    background: 'linear-gradient(135deg, #c2d9cc 0%, #9bbfaf 35%, #b8d2c6 60%, #8da89b 100%)',
+                    background: 'var(--main-bg)',
                 }}
             >
                 {/* Radial overlay blobs */}
@@ -47,10 +48,7 @@ const AuthenticatedLayout = ({ children }) => {
                     aria-hidden="true"
                     style={{
                         position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none',
-                        background: `
-                            radial-gradient(ellipse 55% 45% at 75% 15%, rgba(180,220,200,0.5) 0%, transparent 65%),
-                            radial-gradient(ellipse 40% 55% at 15% 85%, rgba(45,79,65,0.25) 0%, transparent 55%)
-                        `,
+                        background: 'var(--main-overlay-1), var(--main-overlay-2)',
                     }}
                 />
                 <div className="relative z-10 flex flex-col min-h-full">
@@ -141,6 +139,7 @@ function AppRoutes() {
                     )
                     : <Navigate to="/login" />
             } />
+            <Route path="/wrapped" element={protect(<Wrapped />)} />
             <Route path="/settings" element={protect(<Settings />)} />
             {/* Public Legal Routes */}
             <Route path="/privacy" element={<Suspense fallback={<PageFallback />}><PrivacyPolicy /></Suspense>} />

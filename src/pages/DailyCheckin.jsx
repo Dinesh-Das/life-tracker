@@ -4,11 +4,23 @@ import { useAppContext } from '../context/AppContext'
 import { useHabits } from '../hooks/useHabits'
 import { format } from 'date-fns'
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { CheckCircle2, Circle, Brain, Trophy, Zap, Heart, DollarSign, Star, ChevronLeft, ChevronRight, CalendarClock, Info } from 'lucide-react'
+import { CheckCircle2, Circle, Brain, Trophy, Zap, Heart, DollarSign, Star, ChevronLeft, ChevronRight, CalendarClock, Info, Snowflake, Bell, BellOff } from 'lucide-react'
 import { useWins } from '../hooks/useWins';
 import { useStreaks } from '../hooks/useStreaks';
+import { useSkipDay } from '../hooks/useSkipDay';
+import { useSleep } from '../hooks/useSleep';
+import { useMetrics } from '../hooks/useMetrics';
+import { useReminders } from '../hooks/useReminders';
+import SleepLogger from '../components/ui/SleepLogger';
+import QuickMetrics from '../components/ui/QuickMetrics';
+import { weeklyCount, weeklyTarget } from '../lib/frequency';
+import { newMilestonesToCelebrate } from '../lib/celebrations';
+import { saveNote } from '../lib/habitNotes';
+import ChallengesCard from '../components/ui/ChallengesCard';
+import CorrelationInsights from '../components/charts/CorrelationInsights';
 import HabitDetailModal from '../components/ui/HabitDetailModal';
 import { WIN_SUGGESTIONS } from '../lib/winSuggestions';
+import toast from 'react-hot-toast';
 
 const EMPTY_WINS = { Physical: '', Mental: '', Social: '', Financial: '', Spiritual: '' };
 
@@ -53,6 +65,11 @@ function DailyCheckin() {
         saveWin
     } = useWins(spreadsheetId, selectedDateStr);
 
+    const { tokens: skipTokens, skipDay, repairYesterday } = useSkipDay(spreadsheetId, currentMonth, currentYear);
+    const sleep = useSleep(spreadsheetId, selectedDateStr);
+    const metrics = useMetrics(spreadsheetId, selectedDateStr);
+    const { remindersOn, toggleReminders } = useReminders();
+
     // Local buffer so typing in the textarea doesn't re-render via hook state on every keystroke.
     // Synced from `wins` when the selected day's wins load from the sheet.
     const [localWins, setLocalWins] = useState(EMPTY_WINS);
@@ -86,9 +103,36 @@ function DailyCheckin() {
 
     const { habitStreaks } = useStreaks(visibleHabits, checks);
     const [detailHabit, setDetailHabit] = useState(null);
+    const [localSkipped, setLocalSkipped] = useState({});
+    const [repaired, setRepaired] = useState({});
+
+    const dayIsSkipped = useMemo(() => (
+        !!localSkipped[activeDay] || visibleHabits.some(h => checks[h.id]?.[activeDay] === 'skip')
+    ), [localSkipped, visibleHabits, checks, activeDay]);
+
+    // Streak recovery: habits missed yesterday (single-day gap) that can be
+    // repaired by completing them today, marking yesterday as a skip.
+    const recoverable = useMemo(() => {
+        if (!isCurrentMonth || todayDay <= 2) return [];
+        return visibleHabits.filter(h =>
+            !repaired[h.id] &&
+            checks[h.id]?.[todayDay - 1] !== true &&
+            checks[h.id]?.[todayDay - 1] !== 'skip' &&
+            checks[h.id]?.[todayDay - 2] === true
+        );
+    }, [visibleHabits, checks, isCurrentMonth, todayDay, repaired]);
+
+    // Milestone celebrations — fires once per streak tier per habit (per device)
+    useEffect(() => {
+        if (loading) return;
+        const fresh = newMilestonesToCelebrate(visibleHabits, habitStreaks);
+        fresh.forEach((m, i) => {
+            setTimeout(() => toast.success(`${m.label} 🎉`, { icon: m.emoji, duration: 5000 }), i * 700);
+        });
+    }, [loading, visibleHabits, habitStreaks]);
 
     const doneCount = useMemo(() => {
-        return visibleHabits.filter(h => checks[h.id]?.[activeDay]).length;
+        return visibleHabits.filter(h => checks[h.id]?.[activeDay] === true).length;
     }, [visibleHabits, checks, activeDay]);
 
     const totalHabits = visibleHabits.length;
@@ -256,27 +300,132 @@ function DailyCheckin() {
                         </p>
                     </div>
                 </div>
+                
+                {/* Monthly Challenges */}
+                <ChallengesCard
+                    habits={visibleHabits}
+                    checks={checks}
+                    daysInMonth={daysInMonth}
+                    upToDay={isCurrentMonth ? todayDay : (isFutureMonth ? 0 : daysInMonth)}
+                    monthLabel={currentMonth}
+                />
 
                 {/* Habit Checklist */}
                 <div style={{ marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', gap: '10px', flexWrap: 'wrap' }}>
                         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--text-heading)' }}>
                             {isBackfilling ? `Habits — ${format(selectedDate, 'MMM d')}` : "Today's Habits"}
                         </h3>
-                        {pct === 100 && (
-                            <span style={{
-                                background: 'rgba(45,79,65,0.65)', color: '#a9cfbc',
-                                padding: '5px 14px', borderRadius: '9999px',
-                                fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
-                            }} className="animate-check-pop">
-                                All Done! 🎉
-                            </span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                                onClick={toggleReminders}
+                                title={remindersOn ? 'Evening reminder on (8pm)' : 'Enable evening reminder'}
+                                aria-label={remindersOn ? 'Disable evening reminder' : 'Enable evening reminder'}
+                                className="glass-button"
+                                style={{
+                                    width: '32px', height: '32px', borderRadius: '9999px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer', border: '1px solid rgba(255,255,255,0.3)',
+                                    color: remindersOn ? '#4a7a62' : 'var(--text-muted)',
+                                }}
+                            >
+                                {remindersOn ? <Bell size={14} /> : <BellOff size={14} />}
+                            </button>
+                            {dayIsSkipped ? (
+                                <span style={{
+                                    display: 'flex', alignItems: 'center', gap: '6px',
+                                    background: 'rgba(80,140,200,0.3)', color: '#3a6a9a',
+                                    padding: '5px 14px', borderRadius: '9999px',
+                                    fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
+                                    fontFamily: 'var(--font-body)',
+                                }}>
+                                    <Snowflake size={12} /> Day Frozen
+                                </span>
+                            ) : pct < 100 && (
+                                <button
+                                    onClick={async () => {
+                                        const ok = await skipDay(activeDay, habits, checks);
+                                        if (ok) {
+                                            setLocalSkipped(prev => ({ ...prev, [activeDay]: true }));
+                                            const reason = window.prompt('Optional: why are you skipping today? (feeds future insights)');
+                                            if (reason && reason.trim()) {
+                                                saveNote(spreadsheetId, '_skip', selectedDateStr, reason.trim()).catch(() => {});
+                                            }
+                                        }
+                                    }}
+                                    disabled={skipTokens <= 0}
+                                    title={skipTokens > 0 ? 'Freeze this day — streaks stay safe' : 'Earn a token with a 14-day streak'}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: '6px',
+                                        background: skipTokens > 0 ? 'rgba(80,140,200,0.45)' : 'rgba(120,120,120,0.25)',
+                                        color: skipTokens > 0 ? '#eaf4ff' : 'var(--text-muted)',
+                                        padding: '6px 14px', borderRadius: '9999px', border: 'none',
+                                        fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
+                                        fontFamily: 'var(--font-body)',
+                                        cursor: skipTokens > 0 ? 'pointer' : 'not-allowed',
+                                    }}
+                                >
+                                    <Snowflake size={12} /> Skip Day ({skipTokens})
+                                </button>
+                            )}
+                            {pct === 100 && (
+                                <span style={{
+                                    background: 'rgba(45,79,65,0.65)', color: '#a9cfbc',
+                                    padding: '5px 14px', borderRadius: '9999px',
+                                    fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
+                                }} className="animate-check-pop">
+                                    All Done! 🎉
+                                </span>
+                            )}
+                        </div>
                     </div>
+                    {/* Streak recovery — repair yesterday's single miss */}
+                    {!isBackfilling && recoverable.length > 0 && (
+                        <div className="glass-card animate-fade-up" style={{ padding: '14px 16px', marginBottom: '12px' }}>
+                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: 'var(--text-body)', marginBottom: '10px' }}>
+                                💪 Streak recovery available — complete the habit today, then repair yesterday:
+                            </p>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                {recoverable.map(h => {
+                                    const doneToday = checks[h.id]?.[todayDay] === true;
+                                    return (
+                                        <button
+                                            key={h.id}
+                                            disabled={!doneToday}
+                                            title={doneToday ? 'Repair yesterday' : 'Complete this habit today first'}
+                                            onClick={async () => {
+                                                const idx = habits.findIndex(x => x.id === h.id);
+                                                if (idx === -1) return;
+                                                const ok = await repairYesterday(idx, todayDay - 1);
+                                                if (ok) {
+                                                    setRepaired(prev => ({ ...prev, [h.id]: true }));
+                                                    const reason = window.prompt(`Optional: why was ${h.name} missed yesterday?`);
+                                                    if (reason && reason.trim()) {
+                                                        const missedDateStr = format(new Date(currentYear, currentMonthIndex, todayDay - 1), 'yyyy-MM-dd');
+                                                        saveNote(spreadsheetId, h.id, missedDateStr, reason.trim()).catch(() => {});
+                                                    }
+                                                }
+                                            }}
+                                            style={{
+                                                fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700,
+                                                padding: '6px 12px', borderRadius: '9999px', border: 'none',
+                                                background: doneToday ? 'rgba(45,79,65,0.7)' : 'rgba(120,120,120,0.25)',
+                                                color: doneToday ? '#a9cfbc' : 'var(--text-muted)',
+                                                cursor: doneToday ? 'pointer' : 'not-allowed',
+                                            }}
+                                        >
+                                            {h.emoji} Repair {h.name}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {visibleHabits.map((habit, idx) => {
-                            const done = checks[habit.id]?.[activeDay] || false;
+                            const done = checks[habit.id]?.[activeDay] === true;
+                            const skippedDay = checks[habit.id]?.[activeDay] === 'skip' || (!done && !!localSkipped[activeDay]);
                             return (
                                 <div
                                     key={habit.id}
@@ -310,7 +459,7 @@ function DailyCheckin() {
                                             color: done ? '#a9cfbc' : 'rgba(45,79,65,0.4)',
                                             transition: 'all 0.2s',
                                         }}>
-                                            {done ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                                        {done ? <CheckCircle2 size={16} /> : skippedDay ? <Snowflake size={16} /> : <Circle size={16} />}
                                         </div>
                                         
                                         {/* Emoji + Name */}
@@ -335,6 +484,18 @@ function DailyCheckin() {
                                         }}>
                                             {habit.category}
                                         </span>
+                                        
+                                        {/* Weekly frequency progress (non-daily habits) */}
+                                        {habit.frequency && habit.frequency !== 'Daily' && (
+                                            <span style={{
+                                                fontFamily: 'var(--font-body)',
+                                                fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                                                padding: '4px 10px', borderRadius: '9999px',
+                                                background: 'rgba(160,120,40,0.35)', color: '#7a5a20',
+                                            }}>
+                                                {weeklyCount(checks[habit.id], activeDay, currentYear, currentMonthIndex)}/{weeklyTarget(habit.frequency)} wk
+                                            </span>
+                                        )}
                                     </button>
 
                                     {/* Detail view trigger */}
@@ -384,6 +545,24 @@ function DailyCheckin() {
                             {mentalInput || '–'}
                         </span>
                     </div>
+                </div>
+                
+                {/* Mood ↔ Habit causality — same-day and next-day effects */}
+                <div style={{ marginBottom: '24px' }}>
+                    <CorrelationInsights
+                        habits={visibleHabits}
+                        checks={checks}
+                        mentalState={mentalState}
+                        daysInMonth={daysInMonth}
+                        year={currentYear}
+                        monthIndex={currentMonthIndex}
+                    />
+                </div>
+
+                {/* Sleep & Quick Metrics */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-up" style={{ marginBottom: '24px' }}>
+                    <SleepLogger sleep={sleep} />
+                    <QuickMetrics metrics={metrics} />
                 </div>
 
                 {/* Daily Wins */}

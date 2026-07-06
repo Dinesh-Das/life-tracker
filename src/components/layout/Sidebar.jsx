@@ -1,12 +1,15 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Calendar, CheckSquare, LayoutDashboard, Settings, Flower2, LogOut, PenLine, Timer, TrendingUp } from 'lucide-react'
+import { Calendar, CheckSquare, LayoutDashboard, Settings, Flower2, LogOut, PenLine, Timer, TrendingUp, Award, Moon, Sun } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAppContext } from '../../context/AppContext'
+import { initTheme, toggleTheme } from '../../lib/theme'
 import StreakBadge from '../ui/StreakBadge'
 
 function Sidebar() {
     const { signOut, user, userGender } = useAuth();
     const { hideFemaleData } = useAppContext();
+    const [theme, setTheme] = useState(initTheme);
 
     const navItems = [
         { to: '/hub',       icon: LayoutDashboard, label: 'Zen Hub' },
@@ -15,6 +18,7 @@ function Sidebar() {
         { to: '/journal',   icon: PenLine,          label: 'Reflections' },
         { to: '/focus',     icon: Timer,            label: 'Focus Mode' },
         { to: '/dashboard', icon: TrendingUp,       label: 'Analytics' },
+        { to: '/wrapped',   icon: Award,            label: 'Wrapped' },
         ...(userGender === 'female' && !hideFemaleData
             ? [{ to: '/female', icon: Flower2, label: 'Cycle Tracker' }]
             : []),
@@ -150,6 +154,15 @@ function Sidebar() {
                     <span style={{ fontSize: '13px', fontWeight: 500, color: '#9ab0a2', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {userName}
                     </span>
+                    <button
+                        onClick={() => setTheme(toggleTheme())}
+                        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ab0a2', display: 'flex', alignItems: 'center', padding: '4px' }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#d8e6db'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#9ab0a2'}
+                    >
+                        {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+                    </button>
                     <button
                         onClick={signOut}
                         title="Sign Out"

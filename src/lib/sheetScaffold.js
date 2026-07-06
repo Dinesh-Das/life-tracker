@@ -235,3 +235,42 @@ export async function ensureMonthTab(spreadsheetId, month, year) {
     }
 }
 
+export async function ensureSleepSheet(spreadsheetId) {
+    try {
+        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        const hasSleep = spreadsheet.sheets.some(s => s.properties.title === 'SleepLogs');
+
+        if (!hasSleep) {
+            console.info('SleepLogs sheet missing. Adding now...');
+            await addSheet(spreadsheetId, 'SleepLogs');
+            await batchWrite(spreadsheetId, [{
+                range: 'SleepLogs!A1:F1',
+                values: [['Date', 'Bedtime', 'Wake Time', 'Hours', 'Quality (1-5)', 'Nap (min)']]
+            }]);
+            console.info('SleepLogs sheet initialized.');
+        }
+    } catch (e) {
+        console.error('Failed to ensure SleepLogs sheet:', e);
+        throw e;
+    }
+}
+
+export async function ensureMetricsSheet(spreadsheetId) {
+    try {
+        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        const hasMetrics = spreadsheet.sheets.some(s => s.properties.title === 'MetricsLogs');
+
+        if (!hasMetrics) {
+            console.info('MetricsLogs sheet missing. Adding now...');
+            await addSheet(spreadsheetId, 'MetricsLogs');
+            await batchWrite(spreadsheetId, [{
+                range: 'MetricsLogs!A1:C1',
+                values: [['Date', 'Water (glasses)', 'Weight']]
+            }]);
+            console.info('MetricsLogs sheet initialized.');
+        }
+    } catch (e) {
+        console.error('Failed to ensure MetricsLogs sheet:', e);
+        throw e;
+    }
+}

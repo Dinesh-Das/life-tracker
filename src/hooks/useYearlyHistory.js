@@ -110,7 +110,9 @@ export function useYearlyHistory(spreadsheetId, year) {
                         else intensity = 5;
                     }
 
-                    return { date: dateStr, count: completed, intensity };
+                    const pct = total > 0 ? Math.round((completed / total) * 100) : null;
+
+                    return { date: dateStr, count: completed, intensity, pct };
                 });
 
                 if (isMounted) {
