@@ -26,8 +26,8 @@ function ChallengesCard({ habits, checks, daysInMonth, upToDay, monthLabel }) {
                                     <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 700, color: 'var(--text-heading)' }}>{ch.label}</span>
                                     <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: 'var(--text-muted)' }}>{ch.desc}</span>
                                 </div>
-                                <div style={{ height: '6px', borderRadius: '9999px', background: 'rgba(255,255,255,0.35)', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', width: `${pct}%`, borderRadius: '9999px', background: ch.achieved ? '#f0c060' : '#4a7a62', transition: 'width 0.4s ease' }} />
+                                <div style={{ height: '6px', borderRadius: '9999px', background: 'var(--ring-track)', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${pct}%`, borderRadius: '9999px', background: ch.achieved ? 'var(--gold)' : 'var(--accent-ink)', transition: 'width 0.4s ease' }} />
                                 </div>
                             </div>
                             {ch.achieved ? (

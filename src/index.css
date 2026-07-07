@@ -80,6 +80,28 @@
   --accent-strong:     #059669;
   --heat-rgb:          45,79,65;   /* heatmap cell base color (rgb triplet) */
 
+  /* Semantic accents — flip with the theme */
+  --accent-ink:      #4a7a62;             /* icon / value green on canvas */
+  --accent-soft:     rgba(74,122,98,0.35);
+  --positive:        #2d6a4a;
+  --positive-bg:     rgba(45,122,82,0.10);
+  --negative:        #b05d5d;
+  --warning-ink:     #7a4a20;
+  --warning-bg:      rgba(160,96,48,0.22);
+  --warning-border:  rgba(160,96,48,0.40);
+  --info-ink:        #3a6a9a;
+  --info-bg:         rgba(80,140,200,0.45);
+  --info-bg-soft:    rgba(80,140,200,0.30);
+  --gold:            #f0c060;             /* works on both themes */
+
+  /* Structure */
+  --divider:         rgba(45,79,65,0.12);
+  --surface-inner:   rgba(255,255,255,0.35);
+  --surface-inner-strong: rgba(255,255,255,0.50);
+  --control-border:  rgba(255,255,255,0.30);
+  --disabled-bg:     rgba(120,120,120,0.25);
+  --disabled-ink:    rgba(61,90,74,0.35);
+
   /* Legacy aliases — keep backward compat */
   --green:         #2d4f41;
   --green-light:   #a9cfbc;
@@ -110,6 +132,27 @@
   --ring-track:        rgba(255,255,255,0.10);
   --accent-strong:     #6ee7b7;
   --heat-rgb:          169,207,188;
+  
+   /* Semantic accents — dark values */
+  --accent-ink:      #7db89a;
+  --accent-soft:     rgba(169,207,188,0.35);
+  --positive:        #7dc9a4;
+  --positive-bg:     rgba(125,201,164,0.12);
+  --negative:        #e8927c;
+  --warning-ink:     #e0a870;
+  --warning-bg:      rgba(160,96,48,0.28);
+  --warning-border:  rgba(224,168,112,0.35);
+  --info-ink:        #90c8e8;
+  --info-bg:         rgba(80,140,200,0.35);
+  --info-bg-soft:    rgba(80,140,200,0.25);
+
+  /* Structure — dark values */
+  --divider:         rgba(255,255,255,0.10);
+  --surface-inner:   rgba(255,255,255,0.06);
+  --surface-inner-strong: rgba(255,255,255,0.10);
+  --control-border:  rgba(255,255,255,0.12);
+  --disabled-bg:     rgba(255,255,255,0.08);
+  --disabled-ink:    rgba(147,171,156,0.45);
 }
 
 /* ═══════════════════════════════════════════════════

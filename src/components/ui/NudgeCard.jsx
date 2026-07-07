@@ -47,7 +47,7 @@ function NudgeCard({ habits, checks, mentalState, daysInMonth, year, monthIndex 
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px',
                             padding: '10px 14px', borderRadius: 'var(--radius-md)',
-                            background: 'rgba(255,255,255,0.35)',
+                            background: 'var(--surface-inner)',
                         }}
                     >
                         <span style={{ fontSize: '18px', flexShrink: 0 }} aria-hidden="true">{n.emoji}</span>
@@ -59,7 +59,7 @@ function NudgeCard({ habits, checks, mentalState, daysInMonth, year, monthIndex 
                             aria-label="Dismiss nudge for this week"
                             title="Dismiss for this week"
                             style={{
-                                border: 'none', background: 'rgba(45,79,65,0.12)', borderRadius: '9999px',
+                                border: 'none', background: 'var(--divider)', borderRadius: '9999px',
                                 width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0,
                             }}

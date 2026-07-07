@@ -1,114 +1,164 @@
 import { cacheGet, cacheSet } from './localCache';
 
 const SHEETS = () => window.gapi.client.sheets.spreadsheets;
-const cache = new Map();
-const CACHE_TTL = 2000; // 2 seconds
 
 /**
- * Read a range from a Google Sheet.
- * Successful reads are persisted to IndexedDB; when the network fails
- * (offline / transient error) the last known data is served instead.
- * @param {string} spreadsheetId 
- * @param {string} range 
+ * Read-through cache for Sheets API calls.
+ *
+ * - Memory cache (60s TTL) makes page-to-page navigation feel instant
+ *   instead of re-fetching every range on every mount.
+ * - In-flight promise sharing collapses concurrent identical reads
+ *   (several hooks on one page often request the same ranges) into a
+ *   single network call.
+ * - Every write explicitly invalidates the spreadsheet's cached reads,
+ *   so a long TTL never serves data the user just changed.
+ * - Successful reads are also persisted to IndexedDB and served as a
+ *   fallback when the network fails (offline support, unchanged keys).
+ *
+ * Memory keys are prefixed (r:/b:/m:) so a single-range batchGet can
+ * never collide with a readRange of the same range.
  */
-export async function readRange(spreadsheetId, range) {
-    const cacheKey = `${spreadsheetId}-${range}`;
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.time < CACHE_TTL) {
-        return cached.data;
-    }
+const cache = new Map();    // key -> { data, time }
+const inflight = new Map(); // key -> Promise
+const READ_TTL = 60_000;
 
-    try {
-        const res = await SHEETS().values.get({
-            spreadsheetId,
-            range,
-            valueRenderOption: 'UNFORMATTED_VALUE'
-        });
-        const data = res.result.values || [];
-        cache.set(cacheKey, { data, time: Date.now() });
-        cacheSet(`read:${cacheKey}`, data); // fire-and-forget offline copy
-        return data;
-    } catch (err) {
-        const fallback = await cacheGet(`read:${cacheKey}`);
-        if (fallback !== undefined) return fallback;
-        throw err;
+function fresh(key) {
+    const hit = cache.get(key);
+    return hit && Date.now() - hit.time < READ_TTL ? hit.data : undefined;
+}
+
+/** Drop all cached reads + metadata for one spreadsheet (called on writes). */
+function invalidateSpreadsheet(spreadsheetId) {
+    const marker = `:${spreadsheetId}:`;
+    const metaKey = `m:${spreadsheetId}`;
+    for (const key of [...cache.keys()]) {
+        if (key.includes(marker) || key === metaKey) cache.delete(key);
+    }
+    for (const key of [...inflight.keys()]) {
+        if (key.includes(marker) || key === metaKey) inflight.delete(key);
     }
 }
 
+/** Share one promise for concurrent identical requests. */
+function dedupe(key, fn) {
+    if (inflight.has(key)) return inflight.get(key);
+    const p = fn().finally(() => inflight.delete(key));
+    inflight.set(key, p);
+    return p;
+}
+
 /**
- * Write a single cell value.
- * @param {string} spreadsheetId 
- * @param {string} range 
- * @param {any} value 
+ * Read a range from a Google Sheet.
+ * Cached for 60s (invalidated on writes); falls back to the last known
+ * IndexedDB copy when the network fails.
+ * @param {string} spreadsheetId
+ * @param {string} range
  */
+export async function readRange(spreadsheetId, range) {
+    const key = `r:${spreadsheetId}:${range}`;
+    const offlineKey = `read:${spreadsheetId}-${range}`; // legacy key format — keep
+    const hit = fresh(key);
+    if (hit !== undefined) return hit;
+
+    return dedupe(key, async () => {
+        try {
+            const res = await SHEETS().values.get({
+                spreadsheetId,
+                range,
+                valueRenderOption: 'UNFORMATTED_VALUE'
+            });
+            const data = res.result.values || [];
+            cache.set(key, { data, time: Date.now() });
+            cacheSet(offlineKey, data); // fire-and-forget offline copy
+            return data;
+        } catch (err) {
+            const fallback = await cacheGet(offlineKey);
+            if (fallback !== undefined) return fallback;
+            throw err;
+        }
+    });
+}
+
+/**
+ * Batch read multiple ranges. Same caching/dedupe/offline behavior as readRange.
+ * @param {string} spreadsheetId
+ * @param {string[]} ranges
+ */
+export async function batchRead(spreadsheetId, ranges) {
+    const key = `b:${spreadsheetId}:${ranges.join(',')}`;
+    const offlineKey = `batch:${spreadsheetId}-${ranges.join(',')}`; // legacy key format — keep
+    const hit = fresh(key);
+    if (hit !== undefined) return hit;
+
+    return dedupe(key, async () => {
+        try {
+            const res = await SHEETS().values.batchGet({
+                spreadsheetId,
+                ranges,
+                valueRenderOption: 'UNFORMATTED_VALUE'
+            });
+            const data = res.result.valueRanges;
+            cache.set(key, { data, time: Date.now() });
+            cacheSet(offlineKey, data); // fire-and-forget offline copy
+            return data;
+        } catch (err) {
+            const fallback = await cacheGet(offlineKey);
+            if (fallback !== undefined) return fallback;
+            throw err;
+        }
+    });
+}
+
+/**
+ * Write a single cell value. Invalidates cached reads for the spreadsheet.
+ * @param {string} spreadsheetId
+ * @param {string} range
+ * @param {any} value
+    */
 export async function writeCell(spreadsheetId, range, value) {
-    return SHEETS().values.update({
+    const res = await SHEETS().values.update({
         spreadsheetId,
         range,
         valueInputOption: 'RAW',
         resource: { values: [[value]] },
     });
+    invalidateSpreadsheet(spreadsheetId);
+    return res;
 }
 
 /**
- * Batch write multiple ranges.
- * @param {string} spreadsheetId 
- * @param {Array<{range: string, values: Array<Array<any>>}>} data 
+ * Batch write multiple ranges. Invalidates cached reads for the spreadsheet.
+ * @param {string} spreadsheetId
+ * @param {Array<{range: string, values: Array<Array<any>>}>} data
  */
 export async function batchWrite(spreadsheetId, data) {
-    return SHEETS().values.batchUpdate({
+    const res = await SHEETS().values.batchUpdate({
         spreadsheetId,
         resource: {
             valueInputOption: 'RAW',
             data
         },
     });
+    invalidateSpreadsheet(spreadsheetId);
+    return res;
 }
 
 /**
- * Batch read multiple ranges.
- * Persists successful reads and falls back to the last known data offline.
- * @param {string} spreadsheetId 
- * @param {string[]} ranges 
- */
-export async function batchRead(spreadsheetId, ranges) {
-    const cacheKey = `${spreadsheetId}-${ranges.join(',')}`;
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.time < CACHE_TTL) {
-        return cached.data;
-    }
-
-    try {
-        const res = await SHEETS().values.batchGet({
-            spreadsheetId,
-            ranges,
-            valueRenderOption: 'UNFORMATTED_VALUE'
-        });
-        const data = res.result.valueRanges;
-        cache.set(cacheKey, { data, time: Date.now() });
-        cacheSet(`batch:${cacheKey}`, data); // fire-and-forget offline copy
-        return data;
-    } catch (err) {
-        const fallback = await cacheGet(`batch:${cacheKey}`);
-        if (fallback !== undefined) return fallback;
-        throw err;
-    }
-}
-
-/**
- * Append rows to a tab.
- * @param {string} spreadsheetId 
- * @param {string} range 
- * @param {Array<Array<any>>} rows 
+* Append rows to a tab. Invalidates cached reads for the spreadsheet.
+ * @param {string} spreadsheetId
+ * @param {string} range
+ * @param {Array<Array<any>>} rows
  */
 export async function appendRows(spreadsheetId, range, rows) {
-    return SHEETS().values.append({
+    const res = await SHEETS().values.append({
         spreadsheetId,
         range,
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         resource: { values: rows },
     });
+    invalidateSpreadsheet(spreadsheetId);
+    return res;
 }
 
 /**
@@ -126,22 +176,28 @@ export async function createSpreadsheet(title) {
 
 /**
  * Get spreadsheet details including sheets.
- * @param {string} spreadsheetId 
+ * Cached for 60s and deduped — several hooks request this on every mount.
+ * @param {string} spreadsheetId
  */
 export async function getSpreadsheet(spreadsheetId) {
-    const res = await SHEETS().get({
-        spreadsheetId
+    const key = `m:${spreadsheetId}`;
+    const hit = fresh(key);
+    if (hit !== undefined) return hit;
+
+    return dedupe(key, async () => {
+        const res = await SHEETS().get({ spreadsheetId });
+        cache.set(key, { data: res.result, time: Date.now() });
+        return res.result;
     });
-    return res.result;
 }
 
 /**
- * Add a new sheet to a spreadsheet.
- * @param {string} spreadsheetId 
- * @param {string} title 
+ * Add a new sheet to a spreadsheet. Invalidates cached reads + metadata.
+ * @param {string} spreadsheetId
+ * @param {string} title
  */
 export async function addSheet(spreadsheetId, title) {
-    return SHEETS().batchUpdate({
+    const res = await SHEETS().batchUpdate({
         spreadsheetId,
         resource: {
             requests: [{
@@ -149,6 +205,8 @@ export async function addSheet(spreadsheetId, title) {
             }]
         }
     });
+    invalidateSpreadsheet(spreadsheetId);
+    return res;
 }
 
 /**

@@ -25,9 +25,9 @@ function Header({ title, subtitle, saving }) {
                     position: 'absolute', top: '24px', right: '20px',
                     width: '38px', height: '38px', borderRadius: '50%',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: 'rgba(255,255,255,0.35)',
+                    background: 'var(--surface-inner-strong)',
                     backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255,255,255,0.4)',
+                    border: '1px solid var(--control-border)',
                     cursor: 'pointer', color: 'var(--text-heading, #2d4f41)',
                 }}
             >

@@ -41,7 +41,7 @@ function drawBadge(milestone) {
     ctx.fillText(milestone.emoji, size / 2, 230);
 
     ctx.font = '700 54px Manrope, sans-serif';
-    ctx.fillText(`${milestone.days}-Day Streak`, size / 2, 330);
+    ctx.fillText(milestone.title || `${milestone.days}-Day Streak`, size / 2, 330);
 
     ctx.font = '500 30px Manrope, sans-serif';
     ctx.fillStyle = '#3d5a4a';
@@ -165,13 +165,13 @@ export default function CelebrationOverlay({ milestone, onClose }) {
                 </button>
                 <div style={{ fontSize: '64px', lineHeight: 1, marginBottom: '12px' }}>{milestone.emoji}</div>
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: '#1a2e24', marginBottom: '6px' }}>
-                    {milestone.days}-Day Streak!
+                    {milestone.title || `${milestone.days}-Day Streak!`}
                 </h3>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', fontWeight: 600, color: '#3d5a4a', marginBottom: '4px' }}>
                     {(milestone.habitEmoji || '')} {milestone.habitName || milestone.label}
                 </p>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(45,79,65,0.7)', marginBottom: '22px' }}>
-                    Consistency looks good on you
+                    {milestone.subtitle || 'Consistency looks good on you'}
                 </p>
                 <div style={{ display: 'flex', gap: '10px' }}>
                     <button

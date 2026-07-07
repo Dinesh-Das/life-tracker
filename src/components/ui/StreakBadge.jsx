@@ -11,13 +11,19 @@ const StreakBadge = ({ count, size = 'md' }) => {
     }
 
     return (
-        <div className={`
+        <div
+            className={`
             inline-flex items-center font-black uppercase tracking-widest leading-none
-            bg-orange-50 text-orange-600 rounded-full border border-orange-100
-            shadow-sm transition-all hover:scale-110 cursor-default group
+            rounded-full shadow-sm transition-all hover:scale-110 cursor-default group
             ${sizes[size]}
-        `}>
-            <Flame size={size === 'sm' ? 10 : 14} className="fill-orange-500 animate-bounce group-hover:animate-pulse" />
+        `}
+            style={{
+                background: 'var(--warning-bg)',
+                color: 'var(--warning-ink)',
+                border: '1px solid var(--warning-border)',
+            }}
+        >
+            <Flame size={size === 'sm' ? 10 : 14} className="animate-bounce group-hover:animate-pulse" style={{ fill: 'currentColor' }} />
             <span>{count} Day Streak</span>
         </div>
     )

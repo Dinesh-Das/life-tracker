@@ -20,6 +20,11 @@ import ChallengesCard from '../components/ui/ChallengesCard';
 import CorrelationInsights from '../components/charts/CorrelationInsights';
 import HabitDetailModal from '../components/ui/HabitDetailModal';
 import { WIN_SUGGESTIONS } from '../lib/winSuggestions';
+import CelebrationOverlay from '../components/ui/CelebrationOverlay';
+import StreakBankCard from '../components/ui/StreakBankCard';
+import DecayWarningCard from '../components/ui/DecayWarningCard';
+import { useDecayWarnings } from '../hooks/useDecayWarnings';
+import { recordFreezeEvent } from '../lib/freezeLedger';
 import toast from 'react-hot-toast';
 
 const EMPTY_WINS = { Physical: '', Mental: '', Social: '', Financial: '', Spiritual: '' };
@@ -65,7 +70,10 @@ function DailyCheckin() {
         saveWin
     } = useWins(spreadsheetId, selectedDateStr);
 
-    const { tokens: skipTokens, skipDay, repairYesterday } = useSkipDay(spreadsheetId, currentMonth, currentYear);
+    const {
+        tokens: skipTokens, used: usedTokens, bestStreak: bankBestStreak,
+        daysToNextToken, cap: tokenCap, skipDay, repairYesterday,
+    } = useSkipDay(spreadsheetId, currentMonth, currentYear);
     const sleep = useSleep(spreadsheetId, selectedDateStr);
     const metrics = useMetrics(spreadsheetId, selectedDateStr);
     const { remindersOn, toggleReminders } = useReminders();
@@ -105,6 +113,15 @@ function DailyCheckin() {
     const [detailHabit, setDetailHabit] = useState(null);
     const [localSkipped, setLocalSkipped] = useState({});
     const [repaired, setRepaired] = useState({});
+    const [celebration, setCelebration] = useState(null);
+
+    // Habit decay — flag slipping habits before the streak actually breaks.
+    // Uses the FULL habit list so previous-month rows stay sheet-aligned.
+    const { warnings: allDecayWarnings, dismissForWeek } = useDecayWarnings(spreadsheetId, habits, checks, isCurrentMonth);
+    const decayWarnings = useMemo(
+        () => allDecayWarnings.filter(w => visibleHabits.some(h => h.id === w.habitId)),
+        [allDecayWarnings, visibleHabits]
+    );
 
     const dayIsSkipped = useMemo(() => (
         !!localSkipped[activeDay] || visibleHabits.some(h => checks[h.id]?.[activeDay] === 'skip')
@@ -122,11 +139,14 @@ function DailyCheckin() {
         );
     }, [visibleHabits, checks, isCurrentMonth, todayDay, repaired]);
 
-    // Milestone celebrations — fires once per streak tier per habit (per device)
+    // Milestone celebrations — fires once per streak tier per habit (per device).
+    // The highest fresh milestone gets the full overlay; any extras get toasts.
     useEffect(() => {
         if (loading) return;
         const fresh = newMilestonesToCelebrate(visibleHabits, habitStreaks);
-        fresh.forEach((m, i) => {
+        if (fresh.length === 0) return;
+        setCelebration(prev => prev || fresh[0]);
+        fresh.slice(1).forEach((m, i) => {
             setTimeout(() => toast.success(`${m.label} 🎉`, { icon: m.emoji, duration: 5000 }), i * 700);
         });
     }, [loading, visibleHabits, habitStreaks]);
@@ -215,9 +235,9 @@ function DailyCheckin() {
                                         minWidth: '44px', height: '52px', flexShrink: 0,
                                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px',
                                         borderRadius: '12px',
-                                        border: isSelected ? '1px solid rgba(45,79,65,0.5)' : '1px solid rgba(255,255,255,0.3)',
-                                        background: isSelected ? 'rgba(45,79,65,0.7)' : (isToday ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.25)'),
-                                        color: isSelected ? '#a9cfbc' : (isFuture ? 'rgba(61,90,74,0.35)' : 'var(--text-body)'),
+                                        border: isSelected ? '1px solid rgba(45,79,65,0.5)' : '1px solid var(--control-border)',
+                                        background: isSelected ? 'rgba(45,79,65,0.7)' : (isToday ? 'var(--surface-inner-strong)' : 'var(--surface-inner)'),
+                                        color: isSelected ? '#a9cfbc' : (isFuture ? 'var(--disabled-ink)' : 'var(--text-body)'),
                                         cursor: isFuture ? 'not-allowed' : 'pointer',
                                         transition: 'all 0.15s',
                                     }}
@@ -237,10 +257,10 @@ function DailyCheckin() {
                     <div className="animate-fade-up" style={{
                         display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap',
                         padding: '10px 16px', marginBottom: '16px', borderRadius: 'var(--radius-md)',
-                        background: 'rgba(160,96,48,0.22)', border: '1px solid rgba(160,96,48,0.35)',
+                        background: 'var(--warning-bg)', border: '1px solid var(--warning-border)',
                     }}>
-                        <CalendarClock size={16} style={{ color: '#7a4a20', flexShrink: 0 }} />
-                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: '#7a4a20', flex: 1, minWidth: '160px' }}>
+                        <CalendarClock size={16} style={{ color: 'var(--warning-ink)', flexShrink: 0 }} />
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', fontWeight: 600, color: 'var(--warning-ink)', flex: 1, minWidth: '160px' }}>
                             Backfilling {format(selectedDate, 'EEEE, MMMM d')} — entries save to that day.
                         </p>
                         <button
@@ -276,11 +296,11 @@ function DailyCheckin() {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                         <div className="circle-progress" style={{ width: donutSize, height: donutSize }}>
                             <svg width={donutSize} height={donutSize}>
-                                <circle cx={donutSize / 2} cy={donutSize / 2} r={donutR} fill="none" stroke="rgba(45,79,65,0.15)" strokeWidth={10} />
+                                <circle cx={donutSize / 2} cy={donutSize / 2} r={donutR} fill="none" stroke="var(--ring-track)" strokeWidth={10} />
                                 {pct > 0 && (
                                     <circle
                                         cx={donutSize / 2} cy={donutSize / 2} r={donutR}
-                                        fill="none" stroke="#4a7a62" strokeWidth={10}
+                                        fill="none" stroke="var(--accent-ink)" strokeWidth={10}
                                         strokeDasharray={circumference} strokeDashoffset={dashOffset}
                                         strokeLinecap="round"
                                         transform={`rotate(-90 ${donutSize / 2} ${donutSize / 2})`}
@@ -289,7 +309,7 @@ function DailyCheckin() {
                                 )}
                                 <text x={donutSize / 2} y={donutSize / 2 + 7}
                                     textAnchor="middle" fontSize={20} fontWeight="700"
-                                    fill="#1a2e24" fontFamily="Manrope, sans-serif"
+                                    fill="var(--text-heading)" fontFamily="Manrope, sans-serif"
                                 >
                                     {pct}%
                                 </text>
@@ -309,6 +329,20 @@ function DailyCheckin() {
                     upToDay={isCurrentMonth ? todayDay : (isFutureMonth ? 0 : daysInMonth)}
                     monthLabel={currentMonth}
                 />
+
+                {/* Streak Bank — freeze-token budget, progress and history */}
+                <StreakBankCard
+                    tokens={skipTokens}
+                    used={usedTokens}
+                    bestStreak={bankBestStreak}
+                    daysToNextToken={daysToNextToken}
+                    cap={tokenCap}
+                />
+
+                {/* Habit decay warnings — dismissable for the week */}
+                {!isBackfilling && decayWarnings.length > 0 && (
+                    <DecayWarningCard warnings={decayWarnings} onDismiss={dismissForWeek} />
+                )}
 
                 {/* Habit Checklist */}
                 <div style={{ marginBottom: '24px' }}>
@@ -334,7 +368,7 @@ function DailyCheckin() {
                             {dayIsSkipped ? (
                                 <span style={{
                                     display: 'flex', alignItems: 'center', gap: '6px',
-                                    background: 'rgba(80,140,200,0.3)', color: '#3a6a9a',
+                                    background: 'var(--info-bg-soft)', color: 'var(--info-ink)',
                                     padding: '5px 14px', borderRadius: '9999px',
                                     fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
                                     fontFamily: 'var(--font-body)',
@@ -347,6 +381,7 @@ function DailyCheckin() {
                                         const ok = await skipDay(activeDay, habits, checks);
                                         if (ok) {
                                             setLocalSkipped(prev => ({ ...prev, [activeDay]: true }));
+                                            recordFreezeEvent({ type: 'freeze', date: selectedDateStr });
                                             const reason = window.prompt('Optional: why are you skipping today? (feeds future insights)');
                                             if (reason && reason.trim()) {
                                                 saveNote(spreadsheetId, '_skip', selectedDateStr, reason.trim()).catch(() => {});
@@ -357,7 +392,7 @@ function DailyCheckin() {
                                     title={skipTokens > 0 ? 'Freeze this day — streaks stay safe' : 'Earn a token with a 14-day streak'}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '6px',
-                                        background: skipTokens > 0 ? 'rgba(80,140,200,0.45)' : 'rgba(120,120,120,0.25)',
+                                        background: skipTokens > 0 ? 'var(--info-bg)' : 'var(--disabled-bg)',
                                         color: skipTokens > 0 ? '#eaf4ff' : 'var(--text-muted)',
                                         padding: '6px 14px', borderRadius: '9999px', border: 'none',
                                         fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
@@ -399,11 +434,23 @@ function DailyCheckin() {
                                                 const ok = await repairYesterday(idx, todayDay - 1);
                                                 if (ok) {
                                                     setRepaired(prev => ({ ...prev, [h.id]: true }));
+                                                    const missedDateStr = format(new Date(currentYear, currentMonthIndex, todayDay - 1), 'yyyy-MM-dd');
+                                                    recordFreezeEvent({ type: 'repair', date: missedDateStr, habitName: h.name });
                                                     const reason = window.prompt(`Optional: why was ${h.name} missed yesterday?`);
                                                     if (reason && reason.trim()) {
-                                                        const missedDateStr = format(new Date(currentYear, currentMonthIndex, todayDay - 1), 'yyyy-MM-dd');
                                                         saveNote(spreadsheetId, h.id, missedDateStr, reason.trim()).catch(() => {});
                                                     }
+                                                    // Comeback celebration — bouncing back matters more than never missing
+                                                    setCelebration({
+                                                        emoji: '💪',
+                                                        days: (habitStreaks[h.id]?.current || 1) + 1,
+                                                        habitId: h.id,
+                                                        habitName: h.name,
+                                                        habitEmoji: h.emoji,
+                                                        label: `${h.emoji} ${h.name} — Comeback`,
+                                                        title: 'Comeback Complete!',
+                                                        subtitle: 'You missed a day and came right back — that is how streaks survive',
+                                                    });
                                                 }
                                             }}
                                             style={{
@@ -442,8 +489,8 @@ function DailyCheckin() {
                                             display: 'flex', alignItems: 'center', gap: '12px',
                                             padding: '14px 16px',
                                             borderRadius: 'var(--radius-md)',
-                                            border: done ? '1px solid rgba(45,79,65,0.35)' : '1px solid rgba(255,255,255,0.3)',
-                                            background: done ? 'rgba(45,79,65,0.25)' : 'rgba(255,255,255,0.30)',
+                                            border: done ? '1px solid rgba(45,79,65,0.35)' : '1px solid var(--control-border)',
+                                            background: done ? 'rgba(45,79,65,0.25)' : 'var(--surface-inner)',
                                             backdropFilter: 'blur(12px)',
                                             WebkitBackdropFilter: 'blur(12px)',
                                             cursor: 'pointer',
@@ -455,8 +502,8 @@ function DailyCheckin() {
                                         <div style={{
                                             width: '26px', height: '26px', borderRadius: '8px',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                                            background: done ? 'rgba(45,79,65,0.7)' : 'rgba(255,255,255,0.4)',
-                                            color: done ? '#a9cfbc' : 'rgba(45,79,65,0.4)',
+                                            background: done ? 'rgba(45,79,65,0.7)' : 'var(--surface-inner-strong)',
+                                            color: done ? '#a9cfbc' : 'var(--disabled-ink)',
                                             transition: 'all 0.2s',
                                         }}>
                                         {done ? <CheckCircle2 size={16} /> : skippedDay ? <Snowflake size={16} /> : <Circle size={16} />}
@@ -467,7 +514,7 @@ function DailyCheckin() {
                                         <span style={{
                                             fontFamily: 'var(--font-body)',
                                             fontSize: '14px', fontWeight: 500, flex: 1,
-                                            color: done ? '#3d5a4a' : 'var(--text-body)',
+                                            color: done ? 'var(--text-muted)' : 'var(--text-body)',
                                             textDecoration: done ? 'line-through' : 'none',
                                             opacity: done ? 0.7 : 1,
                                             transition: 'all 0.2s',
@@ -582,7 +629,7 @@ function DailyCheckin() {
                         ].map((cat) => (
                             <div key={cat.id} className="glass-card" style={{ padding: '16px 18px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                                    <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(255,255,255,0.45)', color: 'var(--text-heading)', flexShrink: 0 }}>
+                                    <div style={{ padding: '6px', borderRadius: '8px', background: 'var(--surface-inner-strong)', color: 'var(--text-heading)', flexShrink: 0 }}>
                                         <cat.icon size={16} />
                                     </div>
                                     <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 700, color: 'var(--text-heading)', flex: 1 }}>{cat.label}</h4>
@@ -616,21 +663,25 @@ function DailyCheckin() {
                                     placeholder={cat.placeholder}
                                     style={{
                                         width: '100%', padding: '10px 12px',
-                                        borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)',
-                                        background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(8px)',
+                                        borderRadius: '8px', border: '1px solid var(--control-border)',
+                                        background: 'var(--surface-inner)', backdropFilter: 'blur(8px)',
                                         fontFamily: 'var(--font-body)', fontSize: '13px',
                                         color: 'var(--text-body)', lineHeight: 1.5,
                                         resize: 'none', outline: 'none', height: '80px',
                                         transition: 'border-color 0.2s',
                                     }}
-                                    onFocus={e => e.target.style.borderColor = 'rgba(255,255,255,0.6)'}
-                                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.3)'}
+                                    onFocus={e => e.target.style.borderColor = 'var(--outline)'}
+                                    onBlur={e => e.target.style.borderColor = 'var(--control-border)'}
                                 />
                             </div>
                         ))}
                     </div>
                 </div>
             </div>
+            
+            {celebration && (
+                <CelebrationOverlay milestone={celebration} onClose={() => setCelebration(null)} />
+            )}
             
             <HabitDetailModal
                 isOpen={!!detailHabit}

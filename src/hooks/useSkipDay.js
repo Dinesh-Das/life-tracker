@@ -17,6 +17,7 @@ const TOKEN_ROW_ID = '_skipTokens';
 export function useSkipDay(spreadsheetId, currentMonth, currentYear) {
     const [tokens, setTokens] = useState(0);
     const [bestStreak, setBestStreak] = useState(0);
+    const [used, setUsed] = useState(0);
     const [loading, setLoading] = useState(true);
 
     const loadTokens = useCallback(async () => {
@@ -34,6 +35,7 @@ export function useSkipDay(spreadsheetId, currentMonth, currentYear) {
                 }
             });
             setBestStreak(best);
+            setUsed(used);
             setTokens(skipTokensAvailable(best, used));
         } catch (e) {
             console.error('Failed to load skip tokens', e);
@@ -74,6 +76,7 @@ export function useSkipDay(spreadsheetId, currentMonth, currentYear) {
 
             await batchWrite(spreadsheetId, writes);
             setTokens(t => Math.max(0, t - 1));
+            setUsed(u => u + 1);
             toast.success('Day frozen — your streaks are safe ❄️');
             return true;
         } catch (e) {
@@ -106,6 +109,9 @@ export function useSkipDay(spreadsheetId, currentMonth, currentYear) {
 
     return {
         tokens,
+        used,
+        bestStreak,
+        cap: 3, // mirrors skipTokensAvailable's default cap
         daysToNextToken: skipTokenProgress(bestStreak),
         loading,
         skipDay,
