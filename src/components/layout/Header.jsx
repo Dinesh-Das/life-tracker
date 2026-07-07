@@ -1,4 +1,7 @@
+import { useState } from 'react'
+import { Moon, Sun } from 'lucide-react'
 import SavingIndicator from '../ui/SavingIndicator'
+import { initTheme, toggleTheme } from '../../lib/theme'
 
 /**
  * Page Header — Digital Sanctuary style
@@ -6,8 +9,30 @@ import SavingIndicator from '../ui/SavingIndicator'
  * On mobile it also renders a compact top bar with a back indicator.
  */
 function Header({ title, subtitle, saving }) {
+    // Mobile-only theme toggle — the sidebar (which hosts the desktop
+    // toggle) is hidden below the lg breakpoint.
+    const [theme, setTheme] = useState(initTheme);
+
+
     return (
-        <div style={{ padding: '36px 40px 0', paddingBottom: 0 }}>
+        <div style={{ padding: '36px 40px 0', paddingBottom: 0, position: 'relative' }}>
+            <button
+                className="lg:hidden"
+                onClick={() => setTheme(toggleTheme())}
+                aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                style={{
+                    position: 'absolute', top: '24px', right: '20px',
+                    width: '38px', height: '38px', borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(255,255,255,0.35)',
+                    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.4)',
+                    cursor: 'pointer', color: 'var(--text-heading, #2d4f41)',
+                }}
+            >
+                {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
             {title && (
                 <h1 className="page-title" style={{ marginBottom: subtitle ? '6px' : '28px' }}>
                     {title}

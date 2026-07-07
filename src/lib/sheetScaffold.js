@@ -13,7 +13,7 @@ export async function scaffoldSheet(userName) {
 
         // 2. Add all necessary tabs
         // JournalLogs MUST be in this list — it's written to in batchWrite below
-        const allTabs = ['Settings', ...MONTHS.map(m => `${m} ${currentYear}`), 'Female', 'Weekly', 'Streaks', 'DailyWins', 'JournalLogs'];
+        const allTabs = ['Settings', ...MONTHS.map(m => `${m} ${currentYear}`), 'Female', 'Weekly', 'Streaks', 'DailyWins', 'JournalLogs', 'FocusLogs'];
         const requests = [];
 
         // Rename default "Sheet1" to "Settings"
@@ -125,6 +125,12 @@ export async function scaffoldSheet(userName) {
         spreadsheetRanges.push({
             range: 'JournalLogs!A1:D1',
             values: [['Date', 'Morning Gratitude', 'Evening Review', 'Primary Focus']]
+        });
+
+        // Focus Sessions Tab
+        spreadsheetRanges.push({
+            range: 'FocusLogs!A1:D1',
+            values: [['Date', 'Start Time', 'Minutes', 'Mode']]
         });
 
         await batchWrite(spreadsheetId, spreadsheetRanges);
@@ -271,6 +277,26 @@ export async function ensureMetricsSheet(spreadsheetId) {
         }
     } catch (e) {
         console.error('Failed to ensure MetricsLogs sheet:', e);
+        throw e;
+    }
+    }
+
+export async function ensureFocusSheet(spreadsheetId) {
+    try {
+        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        const hasFocus = spreadsheet.sheets.some(s => s.properties.title === 'FocusLogs');
+
+        if (!hasFocus) {
+            console.info('FocusLogs sheet missing. Adding now...');
+            await addSheet(spreadsheetId, 'FocusLogs');
+            await batchWrite(spreadsheetId, [{
+                range: 'FocusLogs!A1:D1',
+                values: [['Date', 'Start Time', 'Minutes', 'Mode']]
+            }]);
+            console.info('FocusLogs sheet initialized.');
+        }
+    } catch (e) {
+        console.error('Failed to ensure FocusLogs sheet:', e);
         throw e;
     }
 }

@@ -23,13 +23,22 @@ Visualize your consistency over the entire year with a dynamic habit heatmap. Ou
 ![Habit Heatmap](./docs/images/heatmap.png)
 
 ### 🧘 Focus Mode
-A minimalist Pomodoro-style timer to help you enter deep work sessions and track your focus hours.
+A minimalist Pomodoro-style timer for deep work sessions. Completed sessions are logged to your sheet (FocusLogs tab) with daily and weekly focus-time stats, and an in-flight session survives navigation and refreshes.
 
 ### 📅 Weekly Planner
 Map out your week, set priority goals, and ensure you're making time for what matters most.
 
 ### 📝 Reflections
 A dedicated space for morning gratitude and evening reviews to maintain mental clarity and intentionality.
+
+### 🌙 Dark Mode
+A full dark theme driven by design tokens, toggleable from the sidebar (desktop) or the page header (mobile).
+
+### 🎁 Year Wrapped & Data Export
+A "Wrapped" recap of your year — best streak, best month, top habit — plus one-click JSON/CSV export of everything in your sheet.
+
+### 📴 Offline-Ready PWA
+Installable, with an offline-resilient sync queue that replays writes when your connection returns. Streaks support skip days that freeze (but don't break) your run.
 
 ---
 
@@ -45,7 +54,7 @@ LifeTracker is built on the principle of **Data Sovereignty**.
 ## 🛠️ Tech Stack
 
 - **Frontend:** React + Vite
-- **Styling:** Vanilla CSS (Custom Glassmorphic Design System)
+- **Styling:** Tailwind CSS + custom glassmorphic design tokens (light & dark themes)
 - **Database:** Google Sheets API (v4)
 - **Auth:** Google Identity Services (OAuth 2.0)
 - **Charts:** Recharts

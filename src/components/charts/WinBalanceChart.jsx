@@ -1,5 +1,6 @@
 import React from 'react';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
+import { tickStyle, gridStroke } from '../../lib/chartTheme';
 
 /** Life-balance radar built from Daily Wins + generated insights. */
 const WinBalanceChart = ({ balance = [], insights = [], loading }) => (
@@ -13,8 +14,8 @@ const WinBalanceChart = ({ balance = [], insights = [], loading }) => (
             <>
                 <ResponsiveContainer width="100%" height={200}>
                     <RadarChart data={balance} outerRadius="75%">
-                        <PolarGrid stroke="rgba(45,79,65,0.25)" />
-                        <PolarAngleAxis dataKey="category" tick={{ fontSize: 10, fontWeight: 700 }} />
+                        <PolarGrid stroke={gridStroke} />
+                        <PolarAngleAxis dataKey="category" tick={tickStyle} />
                         <Radar dataKey="count" stroke="#4a7a62" fill="#4a7a62" fillOpacity={0.45} />
                     </RadarChart>
                 </ResponsiveContainer>

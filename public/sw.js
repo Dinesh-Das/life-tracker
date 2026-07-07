@@ -41,13 +41,9 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(request.url);
 
-    // Cross-origin: only cache Google Fonts. Never touch Sheets/OAuth traffic.
-    if (url.origin !== self.location.origin) {
-        if (url.hostname === 'fonts.gstatic.com' || url.hostname === 'fonts.googleapis.com') {
-            event.respondWith(staleWhileRevalidate(request));
-        }
-        return;
-    }
+    // Cross-origin (Sheets / OAuth traffic): never intercept.
+    // Fonts are self-hosted via @fontsource, so no font CDN caching is needed.
+    if (url.origin !== self.location.origin) return;
 
     // SPA navigations: network-first, fall back to cached shell when offline
     if (request.mode === 'navigate') {

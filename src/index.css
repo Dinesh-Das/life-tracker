@@ -71,6 +71,15 @@
   --text-body:     #2a4035;
   --text-muted:    #3d5a4a;
 
+  /* Solid & raised surfaces (modals, timer card, pill switchers) */
+  --card-solid-bg:     #ffffff;
+  --card-solid-border: rgba(0,0,0,0.06);
+  --card-inset-bg:     #f4f8f5;
+  --card-raised-bg:    #ffffff;
+  --ring-track:        rgba(26,46,36,0.08);
+  --accent-strong:     #059669;
+  --heat-rgb:          45,79,65;   /* heatmap cell base color (rgb triplet) */
+
   /* Legacy aliases — keep backward compat */
   --green:         #2d4f41;
   --green-light:   #a9cfbc;
@@ -93,6 +102,14 @@
   --text-heading:  #e2efe6;
   --text-body:     #c3d6ca;
   --text-muted:    #93ab9c;
+  
+  --card-solid-bg:     #16221b;
+  --card-solid-border: rgba(255,255,255,0.10);
+  --card-inset-bg:     rgba(255,255,255,0.05);
+  --card-raised-bg:    rgba(255,255,255,0.14);
+  --ring-track:        rgba(255,255,255,0.10);
+  --accent-strong:     #6ee7b7;
+  --heat-rgb:          169,207,188;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -146,6 +163,9 @@ h1, h2, h3, h4 {
 .glass-card-inner {
   background: rgba(255,255,255,0.50);
   border-radius: var(--radius-md);
+}
+[data-theme="dark"] .glass-card-inner {
+  background: rgba(255,255,255,0.07);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -221,6 +241,19 @@ h1, h2, h3, h4 {
   transform: scale(0.97);
 }
 
+[data-theme="dark"] .glass-panel {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.10);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.30);
+}
+[data-theme="dark"] .glass-button {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.12);
+}
+[data-theme="dark"] .glass-button:hover {
+  background: rgba(255,255,255,0.14);
+}
+
 /* ═══════════════════════════════════════════════════
    Task Badge Colors (Planner)
    ═══════════════════════════════════════════════════ */
@@ -286,6 +319,10 @@ h1, h2, h3, h4 {
   background-size: 400px 100%;
   animation: shimmer 1.5s infinite;
 }
+[data-theme="dark"] .shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 400px 100%;
+}
 
 /* ═══════════════════════════════════════════════════
    Sticky Column Shadows
@@ -296,6 +333,12 @@ h1, h2, h3, h4 {
   z-index: 10;
   background: rgba(255,255,255,0.7);
   backdrop-filter: blur(8px);
+}
+[data-theme="dark"] .sticky-left {
+  background: rgba(16,28,21,0.85);
+}
+[data-theme="dark"] .sticky-shadow::after {
+  background: linear-gradient(to right, rgba(0,0,0,0.35), transparent);
 }
 
 .sticky-shadow::after {

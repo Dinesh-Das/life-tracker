@@ -36,16 +36,11 @@ function HabitHeatmap({ data, year }) {
         };
     }, [data, year]);
 
+    // --heat-rgb flips from forest green (light) to mint (dark) so
+    // low-intensity cells stay visible on the dark canvas.
     const getIntensityColor = (intensity) => {
-        const colors = [
-            'rgba(45,79,65,0.08)',   // 0
-            'rgba(45,79,65,0.22)',   // 1
-            'rgba(45,79,65,0.40)',   // 2
-            'rgba(45,79,65,0.60)',   // 3
-            'rgba(45,79,65,0.80)',   // 4
-            'rgba(45,79,65,0.96)',   // 5
-        ];
-        return colors[intensity] ?? colors[0];
+        const alphas = [0.08, 0.22, 0.40, 0.60, 0.80, 0.96];
+        return `rgba(var(--heat-rgb), ${alphas[intensity] ?? alphas[0]})`;
     };
 
     return (
@@ -54,11 +49,11 @@ function HabitHeatmap({ data, year }) {
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'var(--text-heading)' }}>Habit Heatmap ({year})</h3>
                 <div className="hidden sm:flex" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontFamily: 'var(--font-body)', fontSize: '8px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
                     <span>Less</span>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(45,79,65,0.1)', margin: '0 2px' }} />
-                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(45,79,65,0.25)', margin: '0 2px' }} />
-                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(45,79,65,0.45)', margin: '0 2px' }} />
-                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(45,79,65,0.70)', margin: '0 2px' }} />
-                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(45,79,65,0.90)', margin: '0 2px' }} />
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(var(--heat-rgb),0.1)', margin: '0 2px' }} />
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(var(--heat-rgb),0.25)', margin: '0 2px' }} />
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(var(--heat-rgb),0.45)', margin: '0 2px' }} />
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(var(--heat-rgb),0.70)', margin: '0 2px' }} />
+                    <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(var(--heat-rgb),0.90)', margin: '0 2px' }} />
                     <span>More</span>
                 </div>
             </div>
@@ -66,7 +61,7 @@ function HabitHeatmap({ data, year }) {
             <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-200">
                 <div className="flex gap-1 min-w-max">
                     {/* Y-Axis Labels (Mon, Wed, Fri) */}
-                    <div className="flex flex-col gap-1 pr-2 text-[9px] font-bold text-gray-400 mt-[14px]">
+                    <div className="flex flex-col gap-1 pr-2 text-[9px] font-bold mt-[14px]" style={{ color: 'var(--text-muted)' }}>
                         <div className="h-3 leading-3"></div>
                         <div className="h-3 leading-3">Mon</div>
                         <div className="h-3 leading-3"></div>
@@ -81,7 +76,7 @@ function HabitHeatmap({ data, year }) {
                         <div key={`week-${wIdx}`} className="flex flex-col gap-1 relative group">
                             {/* Simple month label for the first week of a month */}
                             {wIdx % 4 === 0 && wIdx < 50 && (
-                                <div className="absolute -top-5 text-[9px] font-bold text-gray-400 whitespace-nowrap">
+                                <div className="absolute -top-5 text-[9px] font-bold whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
                                     {paddedDays[wIdx * 7]?.date ? format(parseISO(paddedDays[wIdx * 7].date), 'MMM') : ''}
                                 </div>
                             )}

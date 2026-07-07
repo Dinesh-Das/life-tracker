@@ -1,5 +1,6 @@
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { tickStyle, tooltipStyle, tooltipItemStyle, cursorFill } from '../../lib/chartTheme';
 
 const StreakBarChart = ({ habits = [], streaks = {} }) => {
 const data = habits.map(h => {
@@ -22,13 +23,13 @@ const data = habits.map(h => {
                     <YAxis
                         dataKey="name"
                         type="category"
-                        tick={{ fontSize: 10, fontWeight: 700 }}
+                        tick={tickStyle}
                         width={80}
                     />
                     <Tooltip
-                        cursor={{ fill: '#f8fafc' }}
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                        itemStyle={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase' }}
+                        cursor={{ fill: cursorFill }}
+                        contentStyle={tooltipStyle}
+                        itemStyle={tooltipItemStyle}
                     />
                     <Bar dataKey="streak" radius={[0, 4, 4, 0]}>
                         {data.map((entry, index) => (

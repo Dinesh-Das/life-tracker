@@ -1,5 +1,6 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { tooltipStyle, tooltipItemStyle, legendStyle } from '../../lib/chartTheme';
 
 const CategoryPie = ({ data = [] }) => {
     // Process data to count habits per category
@@ -30,10 +31,10 @@ const CategoryPie = ({ data = [] }) => {
                         ))}
                     </Pie>
                     <Tooltip
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                        itemStyle={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase' }}
+                        contentStyle={tooltipStyle}
+                        itemStyle={tooltipItemStyle}
                     />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase' }} />
+                    <Legend iconType="circle" wrapperStyle={legendStyle} />
                 </PieChart>
             </ResponsiveContainer>
         </div>

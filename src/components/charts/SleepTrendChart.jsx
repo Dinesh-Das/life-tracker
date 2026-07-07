@@ -1,5 +1,6 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { tickStyle, tooltipStyle, tooltipItemStyle, legendStyle } from '../../lib/chartTheme';
 
 /** Sleep hours + quality over the last entries. */
 const SleepTrendChart = ({ rows = [], insights = [] }) => {
@@ -21,14 +22,14 @@ const SleepTrendChart = ({ rows = [], insights = [] }) => {
             ) : (
                 <ResponsiveContainer width="100%" height={260}>
                     <LineChart data={data}>
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                        <YAxis yAxisId="h" tick={{ fontSize: 10 }} domain={[0, 12]} />
-                        <YAxis yAxisId="q" orientation="right" tick={{ fontSize: 10 }} domain={[0, 5]} />
+                        <XAxis dataKey="date" tick={tickStyle} />
+                        <YAxis yAxisId="h" tick={tickStyle} domain={[0, 12]} />
+                        <YAxis yAxisId="q" orientation="right" tick={tickStyle} domain={[0, 5]} />
                         <Tooltip
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            itemStyle={{ fontSize: '10px', fontWeight: '800', textTransform: 'uppercase' }}
+                            contentStyle={tooltipStyle}
+                            itemStyle={tooltipItemStyle}
                         />
-                        <Legend wrapperStyle={{ fontSize: '10px', fontWeight: '700', textTransform: 'uppercase' }} />
+                        <Legend wrapperStyle={legendStyle} />
                         <Line yAxisId="h" type="monotone" dataKey="hours" name="Rest (h, incl. naps)" stroke="#4a7a62" strokeWidth={2} dot={false} connectNulls />
                         <Line yAxisId="q" type="monotone" dataKey="quality" name="Quality" stroke="#f0a860" strokeWidth={2} dot={false} connectNulls />
                     </LineChart>

@@ -4,12 +4,14 @@ import { Calendar, CheckSquare, LayoutDashboard, Settings, Flower2, LogOut, PenL
 import { useAuth } from '../../context/AuthContext'
 import { useAppContext } from '../../context/AppContext'
 import { initTheme, toggleTheme } from '../../lib/theme'
+import { useOverallStreak } from '../../hooks/useOverallStreak'
 import StreakBadge from '../ui/StreakBadge'
 
 function Sidebar() {
-    const { signOut, user, userGender } = useAuth();
+    const { signOut, user, userGender, spreadsheetId } = useAuth();
     const { hideFemaleData } = useAppContext();
     const [theme, setTheme] = useState(initTheme);
+    const overallStreak = useOverallStreak(spreadsheetId);
 
     const navItems = [
         { to: '/hub',       icon: LayoutDashboard, label: 'Zen Hub' },
@@ -98,10 +100,12 @@ function Sidebar() {
                 ))}
             </nav>
 
-            {/* Streak Badge */}
-            <div style={{ padding: '8px 20px', display: 'flex', justifyContent: 'center' }}>
-                <StreakBadge count={0} size="lg" />
-            </div>
+            {/* Streak Badge — live overall streak from the Streaks sheet */}
+            {overallStreak > 0 && (
+                <div style={{ padding: '8px 20px', display: 'flex', justifyContent: 'center' }}>
+                    <StreakBadge count={overallStreak} size="lg" />
+                </div>
+            )}
 
             {/* Bottom items + User */}
             <div style={{ padding: '0 10px', display: 'flex', flexDirection: 'column', gap: '2px' }}>

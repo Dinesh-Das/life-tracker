@@ -7,6 +7,7 @@ import {
     Tooltip,
     ResponsiveContainer
 } from 'recharts';
+import { tickStyle, gridStroke, tooltipStyle, tooltipItemStyle } from '../../lib/chartTheme';
 
 function YearlyLineChart({ data }) {
     // data = [{ month: 'Jan', pct: 82 }, ...]
@@ -16,30 +17,30 @@ function YearlyLineChart({ data }) {
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'var(--text-heading)', marginBottom: '20px' }}>Yearly Completion Trend</h3>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data} margin={{ top: 0, right: 20, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridStroke} />
                     <XAxis
                         dataKey="month"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 10, fontWeight: 700, fill: '#9ca3af' }}
+                        tick={tickStyle}
                     />
                     <YAxis
                         domain={[0, 100]}
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fontSize: 10, fontWeight: 700, fill: '#9ca3af' }}
+                        tick={tickStyle}
                         tickFormatter={(v) => `${v}%`}
                     />
                     <Tooltip
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }}
-                        itemStyle={{ fontWeight: 'bold', color: '#2E7D32' }}
+                        contentStyle={tooltipStyle}
+                        itemStyle={tooltipItemStyle}
                     />
                     <Line
                         type="monotone"
                         dataKey="pct"
                         stroke="#2E7D32"
                         strokeWidth={4}
-                        dot={{ r: 4, fill: '#2E7D32', strokeWidth: 2, stroke: '#fff' }}
+                        dot={{ r: 4, fill: '#2E7D32', strokeWidth: 2, stroke: 'var(--card-solid-bg)' }}
                         activeDot={{ r: 6, strokeWidth: 0 }}
                         animationDuration={2000}
                     />
