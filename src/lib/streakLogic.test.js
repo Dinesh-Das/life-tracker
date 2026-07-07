@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyDailyToggle, computeStreaks } from './streakLogic';
+import { applyDailyToggle, computeStreaks, skipTokensAvailable, skipTokenProgress } from './streakLogic';
 
 const EMPTY = { current: 0, best: 0, lastDone: '', total: 0 };
 
@@ -111,5 +111,37 @@ describe('computeStreaks', () => {
         const r = computeStreaks(['2026-06-30', '2026-07-01'], '2026-07-01');
         expect(r.current).toBe(2);
         expect(r.best).toBe(2);
+    });
+    });
+
+describe('skipTokensAvailable', () => {
+    it('earns one token per full 7-day best streak', () => {
+        expect(skipTokensAvailable(0, 0)).toBe(0);
+        expect(skipTokensAvailable(6, 0)).toBe(0);
+        expect(skipTokensAvailable(7, 0)).toBe(1);
+        expect(skipTokensAvailable(13, 0)).toBe(1);
+        expect(skipTokensAvailable(14, 0)).toBe(2);
+        expect(skipTokensAvailable(21, 0)).toBe(3);
+    });
+
+    it('caps the budget at 3 so tokens cannot be hoarded', () => {
+        expect(skipTokensAvailable(70, 0)).toBe(3);
+    });
+
+    it('subtracts spent tokens', () => {
+        expect(skipTokensAvailable(14, 1)).toBe(1);
+    });
+
+    it('never goes negative', () => {
+        expect(skipTokensAvailable(7, 5)).toBe(0);
+    });
+});
+
+describe('skipTokenProgress', () => {
+    it('counts days of best-streak growth until the next token', () => {
+        expect(skipTokenProgress(0)).toBe(7);
+        expect(skipTokenProgress(5)).toBe(2);
+        expect(skipTokenProgress(7)).toBe(7);
+        expect(skipTokenProgress(10)).toBe(4);
     });
 });

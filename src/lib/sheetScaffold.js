@@ -40,7 +40,7 @@ export async function scaffoldSheet(userName) {
 
         // Settings Tab
         const settingsHeaders = [
-            ['ID', 'Habit Name', 'Emoji', 'Monthly Goal (Days)', 'Category', 'Female Only?', 'Frequency', 'Order', 'Created At', 'Color']
+            ['ID', 'Habit Name', 'Emoji', 'Monthly Goal (Days)', 'Category', 'Female Only?', 'Frequency', 'Order', 'Created At', 'Color', 'Focus Link']
         ];
         const habitRows = DEFAULT_HABITS.map((h, i) => [
             `habit_${i + 1}`,
@@ -52,10 +52,11 @@ export async function scaffoldSheet(userName) {
             'Daily',
             i + 1,
             new Date().toISOString(),
-            ''
+            '',
+            'FALSE'
         ]);
         spreadsheetRanges.push({
-            range: 'Settings!A1:J20',
+            range: 'Settings!A1:K20',
             values: [...settingsHeaders, ...habitRows]
         });
 

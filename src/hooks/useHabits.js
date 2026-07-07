@@ -21,8 +21,8 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
         if (!spreadsheetId || !currentMonth) return;
         setLoading(true);
         try {
-            // 1. Read habit definitions from Settings tab
-            const settingsRows = await readRange(spreadsheetId, 'Settings!A2:J50');
+             // 1. Read habit definitions from Settings tab (K = Focus Link)
+            const settingsRows = await readRange(spreadsheetId, 'Settings!A2:K50');
             let loadedHabits = [];
 
             if (settingsRows && settingsRows.length > 0) {
@@ -37,6 +37,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
                         femaleOnly: row[5] === 'TRUE' || row[5] === true,
                         frequency: row[6] || 'Daily',
                         order: parseInt(row[7]) || i + 1,
+                        focusLink: row[10] === 'TRUE' || row[10] === true,
                     }));
             }
 
@@ -250,6 +251,7 @@ const next = applyDailyToggle(stats, dateStr, isChecked);
             femaleOnly: false,
             frequency: 'Daily',
             order: habits.length + 1,
+            focusLink: !!habit.focusLink,
         };
         const updatedHabits = [...habits, newHabit];
         setHabits(updatedHabits);
@@ -259,11 +261,12 @@ const next = applyDailyToggle(stats, dateStr, isChecked);
             const data = updatedHabits.map(h => [
                 h.id, h.name, h.emoji, h.goal,
                 h.category, h.femaleOnly ? 'TRUE' : 'FALSE', 'Daily', h.order,
-                new Date().toISOString(), ''
+                new Date().toISOString(), '',
+                h.focusLink ? 'TRUE' : 'FALSE'
             ]);
             
             await batchWrite(spreadsheetId, [{
-                range: `Settings!A2:J${updatedHabits.length + 1}`,
+                range: `Settings!A2:K${updatedHabits.length + 1}`,
                 values: data
             }]);
 

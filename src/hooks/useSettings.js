@@ -11,7 +11,7 @@ export function useSettings(spreadsheetId) {
         if (!spreadsheetId) return;
         setLoading(true);
         try {
-            const rows = await readRange(spreadsheetId, 'Settings!A2:J50');
+            const rows = await readRange(spreadsheetId, 'Settings!A2:K50');
             const loadedHabits = rows
                 .filter(row => row[1]) // has a name
                 .map(row => ({
@@ -24,6 +24,7 @@ export function useSettings(spreadsheetId) {
                     frequency: row[6] || 'Daily',
                     order: parseInt(row[7]) || 1,
                     color: row[9] || '',
+                    focusLink: row[10] === 'TRUE' || row[10] === true,
                 }));
 
             setHabits(loadedHabits);
@@ -42,8 +43,8 @@ export function useSettings(spreadsheetId) {
         setSaving(true);
         try {
             // Clear existing rows first, then write new ones
-            const clearRange = 'Settings!A2:J50';
-            const emptyRows = Array(49).fill(0).map(() => Array(10).fill(''));
+            const clearRange = 'Settings!A2:K50';
+            const emptyRows = Array(49).fill(0).map(() => Array(11).fill(''));
 
             // Write new data
             const data = [
@@ -52,7 +53,8 @@ export function useSettings(spreadsheetId) {
                     values: newHabits.map(h => [
                         h.id, h.name, h.emoji || '✨', h.goal || 30, h.category || 'Health',
                         h.femaleOnly ? 'TRUE' : 'FALSE',
-                        h.frequency || 'Daily', h.order || 1, new Date().toISOString(), h.color || ''
+                        h.frequency || 'Daily', h.order || 1, new Date().toISOString(), h.color || '',
+                        h.focusLink ? 'TRUE' : 'FALSE'
                     ]).concat(emptyRows.slice(newHabits.length))
                 }
             ];

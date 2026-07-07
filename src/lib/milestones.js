@@ -22,8 +22,11 @@ export function earnedMilestones(habits, habitStreaks) {
         if (tier) {
             earned.push({
                 habitId: h.id,
+                habitName: h.name,
+                habitEmoji: h.emoji,
                 days: tier.days,
                 emoji: tier.emoji,
+                tierLabel: tier.label,
                 label: `${h.emoji} ${h.name} — ${tier.label}`,
             });
         }

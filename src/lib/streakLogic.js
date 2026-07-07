@@ -91,11 +91,23 @@ export function canRecoverStreak(stats, todayStr) {
     return differenceInCalendarDays(parseISO(todayStr), parseISO(stats.lastDone)) === 2;
 }
 
+/** Every full week of best streak earns one freeze token. */
+export const FREEZE_EARN_INTERVAL = 7;
+
 /**
- * Skip tokens are earned slowly: one per full 14-day best streak,
- * minus tokens already spent, capped so they can't be hoarded.
+  * Streak freeze budget — gamified: one token is earned per full
+ * 7-day best streak, minus tokens already spent, capped so they
+ * can't be hoarded.
  */
-export function skipTokensAvailable(bestStreak, usedTokens, cap = 2) {
-    const earned = Math.floor((bestStreak || 0) / 14);
+export function skipTokensAvailable(bestStreak, usedTokens, cap = 3) {
+    const earned = Math.floor((bestStreak || 0) / FREEZE_EARN_INTERVAL);
     return Math.max(0, Math.min(earned - (usedTokens || 0), cap));
+}
+
+/**
+ * Days of best-streak growth left until the next freeze token is earned.
+ * e.g. best 5 → 2 more days; best 7 → 7 (the next token lands at 14).
+ */
+export function skipTokenProgress(bestStreak = 0, interval = FREEZE_EARN_INTERVAL) {
+    return interval - ((bestStreak || 0) % interval);
 }

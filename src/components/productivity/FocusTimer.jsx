@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, RotateCcw, Volume2, VolumeX, Coffee, Brain } from 'lucide-react';
+import { playCompletion, buzz } from '../../lib/sounds';
 
 const SESSIONS = {
     WORK: 25 * 60,

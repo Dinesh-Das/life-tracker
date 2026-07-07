@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { readRange, appendRows } from '../lib/sheetsApi';
 import { ensureFocusSheet } from '../lib/sheetScaffold';
+import { autoCheckLinkedHabits } from '../lib/focusHabitLink';
 import { format, startOfWeek } from 'date-fns';
 import toast from 'react-hot-toast';
 
@@ -53,6 +54,15 @@ export function useFocusSessions(spreadsheetId) {
                 [entry.date, entry.start, entry.minutes, entry.mode]
             ]);
             toast.success(`${minutes} min focus session logged 🌿`);
+            if (mode === 'WORK') {
+                // Focus-to-habit linking — best effort, never blocks the log
+                try {
+                    const checked = await autoCheckLinkedHabits(spreadsheetId);
+                    checked.forEach(h => toast.success(`${h.emoji} ${h.name} checked off 🔗`, { duration: 4000 }));
+                } catch (err) {
+                    console.error('Focus habit link failed', err);
+                }
+            }
         } catch (e) {
             console.error('Failed to log focus session', e);
             toast.error('Focus session could not be synced');

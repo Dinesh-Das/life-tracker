@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { readRange, batchWrite, colIndexToLabel } from '../lib/sheetsApi';
-import { skipTokensAvailable } from '../lib/streakLogic';
+import { skipTokensAvailable, skipTokenProgress } from '../lib/streakLogic';
 import toast from 'react-hot-toast';
 
 const TOKEN_ROW_ID = '_skipTokens';
@@ -8,13 +8,15 @@ const TOKEN_ROW_ID = '_skipTokens';
 /**
  * Skip Day (streak freeze) + streak recovery.
  *
- * Tokens are earned hard — one per full 14-day best streak — and capped at 2.
- * Spent tokens are tracked in a dedicated `_skipTokens` row of the Streaks tab.
+ * Tokens are earned through consistency — one per full 7-day best streak —
+ * and capped at 3 so they can't be hoarded. Spent tokens are tracked in a
+ * dedicated `_skipTokens` row of the Streaks tab.
  * Skipping writes 'S' into the month-tab cell of every not-yet-completed habit
  * for that day; streak logic treats 'S' as bridging (streak safe, not counted).
  */
 export function useSkipDay(spreadsheetId, currentMonth, currentYear) {
     const [tokens, setTokens] = useState(0);
+    const [bestStreak, setBestStreak] = useState(0);
     const [loading, setLoading] = useState(true);
 
     const loadTokens = useCallback(async () => {
@@ -31,6 +33,7 @@ export function useSkipDay(spreadsheetId, currentMonth, currentYear) {
                     best = Math.max(best, parseInt(r[2]) || 0);
                 }
             });
+            setBestStreak(best);
             setTokens(skipTokensAvailable(best, used));
         } catch (e) {
             console.error('Failed to load skip tokens', e);
@@ -49,7 +52,7 @@ export function useSkipDay(spreadsheetId, currentMonth, currentYear) {
      */
     const skipDay = useCallback(async (day, habits, checks) => {
         if (tokens <= 0) {
-            toast.error('No skip tokens available — earn one with a 14-day streak');
+            toast.error('No skip tokens available — earn one with a 7-day streak');
             return false;
         }
         try {
@@ -101,5 +104,12 @@ export function useSkipDay(spreadsheetId, currentMonth, currentYear) {
         }
     }, [spreadsheetId, currentMonth, currentYear]);
 
-    return { tokens, loading, skipDay, repairYesterday, reloadTokens: loadTokens } ;
+    return {
+        tokens,
+        daysToNextToken: skipTokenProgress(bestStreak),
+        loading,
+        skipDay,
+        repairYesterday,
+        reloadTokens: loadTokens,
+    };
 }
