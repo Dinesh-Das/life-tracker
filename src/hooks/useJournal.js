@@ -8,11 +8,13 @@ import toast from 'react-hot-toast';
 
 const EMPTY = { gratitude: '', review: '', focus: '' };
 const FIELDS = Object.keys(EMPTY);
+const MAX_JOURNAL_LENGTH = 5000;
 
 export function useJournal(spreadsheetId, dateStr) {
     const [journal, setJournal] = useState(EMPTY);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
     const timer = useRef(null);
     const pending = useRef(null);
     const currentRow = useRef(null);
@@ -55,6 +57,7 @@ export function useJournal(spreadsheetId, dateStr) {
         if (!spreadsheetId) return;
         const request = ++generation.current;
         setLoading(true);
+        setError(null);
         const empty = { ...EMPTY };
         latest.current = empty;
         currentRow.current = { date: targetDateStr, index: null };
@@ -73,7 +76,10 @@ export function useJournal(spreadsheetId, dateStr) {
             latest.current = next;
             setJournal(next);
         } catch (error) {
-            if (request === generation.current) console.error('Failed to load journal', error);
+            if (request === generation.current) {
+                console.error('Failed to load journal', error);
+                setError(error);
+            }
         } finally {
             if (request === generation.current) setLoading(false);
         }
@@ -89,7 +95,8 @@ export function useJournal(spreadsheetId, dateStr) {
 
     const saveJournal = useCallback((field, text) => {
         if (!FIELDS.includes(field)) return;
-        const next = { ...latest.current, [field]: text };
+        const value = String(text ?? '').slice(0, MAX_JOURNAL_LENGTH);
+        const next = { ...latest.current, [field]: value };
         latest.current = next;
         setJournal(next);
         setSaving(true);
@@ -102,5 +109,5 @@ export function useJournal(spreadsheetId, dateStr) {
         timer.current = setTimeout(() => { void flushPending(); }, 800);
     }, [targetDateStr, flushPending]);
 
-    return { journal, loading, saving, saveJournal, flushPending };
+    return { journal, loading, saving, error, saveJournal, flushPending, reload: loadJournal };
 }

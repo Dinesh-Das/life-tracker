@@ -22,6 +22,7 @@ import DayColumn from '../components/weekly/DayColumn'
 import { useTasks } from '../hooks/useTasks'
 
 import LoadingSkeleton from '../components/ui/LoadingSkeleton'
+import LoadErrorState from '../components/ui/LoadErrorState'
 
 function Planner() {
     const navigate = useNavigate();
@@ -75,7 +76,7 @@ function Planner() {
     const currentWeek = weeks[currentWeekIdx] || weeks[0];
 
     const {
-        tasks, loading: tasksLoading, toggleTask, addTask, deleteTask, updateTask
+        tasks, loading: tasksLoading, error: tasksError, toggleTask, addTask, deleteTask, updateTask, reload: reloadTasks
     } = useTasks(spreadsheetId, currentYear, currentMonthIndex, currentWeekIdx + 1);
 
     const days = useMemo(() => {
@@ -90,17 +91,13 @@ function Planner() {
 
     const isLoading = habitsLoading || tasksLoading;
 
-    if (habitsError) {
+    const dataError = habitsError || tasksError;
+
+    if (dataError) {
         return (
             <div className="flex-1 flex flex-col">
                 <Header title="Planner" subtitle={`${currentMonth} ${currentYear}`} saving={habitsSaving} />
-                <div className="px-4 py-6 sm:px-10" role="alert">
-                    <div className="glass-card" style={{ padding: '24px' }}>
-                        <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-heading)', marginBottom: '8px' }}>Planner habits could not be loaded</h2>
-                        <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>{habitsError.message || 'Check your connection and retry.'}</p>
-                        <button className="system-action-button" onClick={reloadHabits}>Retry habits</button>
-                    </div>
-                </div>
+                <LoadErrorState title="Planner data could not be loaded" error={dataError} onRetry={() => { reloadHabits(); reloadTasks(); }} />
             </div>
         );
     }

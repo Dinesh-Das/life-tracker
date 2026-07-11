@@ -12,12 +12,15 @@ import { yearsFromSheetTitles, monthTabsForYear, computeYearSummary } from '../l
 export function useWrappedComparison(spreadsheetId) {
     const [summaries, setSummaries] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (!spreadsheetId) return;
         let cancelled = false;
         (async () => {
             setLoading(true);
+            setError(null);
+            setSummaries([]);
             try {
                 const spreadsheet = await getSpreadsheet(spreadsheetId);
                 const titles = (spreadsheet.sheets || []).map(s => s.properties.title);
@@ -37,7 +40,10 @@ export function useWrappedComparison(spreadsheetId) {
                 if (!cancelled) setSummaries(perYear);
             } catch (e) {
                 console.error('Wrapped comparison fetch failed', e);
-                if (!cancelled) setSummaries([]);
+                if (!cancelled) {
+                    setError(e);
+                    setSummaries([]);
+                }
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -45,5 +51,5 @@ export function useWrappedComparison(spreadsheetId) {
         return () => { cancelled = true; };
     }, [spreadsheetId]);
 
-    return { summaries, loading };
+    return { summaries, loading, error };
 }

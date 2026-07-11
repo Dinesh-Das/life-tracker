@@ -4,18 +4,28 @@ import FocusTimer from '../components/productivity/FocusTimer';
 import Header from '../components/layout/Header';
 import { useAuth } from '../context/AuthContext';
 import { useFocusSessions } from '../hooks/useFocusSessions';
+import LoadErrorState from '../components/ui/LoadErrorState';
 
 const formatMinutes = (min) => (min >= 60 ? `${Math.floor(min / 60)}h ${min % 60}m` : `${min}m`);
 
 function FocusPage() {
     const { spreadsheetId } = useAuth();
-    const { todayMinutes, weekMinutes, totalSessions, logSession } = useFocusSessions(spreadsheetId);
+    const { todayMinutes, weekMinutes, totalSessions, error, logSession, reload } = useFocusSessions(spreadsheetId);
 
     const stats = [
         { label: 'Today', value: formatMinutes(todayMinutes), icon: TimerIcon },
         { label: 'This Week', value: formatMinutes(weekMinutes), icon: CalendarDays },
         { label: 'Sessions', value: totalSessions, icon: Flame },
     ];
+
+    if (error) {
+        return (
+            <div className="flex-1 flex flex-col min-h-screen">
+                <Header title="Focus Mode" />
+                <LoadErrorState title="Focus history could not be loaded" error={error} onRetry={reload} />
+            </div>
+        );
+    }
 
     return (
         <div className="flex-1 flex flex-col min-h-screen">

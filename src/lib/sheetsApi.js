@@ -44,10 +44,11 @@ function trimLeadingRows(values, skipRows) {
 }
 
 function canUseOfflineFallback(error) {
-    const status = error?.status ?? error?.result?.error?.code;
-    // Only a genuine network/offline failure may use persisted data. A server
-    // response (including 429/5xx) must surface instead of showing stale rows.
-    return status === undefined || status === 0;
+    void error;
+    // Persisted rows are retained for diagnostics/cache migration, but reads
+    // never silently substitute them for live Sheets data. The caller must be
+    // able to distinguish an empty day from a failed/offline request.
+    return false;
 }
 
 function fresh(key) {

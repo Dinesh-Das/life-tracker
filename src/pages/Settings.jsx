@@ -1,9 +1,9 @@
 import Header from '../components/layout/Header'
-import { Plus, Trash2, Edit2, User, Shield, ExternalLink, Copy, RefreshCw } from 'lucide-react'
+import { Plus, Trash2, Edit2, User, Shield, ExternalLink, Copy, RefreshCw, Search } from 'lucide-react'
 import { useSettings } from '../hooks/useSettings'
 import { useAppContext } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import LoadingSkeleton from '../components/ui/LoadingSkeleton'
 import Modal from '../components/ui/Modal'
 import EmojiPicker from '../components/ui/EmojiPicker'
@@ -21,7 +21,17 @@ function Settings() {
     const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
     const [habitModalMode, setHabitModalMode] = useState('create');
     const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+    const [habitQuery, setHabitQuery] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('All');
     const [currentHabit, setCurrentHabit] = useState({ name: '', emoji: '✨', goal: 30, category: 'Health' });
+
+    const filteredHabits = useMemo(() => {
+        const query = habitQuery.trim().toLocaleLowerCase();
+        return habits.filter(habit =>
+            (categoryFilter === 'All' || habit.category === categoryFilter) &&
+            (!query || habit.name.toLocaleLowerCase().includes(query))
+        );
+    }, [categoryFilter, habitQuery, habits]);
 
     useEffect(() => {
         if (userGender && userGender !== 'needs_selection') {
@@ -179,6 +189,10 @@ function Settings() {
                                 </div>
                                 <button
                                     onClick={() => toggleHideFemaleData(!hideFemaleData)}
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={hideFemaleData}
+                                    aria-label="Hide female tracker data"
                                     style={{
                                         width: '44px', height: '24px', borderRadius: '9999px',
                                         border: 'none', cursor: 'pointer', position: 'relative',
@@ -230,14 +244,29 @@ function Settings() {
                             </button>
                         </div>
 
+                        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(130px, 0.35fr)', gap: '10px', marginBottom: '14px' }}>
+                            <label style={{ position: 'relative' }}>
+                                <span className="sr-only">Search habits</span>
+                                <Search size={15} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                <input value={habitQuery} onChange={event => setHabitQuery(event.target.value)} placeholder="Search habits" style={{ width: '100%', minHeight: '40px', padding: '9px 12px 9px 36px', borderRadius: 'var(--radius-md)', border: '1px solid var(--divider)', background: 'rgba(255,255,255,0.35)', color: 'var(--text-heading)' }} />
+                            </label>
+                            <label>
+                                <span className="sr-only">Filter habits by category</span>
+                                <select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)} style={{ width: '100%', minHeight: '40px', padding: '9px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--divider)', background: 'var(--card-solid-bg)', color: 'var(--text-heading)' }}>
+                                    <option value="All">All categories</option>
+                                    {CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+                                </select>
+                            </label>
+                        </div>
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {habits.map((habit, idx) => (
+                            {filteredHabits.map((habit, idx) => (
                                 <div key={habit.id} style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                     padding: '10px 14px',
                                     borderRadius: 'var(--radius-sm)',
                                     background: 'rgba(255,255,255,0.3)',
-                                    transition: 'background 0.2s',
+                                    transition: 'background 0.2s', contentVisibility: 'auto', containIntrinsicSize: '56px',
                                 }}
                                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.45)'}
                                     onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
@@ -272,6 +301,9 @@ function Settings() {
                                     </div>
                                 </div>
                             ))}
+                            {filteredHabits.length === 0 && (
+                                <p style={{ padding: '18px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>No habits match this filter.</p>
+                            )}
                         </div>
                     </section>
 
@@ -293,6 +325,7 @@ function Settings() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.3)' }}>
                                 <code style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spreadsheetId}</code>
                                 <button onClick={copySheetId} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '6px', borderRadius: '6px', display: 'flex' }} title="Copy ID"
+                                    type="button" aria-label="Copy connected spreadsheet ID"
                                     onMouseEnter={e => e.currentTarget.style.color = 'var(--text-heading)'}
                                     onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
                                 >
@@ -326,6 +359,7 @@ function Settings() {
                         <button
                             type="button"
                             onClick={() => setIsEmojiPickerOpen(true)}
+                            aria-label="Choose habit emoji"
                             className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-2xl hover:bg-gray-100 transition-all shrink-0"
                         >
                             {currentHabit.emoji}

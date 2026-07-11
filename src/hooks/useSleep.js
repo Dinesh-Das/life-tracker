@@ -22,6 +22,7 @@ export function useSleep(spreadsheetId, dateStr) {
     const [data, setData] = useState(EMPTY);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
     const timer = useRef(null);
     const pending = useRef(null);
     const currentRow = useRef(null);
@@ -66,6 +67,7 @@ export function useSleep(spreadsheetId, dateStr) {
         if (!spreadsheetId) return;
         const request = ++generation.current;
         setLoading(true);
+        setError(null);
         const empty = { ...EMPTY };
         latest.current = empty;
         currentRow.current = { date: targetDateStr, index: null };
@@ -85,7 +87,10 @@ export function useSleep(spreadsheetId, dateStr) {
             latest.current = next;
             setData(next);
         } catch (error) {
-            if (request === generation.current) console.error('Failed to load sleep log', error);
+            if (request === generation.current) {
+                console.error('Failed to load sleep log', error);
+                setError(error);
+            }
         } finally {
             if (request === generation.current) setLoading(false);
         }
@@ -120,5 +125,5 @@ export function useSleep(spreadsheetId, dateStr) {
         ? Math.round(((nightHours || 0) + napMinutes / 60) * 10) / 10
         : null;
 
-    return { data, hours: nightHours, napMinutes, totalHours, loading, saving, saveSleep, flushPending };
+    return { data, hours: nightHours, napMinutes, totalHours, loading, saving, error, saveSleep, flushPending, reload: load };
 }

@@ -17,7 +17,7 @@ vi.mock('react-hot-toast', () => {
     return { default: fn };
 });
 
-import { enqueue, flush, pendingCount, resilientBatchWrite, resilientAppendRows } from './syncQueue';
+import { enqueue, flush, pendingCount, removeQueuedRecompute, resilientBatchWrite, resilientAppendRows } from './syncQueue';
 
 const setOnline = (val) =>
     Object.defineProperty(window.navigator, 'onLine', { value: val, configurable: true, writable: true });
@@ -35,6 +35,26 @@ describe('enqueue / pendingCount', () => {
         enqueue({ type: 'batchWrite', spreadsheetId: 'id', data: [] });
         enqueue({ type: 'appendRows', spreadsheetId: 'id', range: 'A:B', rows: [] });
         expect(pendingCount()).toBe(2);
+    });
+
+    it('coalesces streak recomputes and keeps the recompute after the latest write', () => {
+        enqueue({ type: 'batchWrite', spreadsheetId: 'id', data: [{ range: 'B6', values: [[true]] }] });
+        enqueue({ type: 'recomputeStreak', spreadsheetId: 'id', habitId: 'habit_1' });
+        enqueue({ type: 'batchWrite', spreadsheetId: 'id', data: [{ range: 'C6', values: [[true]] }] });
+        enqueue({ type: 'recomputeStreak', spreadsheetId: 'id', habitId: 'habit_1' });
+
+        const queue = JSON.parse(localStorage.getItem('lt_sync_queue_v1'));
+        expect(queue.map(item => item.type)).toEqual(['batchWrite', 'batchWrite', 'recomputeStreak']);
+        expect(pendingCount()).toBe(3);
+    });
+
+    it('does not remove a newer durable recompute when an older batch finishes', () => {
+        const oldId = enqueue({ type: 'recomputeStreak', spreadsheetId: 'id', habitId: 'habit_1' });
+        const newId = enqueue({ type: 'recomputeStreak', spreadsheetId: 'id', habitId: 'habit_1' });
+        removeQueuedRecompute('id', 'habit_1', oldId);
+        expect(pendingCount()).toBe(1);
+        removeQueuedRecompute('id', 'habit_1', newId);
+        expect(pendingCount()).toBe(0);
     });
 });
 

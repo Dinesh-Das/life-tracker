@@ -6,10 +6,27 @@ import { legacyGlassesToLiters } from './waterUnits';
 
 const metricsEnsurePromises = new Map();
 
+export function buildMonthTabData(month, year, habits = []) {
+    const monthIndex = MONTHS.indexOf(month);
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    const numberHeaders = Array.from({ length: 31 }, (_, index) => index < daysInMonth ? String(index + 1) : '');
+    const dayHeaders = Array.from({ length: 31 }, (_, index) => {
+        if (index >= daysInMonth) return '';
+        return ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][new Date(year, monthIndex, index + 1).getDay()];
+    });
+    return [
+        [`🌟 ${month} ${year} Tracking`, ...Array(32).fill('')],
+        Array(33).fill(''),
+        ['Date', ...numberHeaders, ''],
+        ['Day', ...dayHeaders, ''],
+        [...Array(32).fill(''), 'Habit ID'],
+        ...habits.map(habit => [`${habit.emoji} ${habit.name}`, ...Array(31).fill(''), habit.id]),
+    ];
+}
+
 export async function scaffoldSheet(userName) {
     try {
         const currentYear = new Date().getFullYear();
-        const isLeapYear = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 
         // 1. Create the new Spreadsheet
         const title = `LifeTracker — ${userName}`;
@@ -76,40 +93,11 @@ export async function scaffoldSheet(userName) {
             values: [HABIT_HEADERS, ...normalizedHabits.map(serializeHabit)],
         });
 
-        // Month Tabs — correctly handle leap years for February
-        const daysInMonthTable = [31, isLeapYear(currentYear) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-        MONTHS.forEach((month, idx) => {
-            const daysInMonth = daysInMonthTable[idx];
-
-            const numHeaders = Array.from({ length: 31 }, (_, i) => i < daysInMonth ? String(i + 1) : '');
-            const dayHeaders = Array.from({ length: 31 }, (_, i) => {
-                if (i >= daysInMonth) return '';
-                const d = new Date(currentYear, idx, i + 1);
-                return ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][d.getDay()];
-            });
-
-            const monthData = [
-                [`🌟 ${month} ${currentYear} Tracking`, ...Array(32).fill('')],
-                Array(33).fill(''),
-                ['Date', ...numHeaders, ''],
-                ['Day', ...dayHeaders, ''],
-                [...Array(32).fill(''), 'Habit ID']
-            ];
-
-            normalizedHabits.forEach((h) => {
-                const row = [`${h.emoji} ${h.name}`, ...Array(31).fill(''), h.id];
-                monthData.push(row);
-            });
-
-            while (monthData.length < 21) {
-                monthData.push(Array(33).fill(''));
-            }
-            monthData.push(['🧠 Mental State (1-10)', ...Array(32).fill('')]);
-
+        MONTHS.forEach(month => {
+            const monthData = buildMonthTabData(month, currentYear, normalizedHabits);
             // Use "Month YYYY" naming to match how the app reads tabs throughout
             spreadsheetRanges.push({
-                range: `'${month} ${currentYear}'!A1:AG25`,
+                range: `'${month} ${currentYear}'!A1:AG${monthData.length}`,
                 values: monthData
             });
         });
@@ -223,43 +211,15 @@ export async function ensureMonthTab(spreadsheetId, month, year, suppliedHabits 
             console.info(`${tabName} sheet missing. Adding now...`);
             await addSheet(spreadsheetId, tabName);
 
-            // Initialize headers for the new month tab
-            const isLeapYear = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
             const monthIndex = MONTHS.indexOf(month);
-            const daysInMonthTable = [31, isLeapYear(year) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-            const daysInMonth = daysInMonthTable[monthIndex];
-
-            const numHeaders = Array.from({ length: 31 }, (_, i) => i < daysInMonth ? String(i + 1) : '');
-            const dayHeaders = Array.from({ length: 31 }, (_, i) => {
-                if (i >= daysInMonth) return '';
-                const d = new Date(year, monthIndex, i + 1);
-                return ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][d.getDay()];
-            });
-
-            const monthData = [
-                [`🌟 ${month} ${year} Tracking`, ...Array(32).fill('')],
-                Array(33).fill(''),
-                ['Date', ...numHeaders, ''],
-                ['Day', ...dayHeaders, ''],
-                [...Array(32).fill(''), 'Habit ID']
-            ];
-
             const activeHabits = suppliedHabits || await loadActiveHabits(
                 spreadsheetId,
                 new Date(year, monthIndex, 1)
             );
-            activeHabits.forEach((h) => {
-                const row = [`${h.emoji} ${h.name}`, ...Array(31).fill(''), h.id];
-                monthData.push(row);
-            });
-
-            while (monthData.length < 21) {
-                monthData.push(Array(33).fill(''));
-            }
-            monthData.push(['🧠 Mental State (1-10)', ...Array(32).fill('')]);
+            const monthData = buildMonthTabData(month, year, activeHabits);
 
             await batchWrite(spreadsheetId, [{
-                range: `'${tabName}'!A1:AG${Math.max(25, monthData.length)}`,
+                range: `'${tabName}'!A1:AG${monthData.length}`,
                 values: monthData
             }]);
             console.info(`${tabName} sheet initialized.`);

@@ -9,6 +9,7 @@ export function useReflectionInsights(spreadsheetId, year = new Date().getFullYe
     const [balance, setBalance] = useState([]);
     const [insights, setInsights] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [loadedYear, setLoadedYear] = useState(null);
 
     useEffect(() => {
@@ -16,6 +17,7 @@ export function useReflectionInsights(spreadsheetId, year = new Date().getFullYe
         (async () => {
             if (!spreadsheetId) return;
             setLoading(true);
+            setError(null);
             setBalance([]);
             setInsights([]);
             setLoadedYear(null);
@@ -46,6 +48,7 @@ export function useReflectionInsights(spreadsheetId, year = new Date().getFullYe
                 }
             } catch (e) {
                 console.error('Failed to load reflection insights', e);
+                setError(e);
                 if (alive) {
                     setBalance([]);
                     setInsights([]);
@@ -63,5 +66,6 @@ export function useReflectionInsights(spreadsheetId, year = new Date().getFullYe
         balance: isSelectedYear ? balance : [],
         insights: isSelectedYear ? insights : [],
         loading: loading || !isSelectedYear,
+        error,
     };
 }

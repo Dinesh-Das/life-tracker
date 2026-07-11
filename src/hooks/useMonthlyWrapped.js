@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { batchRead, readDataRows } from '../lib/sheetsApi';
-import { computeMonthlyStats, focusMinutesForMonth } from '../lib/monthlyWrapped';
+import { readDataRows, readRange } from '../lib/sheetsApi';
+import { computeMonthlyStats, extractMonthlyInputs, focusMinutesForMonth } from '../lib/monthlyWrapped';
 
 /**
  * Monthly Wrapped — reads the current month tab + FocusLogs and reduces
@@ -9,12 +9,14 @@ import { computeMonthlyStats, focusMinutesForMonth } from '../lib/monthlyWrapped
 export function useMonthlyWrapped(spreadsheetId, currentMonth, currentYear, currentMonthIndex) {
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         if (!spreadsheetId || !currentMonth) return;
         let cancelled = false;
         (async () => {
             setLoading(true);
+            setError(null);
             setStats(null);
             try {
                 const tab = `${currentMonth} ${currentYear}`;
@@ -25,10 +27,9 @@ export function useMonthlyWrapped(spreadsheetId, currentMonth, currentYear, curr
                     ? today.getDate()
                     : (new Date(currentYear, currentMonthIndex, 1) > today ? 0 : daysInMonth);
 
-                const [labelsR, gridR, mentalR] = await batchRead(spreadsheetId, [
-                    `'${tab}'!A6:A20`,
-                    `'${tab}'!B6:AF`,
-                    `'${tab}'!B22:AF22`,
+                const [monthRows, dailyStateRows] = await Promise.all([
+                    readRange(spreadsheetId, `'${tab}'!A6:AG`),
+                    readDataRows(spreadsheetId, 'DailyState!A:C').catch(() => []),
                 ]);
 
                 let focusRows = [];
@@ -38,10 +39,9 @@ export function useMonthlyWrapped(spreadsheetId, currentMonth, currentYear, curr
                     // FocusLogs tab may not exist yet — focus time simply reads 0
                 }
 
+                const inputs = extractMonthlyInputs(monthRows, dailyStateRows, currentYear, currentMonthIndex);
                 const monthly = computeMonthlyStats({
-                    labels: (labelsR?.values || []).map(r => r?.[0]),
-                    habitRows: gridR?.values || [],
-                    mentalRow: mentalR?.values?.[0] || [],
+                    ...inputs,
                     upToDay,
                 });
                 monthly.focusMinutes = focusMinutesForMonth(focusRows || [], currentYear, currentMonthIndex);
@@ -49,7 +49,10 @@ export function useMonthlyWrapped(spreadsheetId, currentMonth, currentYear, curr
                 if (!cancelled) setStats(monthly);
             } catch (e) {
                 console.error('Monthly Wrapped fetch failed', e);
-                if (!cancelled) setStats(null);
+                if (!cancelled) {
+                    setStats(null);
+                    setError(e);
+                }
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -57,5 +60,5 @@ export function useMonthlyWrapped(spreadsheetId, currentMonth, currentYear, curr
         return () => { cancelled = true; };
     }, [spreadsheetId, currentMonth, currentYear, currentMonthIndex]);
 
-    return { stats, loading };
+    return { stats, loading, error };
 }

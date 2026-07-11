@@ -12,6 +12,38 @@ const isDone = (v) => v === '✓' || v === true || v === 'TRUE' || v === 'checke
  * @param {Array}  opts.mentalRow B22..AF22 values (index 0 = day 1)
  * @param {number} opts.upToDay   last day to count (excludes future days)
  */
+/** Convert unbounded month rows plus DailyState rows into aligned analytics inputs. */
+export function extractMonthlyInputs(monthRows = [], dailyStateRows = [], year, monthIndex) {
+    const labels = [];
+    const habitRows = [];
+    let legacyMentalRow = [];
+    monthRows.forEach(row => {
+        const label = String(row?.[0] || '').trim();
+        if (!label) return;
+        if (/mental state/i.test(label)) {
+            legacyMentalRow = (row || []).slice(1, 32);
+            return;
+        }
+        labels.push(label);
+        habitRows.push((row || []).slice(1, 32));
+    });
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    const mentalRow = Array(daysInMonth).fill('');
+    const prefix = `${year}-${String(monthIndex + 1).padStart(2, '0')}-`;
+    dailyStateRows.forEach(row => {
+        const date = String(row?.[0] || '');
+        if (!date.startsWith(prefix)) return;
+        const day = Number.parseInt(date.slice(8, 10), 10);
+        const score = Number.parseInt(row?.[1], 10);
+        if (day >= 1 && day <= daysInMonth && score >= 1 && score <= 10) mentalRow[day - 1] = score;
+    });
+    legacyMentalRow.forEach((score, index) => {
+        const parsed = Number.parseInt(score, 10);
+        if (mentalRow[index] === '' && parsed >= 1 && parsed <= 10) mentalRow[index] = parsed;
+    });
+    return { labels, habitRows, mentalRow };
+}
+
 export function computeMonthlyStats({ labels = [], habitRows = [], mentalRow = [], upToDay = 0 }) {
     // Keep only real habit rows (skip blanks and the Mental State row)
     const habitLabels = [];

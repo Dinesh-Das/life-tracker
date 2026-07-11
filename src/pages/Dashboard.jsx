@@ -21,21 +21,25 @@ import SleepTrendChart from '../components/charts/SleepTrendChart'
 import { useReflectionInsights } from '../hooks/useReflectionInsights'
 import { useSleepHistory } from '../hooks/useSleepHistory'
 import { sleepHabitInsights } from '../lib/sleepCorrelations'
+import LoadErrorState from '../components/ui/LoadErrorState'
 
 function Dashboard() {
     const { spreadsheetId, userGender } = useAuth();
     const { hideFemaleData, currentYear, setYear } = useAppContext();
     const realYear = new Date().getFullYear();
     const selectAnalyticsYear = (year) => setYear(Math.min(realYear, Math.max(2000, year)));
-    const { stats, yearlyTrend, habits, streaks, loading: dashLoading } = useDashboard(spreadsheetId, currentYear);
-    const { heatmapData, loading: heatLoading } = useYearlyHistory(spreadsheetId, currentYear);
-    const { balance, insights: reflectionInsights, loading: refLoading } = useReflectionInsights(spreadsheetId, currentYear);
-    const { sleepRows } = useSleepHistory(spreadsheetId, currentYear);
+    const { stats, yearlyTrend, habits, streaks, loading: dashLoading, error: dashError } = useDashboard(spreadsheetId, currentYear);
+    const { heatmapData, loading: heatLoading, error: heatError } = useYearlyHistory(spreadsheetId, currentYear);
+    const { balance, insights: reflectionInsights, loading: refLoading, error: reflectionError } = useReflectionInsights(spreadsheetId, currentYear);
+    const { sleepRows, error: sleepError } = useSleepHistory(spreadsheetId, currentYear);
     const cycleData = useCycleContext();
 
     const sleepInsights = useMemo(() => sleepHabitInsights(sleepRows, heatmapData), [sleepRows, heatmapData]);
     const isLatestYear = currentYear >= realYear;
     const loading = dashLoading || heatLoading;
+    const dataError = dashError || heatError || reflectionError || sleepError || (
+        userGender === 'female' && !hideFemaleData && currentYear === realYear ? cycleData.error : null
+    );
 
 
     const statCards = [
@@ -59,6 +63,15 @@ function Dashboard() {
                 <div className="w-full px-4 py-6 sm:px-10">
                     <LoadingSkeleton type="page" />
                 </div>
+            </div>
+        );
+    }
+
+    if (dataError) {
+        return (
+            <div className="flex-1 flex flex-col">
+                <Header title="Analytics" subtitle={`Your ${currentYear} in review`} />
+                <LoadErrorState title={`${currentYear} analytics could not be loaded`} error={dataError} onRetry={() => window.location.reload()} />
             </div>
         );
     }

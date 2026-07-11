@@ -9,25 +9,25 @@ export function useSettings(spreadsheetId) {
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
     const generation = useRef(0);
-    const hasTrustedData = useRef(false);
 
     const loadSettings = useCallback(async () => {
         if (!spreadsheetId) return;
         const request = ++generation.current;
-        setStatus(previous => previous === 'success' ? 'refreshing' : 'loading');
+        setStatus('loading');
         setError(null);
+        setHabits([]);
+        setArchivedHabits([]);
         try {
             const rows = await loadAllHabits(spreadsheetId);
             if (request !== generation.current) return;
             setHabits(rows.filter(habit => !habit.archivedAt));
             setArchivedHabits(rows.filter(habit => habit.archivedAt));
             setStatus('success');
-            hasTrustedData.current = true;
         } catch (loadError) {
             if (request !== generation.current) return;
             console.error('Failed to load settings:', loadError);
             setError(loadError);
-            setStatus(hasTrustedData.current ? 'stale' : 'error');
+            setStatus('error');
         }
     }, [spreadsheetId]);
 
@@ -51,7 +51,7 @@ export function useSettings(spreadsheetId) {
             return true;
         } catch (saveError) {
             setError(saveError);
-            setStatus(hasTrustedData.current ? 'stale' : 'error');
+            setStatus('error');
             toast.error('Failed to save habits');
             return false;
         } finally {

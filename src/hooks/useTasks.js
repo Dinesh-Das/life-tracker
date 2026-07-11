@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
     const [tasks, setTasks] = useState({ 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] });
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
     const generation = useRef(0);
 
     const weekKey = `${year}-W${String(weekNumber).padStart(2, '0')}-M${monthIndex}`;
@@ -13,6 +14,7 @@ export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
         if (!spreadsheetId) return;
         const request = ++generation.current;
         setLoading(true);
+        setError(null);
         setTasks({ 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] });
         try {
             const rows = await readDataRows(spreadsheetId, 'Weekly!A:I');
@@ -35,7 +37,10 @@ export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
             });
             if (request === generation.current) setTasks(grouped);
         } catch (error) {
-            if (request === generation.current) console.error('Failed to load tasks:', error);
+            if (request === generation.current) {
+                console.error('Failed to load tasks:', error);
+                setError(error);
+            }
         } finally {
             if (request === generation.current) setLoading(false);
         }
@@ -138,5 +143,5 @@ export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
         }
     };
 
-    return { tasks, loading, toggleTask, addTask, deleteTask, updateTask };
+    return { tasks, loading, error, toggleTask, addTask, deleteTask, updateTask, reload: loadTasks };
 }

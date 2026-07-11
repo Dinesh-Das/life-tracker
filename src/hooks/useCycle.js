@@ -8,6 +8,7 @@ export function useCycle(spreadsheetId) {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
 
     // Computed values
     const [currentCycleDay, setCurrentCycleDay] = useState(null);
@@ -21,6 +22,7 @@ export function useCycle(spreadsheetId) {
     const fetchHistory = useCallback(async () => {
         if (!spreadsheetId) return;
         setLoading(true);
+        setError(null);
         setHistory([]);
         setCurrentCycleDay(null);
         setCurrentPhase(null);
@@ -166,6 +168,7 @@ export function useCycle(spreadsheetId) {
 
         } catch (error) {
             console.error('Error fetching cycle history:', error);
+            setError(error);
         } finally {
             setLoading(false);
         }
@@ -247,7 +250,7 @@ export function useCycle(spreadsheetId) {
     };
 
     return {
-        history, loading, saving, logDay,
+        history, loading, saving, error, logDay, reload: fetchHistory,
         currentCycleDay, currentPhase, nextPeriod,
         avgCycleLength, avgPeriodLength,
         ovulationInfo, isPeriodLate

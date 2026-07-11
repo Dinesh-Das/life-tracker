@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeMonthlyStats, focusMinutesForMonth } from './monthlyWrapped';
+import { computeMonthlyStats, extractMonthlyInputs, focusMinutesForMonth } from './monthlyWrapped';
 
 const labels = ['💪 Workout', '📚 Read', '🧠 Mental State (1-10)'];
 const habitRows = [
@@ -53,5 +53,27 @@ describe('focusMinutesForMonth', () => {
     it('handles missing data', () => {
         expect(focusMinutesForMonth([], 2026, 6)).toBe(0);
         expect(focusMinutesForMonth([null, ['']], 2026, 6)).toBe(0);
+    });
+});
+
+describe('extractMonthlyInputs', () => {
+    it('keeps all habits beyond the legacy 15-row boundary', () => {
+        const monthRows = Array.from({ length: 50 }, (_, index) => [
+            `Habit ${index + 1}`, true, ...Array(30).fill(''), `habit_${index + 1}`,
+        ]);
+        const result = extractMonthlyInputs(monthRows, [], 2026, 6);
+        expect(result.labels).toHaveLength(50);
+        expect(result.habitRows).toHaveLength(50);
+    });
+
+    it('prefers DailyState and falls back to a legacy mental row at any position', () => {
+        const monthRows = [
+            ['Habit 1', true],
+            ['Mental State (1-10)', 5, 6, 7],
+            ['Habit 2', '', true],
+        ];
+        const result = extractMonthlyInputs(monthRows, [['2026-07-02', 9]], 2026, 6);
+        expect(result.labels).toEqual(['Habit 1', 'Habit 2']);
+        expect(result.mentalRow.slice(0, 3)).toEqual([5, 9, 7]);
     });
 });

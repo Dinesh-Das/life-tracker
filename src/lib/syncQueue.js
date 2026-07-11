@@ -36,11 +36,33 @@ const saveQueue = (q) => {
 
 export const pendingCount = () => loadQueue().length;
 
+export function removeQueuedRecompute(spreadsheetId, habitId, operationId = null) {
+    const queue = loadQueue();
+    const next = queue.filter(item => !(
+        item.type === 'recomputeStreak' &&
+        item.spreadsheetId === spreadsheetId &&
+        item.habitId === habitId &&
+        (!operationId || item.id === operationId)
+    ));
+    if (next.length !== queue.length) saveQueue(next);
+}
+
 export function enqueue(op) {
-    const q = loadQueue();
+    let q = loadQueue();
+    // Recompute must run after the latest queued write. Move an existing entry
+    // to the tail instead of accumulating one expensive full-history read per click.
+    if (op.type === 'recomputeStreak') {
+        q = q.filter(item => !(
+            item.type === 'recomputeStreak' &&
+            item.spreadsheetId === op.spreadsheetId &&
+            item.habitId === op.habitId
+        ));
+    }
     if (q.length >= MAX_QUEUE_SIZE) throw new Error('Offline sync queue is full');
-    q.push({ ...op, id: op.id || crypto.randomUUID(), attempts: 0, ts: Date.now() });
+    const entry = { ...op, id: op.id || crypto.randomUUID(), attempts: 0, ts: Date.now() };
+    q.push(entry);
     if (!saveQueue(q)) throw new Error('Could not persist the offline change');
+    return entry.id;
 }
 
 const RETRYABLE_CODES = new Set([0, 408, 429, 500, 502, 503, 504]);

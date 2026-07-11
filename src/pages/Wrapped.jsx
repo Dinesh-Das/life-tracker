@@ -11,6 +11,7 @@ import { shareWrappedCard } from '../lib/wrappedShareCard';
 import { exportAllData } from '../lib/exportData';
 import { Trophy, Flame, CheckCircle2, Zap, Star, Download, ArrowLeftRight, Share2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import LoadErrorState from '../components/ui/LoadErrorState';
 
 const exportBtnStyle = {
     display: 'flex', alignItems: 'center', gap: '8px',
@@ -59,9 +60,9 @@ function DeltaBadge({ value, unit = '' }) {
 function Wrapped() {
     const { spreadsheetId } = useAuth();
     const { currentYear } = useAppContext();
-    const { stats, habits, loading } = useDashboard(spreadsheetId, currentYear);
-    const { summaries, loading: cmpLoading } = useWrappedComparison(spreadsheetId);
-    const { heatmapData, loading: heatLoading } = useYearlyHistory(spreadsheetId, currentYear);
+    const { stats, habits, loading, error: dashboardError } = useDashboard(spreadsheetId, currentYear);
+    const { summaries, loading: cmpLoading, error: comparisonError } = useWrappedComparison(spreadsheetId);
+    const { heatmapData, loading: heatLoading, error: historyError } = useYearlyHistory(spreadsheetId, currentYear);
     const [exporting, setExporting] = useState(false);
     const [sharing, setSharing] = useState(false);
     const [vsYear, setVsYear] = useState(null);
@@ -122,11 +123,22 @@ function Wrapped() {
         { label: 'Active Months', a: `${current.activeMonths} / 12`, b: `${other.activeMonths} / 12`, d: delta.activeMonths, unit: '' },
     ] : [];
 
+    const dataError = dashboardError || comparisonError || historyError;
+    const pageLoading = loading || cmpLoading || heatLoading;
+    if (dataError) {
+        return (
+            <div className="flex-1 flex flex-col">
+                <Header title={`${currentYear} Wrapped`} />
+                <LoadErrorState title="Wrapped data could not be loaded" error={dataError} onRetry={() => window.location.reload()} />
+            </div>
+        );
+    }
+
     return (
         <>
             <Header title={`${currentYear} Wrapped`} subtitle="Your year of consistency, celebrated" />
             <div className="w-full px-4 pt-2 pb-10 sm:px-10">
-                {loading ? (
+                {pageLoading ? (
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: '14px', color: 'var(--text-muted)', padding: '40px 0', textAlign: 'center' }}>
                         Crunching your year…
                     </p>

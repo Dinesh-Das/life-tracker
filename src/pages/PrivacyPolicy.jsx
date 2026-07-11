@@ -19,13 +19,14 @@ function PrivacyPolicy() {
                 </ul>
 
                 <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px' }}>3. Google Sheets & Drive Integration</h2>
-                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>LifeTracker requires specific permissions to access your Google Drive to create and manage a spreadsheet named &quot;LifeTracker Data&quot;. We ONLY read and write to this specific file.</p>
+                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>LifeTracker requires specific permissions to access your Google Drive to create and manage the spreadsheet it creates for your account. The app&apos;s Drive scope limits it to files created or opened through LifeTracker.</p>
                 <p style={{ marginBottom: '16px', lineHeight: 1.6, fontWeight: 600, fontStyle: 'italic', background: 'rgba(0,0,0,0.05)', padding: '12px', borderRadius: '8px' }}>
                     LifeTracker&apos;s use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy#limited-use-requirements" target="_blank" rel="noreferrer" style={{ color: '#2d4f41' }}>Google API Services User Data Policy</a>, including the Limited Use requirements.
                 </p>
 
                 <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px' }}>4. Data Storage & Sharing</h2>
                 <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>All your habit tracking data, journal entries, and personal statistics are stored directly in your own Google Sheet. LifeTracker does not store your personal data on external servers, nor do we sell or share your data with any third parties.</p>
+                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>To support faster loading and offline changes, the app may temporarily cache spreadsheet rows in your browser&apos;s IndexedDB and queue unsynced changes in localStorage. This browser-local data is not sent to a LifeTracker server and can be cleared using Hard refresh in Settings or by clearing site data.</p>
 
                 <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px' }}>5. Contact Us</h2>
                 <p style={{ marginBottom: '24px', lineHeight: 1.6 }}>If you have any questions about this Privacy Policy, please contact the developer.</p>

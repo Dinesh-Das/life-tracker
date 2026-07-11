@@ -13,10 +13,12 @@ import toast from 'react-hot-toast';
 export function useFocusSessions(spreadsheetId) {
     const [sessions, setSessions] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     const load = useCallback(async () => {
         if (!spreadsheetId) return;
         setLoading(true);
+        setError(null);
         try {
             await ensureFocusSheet(spreadsheetId);
             const rows = await readDataRows(spreadsheetId, 'FocusLogs!A:D');
@@ -28,9 +30,10 @@ export function useFocusSessions(spreadsheetId) {
                     minutes: parseInt(r[2]) || 0,
                     mode: r[3] ? String(r[3]) : 'WORK',
                 })));
-        } catch {
+        } catch (loadError) {
             // Tab may not exist yet for older spreadsheets — treat as empty
             setSessions([]);
+            setError(loadError);
         } finally {
             setLoading(false);
         }
@@ -78,6 +81,7 @@ export function useFocusSessions(spreadsheetId) {
 
     return {
         loading,
+        error,
         todayMinutes,
         weekMinutes,
         totalSessions: workSessions.length,

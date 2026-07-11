@@ -6,6 +6,7 @@ import { ensureSleepSheet } from '../lib/sheetScaffold';
 export function useSleepHistory(spreadsheetId, year = new Date().getFullYear(), limit = 30) {
     const [sleepRows, setSleepRows] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [loadedYear, setLoadedYear] = useState(null);
 
     useEffect(() => {
@@ -13,6 +14,7 @@ export function useSleepHistory(spreadsheetId, year = new Date().getFullYear(), 
         (async () => {
             if (!spreadsheetId) return;
             setLoading(true);
+            setError(null);
             setSleepRows([]);
             setLoadedYear(null);
             try {
@@ -44,6 +46,7 @@ export function useSleepHistory(spreadsheetId, year = new Date().getFullYear(), 
                 }
             } catch (e) {
                 console.error('Failed to load sleep history', e);
+                setError(e);
                 if (alive) {
                     setSleepRows([]);
                     setLoadedYear(year);
@@ -56,5 +59,5 @@ export function useSleepHistory(spreadsheetId, year = new Date().getFullYear(), 
     }, [spreadsheetId, year, limit]);
 
     const isSelectedYear = loadedYear === year;
-    return { sleepRows: isSelectedYear ? sleepRows : [], loading: loading || !isSelectedYear };
+    return { sleepRows: isSelectedYear ? sleepRows : [], loading: loading || !isSelectedYear, error };
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { appendRows, readDataRows, readRange } from '../lib/sheetsApi';
 import { resilientBatchWrite } from '../lib/syncQueue';
 import { getDaysInMonth, format } from 'date-fns';
-import { recomputeStreaksForHabit } from '../lib/streakRecompute';
+import { scheduleStreakRecompute } from '../lib/streakRecompute';
 import {
     archiveHabitRecord, createHabit, loadAllHabits, updateHabitRecord,
 } from '../lib/habitRepository';
@@ -28,6 +28,8 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
     const rowByHabitId = useRef(new Map());
     const dailyStateRowByDate = useRef(new Map());
     const checksRef = useRef({});
+    const habitWriteChains = useRef(new Map());
+    const cellWriteVersions = useRef(new Map());
 
     const daysInMonth = currentYear && currentMonthIndex !== undefined
         ? getDaysInMonth(new Date(currentYear, currentMonthIndex))
@@ -61,11 +63,12 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
                 ensureDailyStateSheet(spreadsheetId),
             ]);
 
-            const [monthRows, dailyRows, legacyMental] = await Promise.all([
+            const [monthRows, dailyRows] = await Promise.all([
                 readRange(spreadsheetId, monthHabitRange(tabName)),
                 readDataRows(spreadsheetId, `${DAILY_STATE_TAB}!A:C`),
-                readRange(spreadsheetId, `'${tabName}'!B22:AF22`).catch(() => []),
             ]);
+            const legacyMentalSource = (monthRows || []).find(row => /mental state/i.test(String(row?.[0] || ''))) || [];
+            const legacyMental = [legacyMentalSource.slice(1, 32)];
 
             // Match against every definition. Migrated legacy habits often have an
             // ActiveFrom equal to the migration date even though older month rows
@@ -182,6 +185,15 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
         }
     }, []);
 
+    const serializeHabitWrite = useCallback((habitId, operation) => {
+        const previous = habitWriteChains.current.get(habitId) || Promise.resolve();
+        const run = previous.catch(() => {}).then(operation);
+        habitWriteChains.current.set(habitId, run);
+        return run.finally(() => {
+            if (habitWriteChains.current.get(habitId) === run) habitWriteChains.current.delete(habitId);
+        });
+    }, []);
+
     const toggleCheck = useCallback(async (habitId, day) => {
         if (!trustedSnapshot.current || status === 'error') {
             toast.error('Habit data is not loaded. Retry before editing.');
@@ -194,10 +206,12 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
         }
         const currentValue = checksRef.current[habitId]?.[day] || false;
         const nextValue = currentValue === true ? false : true;
-        const previousChecks = checksRef.current;
+        const versionKey = `${habitId}:${day}`;
+        const version = (cellWriteVersions.current.get(versionKey) || 0) + 1;
+        cellWriteVersions.current.set(versionKey, version);
         const optimistic = {
-            ...previousChecks,
-            [habitId]: { ...(previousChecks[habitId] || {}), [day]: nextValue },
+            ...checksRef.current,
+            [habitId]: { ...(checksRef.current[habitId] || {}), [day]: nextValue },
         };
         checksRef.current = optimistic;
         setChecks(optimistic);
@@ -205,25 +219,39 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
         const tabName = `${currentMonth} ${currentYear}`;
         const date = new Date(currentYear, currentMonthIndex, day);
         try {
-            await withPending(async () => {
-                const result = await resilientBatchWrite(spreadsheetId, [{
+            const result = await withPending(() => serializeHabitWrite(habitId, () => (
+                resilientBatchWrite(spreadsheetId, [{
                     range: `'${tabName}'!${dayColumn(day)}${row.sheetRow}`,
                     values: [[encodeCheck(nextValue)]],
-                }]);
-                if (result?.queued) {
-                    const { enqueue } = await import('../lib/syncQueue');
-                    enqueue({ type: 'recomputeStreak', spreadsheetId, habitId });
-                } else {
-                    await recomputeStreaksForHabit(spreadsheetId, habitId);
-                }
-            });
+                }])
+            )));
+            if (result?.queued) {
+                const { enqueue } = await import('../lib/syncQueue');
+                enqueue({ type: 'recomputeStreak', spreadsheetId, habitId });
+            } else {
+                const { enqueue, removeQueuedRecompute } = await import('../lib/syncQueue');
+                const recomputeOperationId = enqueue({ type: 'recomputeStreak', spreadsheetId, habitId });
+                void scheduleStreakRecompute(spreadsheetId, habitId).then(() => {
+                    removeQueuedRecompute(spreadsheetId, habitId, recomputeOperationId);
+                }).catch(recomputeError => {
+                    console.error('Streak refresh failed', recomputeError);
+                    toast.error('Checkmark saved, but streak refresh will retry later.');
+                });
+            }
         } catch (saveError) {
             console.error('Failed to save checkmark', saveError);
-            checksRef.current = previousChecks;
-            setChecks(previousChecks);
+            if (cellWriteVersions.current.get(versionKey) === version) {
+                const currentChecks = checksRef.current;
+                const rollback = {
+                    ...currentChecks,
+                    [habitId]: { ...(currentChecks[habitId] || {}), [day]: currentValue },
+                };
+                checksRef.current = rollback;
+                setChecks(rollback);
+            }
             toast.error(`Failed to save ${format(date, 'MMM d')} checkmark`);
         }
-    }, [currentMonth, currentYear, currentMonthIndex, spreadsheetId, status, withPending]);
+    }, [currentMonth, currentYear, currentMonthIndex, serializeHabitWrite, spreadsheetId, status, withPending]);
 
     const updateMentalState = useCallback(async (day, rawValue) => {
         const value = Number.parseInt(rawValue, 10);

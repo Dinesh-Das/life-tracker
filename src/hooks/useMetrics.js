@@ -12,6 +12,7 @@ export function useMetrics(spreadsheetId, dateStr) {
     const [data, setData] = useState(EMPTY);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [error, setError] = useState(null);
     const timer = useRef(null);
     const pending = useRef(null);
     const currentRow = useRef(null);
@@ -54,6 +55,7 @@ export function useMetrics(spreadsheetId, dateStr) {
         if (!spreadsheetId) return;
         const request = ++generation.current;
         setLoading(true);
+        setError(null);
         const empty = { ...EMPTY };
         latest.current = empty;
         currentRow.current = { date: targetDateStr, index: null };
@@ -70,7 +72,10 @@ export function useMetrics(spreadsheetId, dateStr) {
             latest.current = next;
             setData(next);
         } catch (error) {
-            if (request === generation.current) console.error('Failed to load metrics', error);
+            if (request === generation.current) {
+                console.error('Failed to load metrics', error);
+                setError(error);
+            }
         } finally {
             if (request === generation.current) setLoading(false);
         }
@@ -99,5 +104,5 @@ export function useMetrics(spreadsheetId, dateStr) {
         timer.current = setTimeout(() => { void flushPending(); }, 600);
     }, [flushPending, targetDateStr]);
 
-    return { data, loading, saving, saveMetric, flushPending };
+    return { data, loading, saving, error, saveMetric, flushPending, reload: load };
 }

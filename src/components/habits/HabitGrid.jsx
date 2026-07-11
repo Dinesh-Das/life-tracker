@@ -1,4 +1,7 @@
 import HabitRow from './HabitRow';
+import { useEffect, useMemo, useState } from 'react';
+
+const PAGE_SIZE = 50;
 
 function HabitGrid({
     habits = [],
@@ -13,25 +16,33 @@ function HabitGrid({
     currentYear = new Date().getFullYear(),
     currentMonthIndex = new Date().getMonth()
 }) {
-    const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-    // Stats calculation
-    const getDailyStats = (day) => {
-        let done = 0;
-        habits.forEach(h => {
-            if (checks[h.id]?.[day] === true) done++;
+    const days = useMemo(() => Array.from({ length: daysInMonth }, (_, i) => i + 1), [daysInMonth]);
+    const [page, setPage] = useState(0);
+    const pageCount = Math.max(1, Math.ceil(habits.length / PAGE_SIZE));
+    useEffect(() => setPage(current => Math.min(current, pageCount - 1)), [pageCount]);
+    const visibleHabits = useMemo(
+        () => habits.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+        [habits, page]
+    );
+    const dailyStats = useMemo(() => {
+        const result = {};
+        days.forEach(day => {
+            let done = 0;
+            habits.forEach(habit => { if (checks[habit.id]?.[day] === true) done += 1; });
+            result[day] = {
+                done,
+                notDone: habits.length - done,
+                pct: habits.length ? Math.round((done / habits.length) * 100) : 0,
+            };
         });
-        return {
-            done,
-            notDone: habits.length - done,
-            pct: habits.length > 0 ? Math.round((done / habits.length) * 100) : 0
-        };
-    };
+        return result;
+    }, [checks, days, habits]);
 
     return (
-        <div className="overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200">
+        <div>
+        <div className="overflow-auto bg-white rounded-xl shadow-sm border border-gray-200" style={{ maxHeight: '75vh' }}>
             <table className="w-full border-collapse">
-                <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                <thead className="sticky top-0 z-40 bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                     {/* Row 1 — Week group headers */}
                     <tr>
                         <th className="sticky left-0 z-30 bg-gray-50 min-w-[160px] md:min-w-[200px] border-r border-gray-200 p-2 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">My Habits</th>
@@ -65,7 +76,7 @@ function HabitGrid({
 
                 {/* Habit Rows */}
                 <tbody className="bg-white">
-                    {habits.map(habit => (
+                    {visibleHabits.map(habit => (
                         <HabitRow
                             key={habit.id}
                             habit={habit}
@@ -85,7 +96,7 @@ function HabitGrid({
                     <tr className="bg-green-50/50 border-t-2 border-gray-100 italic">
                         <td className="sticky left-0 z-10 bg-inherit border-r border-gray-200 px-4 py-2 text-primary font-black">Progress %</td>
                         {days.map(day => {
-                            const stats = getDailyStats(day);
+                            const stats = dailyStats[day];
                             const isNewWeek = (day - 1) % 7 === 0 && day !== 1;
                             return (
                                 <td
@@ -103,7 +114,7 @@ function HabitGrid({
                     <tr className="bg-lime-50/30 border-t border-gray-100">
                         <td className="sticky left-0 z-10 bg-inherit border-r border-gray-200 px-4 py-2 text-lime-700">Done</td>
                         {days.map(day => {
-                            const stats = getDailyStats(day);
+                            const stats = dailyStats[day];
                             const isNewWeek = (day - 1) % 7 === 0 && day !== 1;
                             return (
                                 <td
@@ -121,7 +132,7 @@ function HabitGrid({
                     <tr className="bg-red-50/30 border-t border-gray-100">
                         <td className="sticky left-0 z-10 bg-inherit border-r border-gray-200 px-4 py-2 text-red-700">Not Done</td>
                         {days.map(day => {
-                            const stats = getDailyStats(day);
+                            const stats = dailyStats[day];
                             const isNewWeek = (day - 1) % 7 === 0 && day !== 1;
                             return (
                                 <td
@@ -163,6 +174,14 @@ function HabitGrid({
                     </tr>
                 </tfoot>
             </table>
+        </div>
+        {pageCount > 1 && (
+            <nav aria-label="Habit pages" className="flex items-center justify-center gap-3 mt-3">
+                <button type="button" className="system-action-button" disabled={page === 0} onClick={() => setPage(value => value - 1)}>Previous</button>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Habits {page * PAGE_SIZE + 1}–{Math.min(habits.length, (page + 1) * PAGE_SIZE)} of {habits.length}</span>
+                <button type="button" className="system-action-button" disabled={page >= pageCount - 1} onClick={() => setPage(value => value + 1)}>Next</button>
+            </nav>
+        )}
         </div>
     );
 }

@@ -15,54 +15,93 @@ function parseMonthTab(title) {
     return null;
 }
 
-export async function recomputeStreaksForHabit(spreadsheetId, habitId) {
+export async function recomputeStreaksForHabits(spreadsheetId, habitIds) {
+    const requestedIds = [...new Set((habitIds || []).filter(Boolean))];
+    if (!requestedIds.length) return {};
     const [metadata, habits] = await Promise.all([
         getSpreadsheet(spreadsheetId),
         loadAllHabits(spreadsheetId),
     ]);
-    const habit = habits.find(item => item.id === habitId);
-    if (!habit) return null;
+    const requestedHabits = habits.filter(item => requestedIds.includes(item.id));
+    if (!requestedHabits.length) return {};
 
     const monthTabs = (metadata.sheets || [])
         .map(sheet => parseMonthTab(sheet.properties?.title))
         .filter(Boolean)
         .sort((a, b) => a.year - b.year || a.monthIndex - b.monthIndex);
-    if (!monthTabs.length) return null;
+    if (!monthTabs.length) return {};
 
     const ranges = monthTabs.map(tab => `'${tab.title}'!A6:AG`);
     const valueRanges = await batchRead(spreadsheetId, ranges);
-    const doneDates = [];
-    const skippedDates = [];
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const streakRows = await readRange(spreadsheetId, 'Streaks!A2:E');
+    const writes = [];
+    const appends = [];
+    const result = {};
 
-    monthTabs.forEach((tab, index) => {
-        const rows = valueRanges?.[index]?.values || [];
-        const row = rows.find(candidate => String(candidate?.[MONTH_HABIT_ID_INDEX] || '') === habitId)
-            || rows.find(candidate => legacyLabelMatchesHabit(candidate?.[0], habit));
-        if (!row) return;
-
-        const monthDate = new Date(tab.year, tab.monthIndex, 1);
-        const days = getDaysInMonth(monthDate);
-        for (let day = 1; day <= days; day++) {
-            const value = decodeCheck(row[day]);
-            const date = format(new Date(tab.year, tab.monthIndex, day), 'yyyy-MM-dd');
-            if (value === true) doneDates.push(date);
-            if (value === 'skip') skippedDates.push(date);
-        }
+    requestedHabits.forEach(habit => {
+        const doneDates = [];
+        const skippedDates = [];
+        monthTabs.forEach((tab, index) => {
+            const rows = valueRanges?.[index]?.values || [];
+            const row = rows.find(candidate => String(candidate?.[MONTH_HABIT_ID_INDEX] || '') === habit.id)
+                || rows.find(candidate => legacyLabelMatchesHabit(candidate?.[0], habit));
+            if (!row) return;
+            const days = getDaysInMonth(new Date(tab.year, tab.monthIndex, 1));
+            for (let day = 1; day <= days; day++) {
+                const value = decodeCheck(row[day]);
+                const date = format(new Date(tab.year, tab.monthIndex, day), 'yyyy-MM-dd');
+                if (value === true) doneDates.push(date);
+                if (value === 'skip') skippedDates.push(date);
+            }
+        });
+        const stats = computeStreaks(doneDates, today, skippedDates);
+        result[habit.id] = stats;
+        const values = [[habit.id, stats.current, stats.best, stats.lastDone, stats.total]];
+        const rowIndex = (streakRows || []).findIndex(row => row[0] === habit.id);
+        if (rowIndex === -1) appends.push(values[0]);
+        else writes.push({ range: `Streaks!A${rowIndex + 2}:E${rowIndex + 2}`, values });
     });
 
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const stats = computeStreaks(doneDates, today, skippedDates);
-    const streakRows = await readRange(spreadsheetId, 'Streaks!A2:E');
-    const rowIndex = (streakRows || []).findIndex(row => row[0] === habitId);
-    const values = [[habitId, stats.current, stats.best, stats.lastDone, stats.total]];
+    if (writes.length) await batchWrite(spreadsheetId, writes);
+    if (appends.length) await appendRows(spreadsheetId, 'Streaks!A:E', appends);
+    return result;
+}
 
-    if (rowIndex === -1) {
-        await appendRows(spreadsheetId, 'Streaks!A:E', values);
-    } else {
-        await batchWrite(spreadsheetId, [{
-            range: `Streaks!A${rowIndex + 2}:E${rowIndex + 2}`,
-            values,
-        }]);
+export async function recomputeStreaksForHabit(spreadsheetId, habitId) {
+    const result = await recomputeStreaksForHabits(spreadsheetId, [habitId]);
+    return result[habitId] || null;
+}
+
+const scheduled = new Map();
+const recomputeChains = new Map();
+
+/** Coalesce rapid edits into one multi-habit, serialized streak recomputation. */
+export function scheduleStreakRecompute(spreadsheetId, habitId, delay = 700) {
+    let state = scheduled.get(spreadsheetId);
+    if (!state) {
+        state = { ids: new Set(), waiters: [], timer: null };
+        scheduled.set(spreadsheetId, state);
     }
-    return stats;
+    state.ids.add(habitId);
+    if (state.timer) clearTimeout(state.timer);
+
+    const promise = new Promise((resolve, reject) => state.waiters.push({ habitId, resolve, reject }));
+    state.timer = setTimeout(() => {
+        const batch = scheduled.get(spreadsheetId);
+        if (batch !== state) return;
+        scheduled.delete(spreadsheetId);
+        const ids = [...batch.ids];
+        const previous = recomputeChains.get(spreadsheetId) || Promise.resolve();
+        const run = previous.catch(() => {}).then(() => recomputeStreaksForHabits(spreadsheetId, ids));
+        recomputeChains.set(spreadsheetId, run);
+        run.then(results => {
+            batch.waiters.forEach(waiter => waiter.resolve(results[waiter.habitId] || null));
+        }).catch(error => {
+            batch.waiters.forEach(waiter => waiter.reject(error));
+        }).finally(() => {
+            if (recomputeChains.get(spreadsheetId) === run) recomputeChains.delete(spreadsheetId);
+        });
+    }, delay);
+    return promise;
 }

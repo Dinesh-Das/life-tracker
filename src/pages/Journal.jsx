@@ -12,6 +12,7 @@ import Header from '../components/layout/Header';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import { Sun, Moon, Target, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
+import LoadErrorState from '../components/ui/LoadErrorState';
 
 const EMPTY_JOURNAL = { gratitude: '', review: '', focus: '' };
 
@@ -19,9 +20,9 @@ function Journal() {
     const { spreadsheetId } = useAuth();
     const { currentDate: selectedDate, currentMonth, currentYear, currentMonthIndex, gender, selectDate } = useAppContext();
     const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
-    const { journal, loading, saving, saveJournal } = useJournal(spreadsheetId, selectedDateStr);
-    const { habits, checks, loading: habitsLoading } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
-    const { wins, loading: winsLoading } = useWins(spreadsheetId, selectedDateStr);
+    const { journal, loading, saving, error: journalError, saveJournal, reload: reloadJournal } = useJournal(spreadsheetId, selectedDateStr);
+    const { habits, checks, loading: habitsLoading, error: habitsError, reload: reloadHabits } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
+    const { wins, loading: winsLoading, error: winsError, reload: reloadWins } = useWins(spreadsheetId, selectedDateStr);
     const sleep = useSleep(spreadsheetId, selectedDateStr);
     const metrics = useMetrics(spreadsheetId, selectedDateStr);
 
@@ -52,6 +53,12 @@ function Journal() {
     const winsLogged = Object.values(wins).filter(value => String(value || '').trim()).length;
     const waterLiters = Number.parseFloat(metrics.data.water);
     const snapshotLoading = habitsLoading || winsLoading || sleep.loading || metrics.loading;
+    const dataError = journalError || habitsError || winsError || sleep.error || metrics.error;
+    const retrySelectedDate = useCallback(() => {
+        void Promise.allSettled([
+            reloadJournal(), reloadHabits(), reloadWins(), sleep.reload(), metrics.reload(),
+        ]);
+    }, [metrics, reloadHabits, reloadJournal, reloadWins, sleep]);
 
     if (loading) {
         return (
@@ -60,6 +67,15 @@ function Journal() {
                 <div className="px-4 py-6 sm:px-10">
                     <LoadingSkeleton type="page" />
                 </div>
+            </div>
+        );
+    }
+
+    if (dataError) {
+        return (
+            <div className="flex-1 flex flex-col">
+                <Header title="Reflections" subtitle={format(selectedDate, 'MMMM d, yyyy')} />
+                <LoadErrorState title="Selected-day reflection data could not be loaded" error={dataError} onRetry={retrySelectedDate} />
             </div>
         );
     }
@@ -185,6 +201,7 @@ function JournalSection({ title, subtitle, icon: Icon, iconColor, value, onChang
                 </div>
             </div>
             <textarea
+                maxLength={5000}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}

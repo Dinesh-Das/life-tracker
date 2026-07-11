@@ -28,6 +28,7 @@ import DecayWarningCard from '../components/ui/DecayWarningCard';
 import { useDecayWarnings } from '../hooks/useDecayWarnings';
 import { recordFreezeEvent } from '../lib/freezeLedger';
 import toast from 'react-hot-toast';
+import LoadErrorState from '../components/ui/LoadErrorState';
 
 const EMPTY_WINS = { Physical: '', Mental: '', Social: '', Financial: '', Spiritual: '' };
 
@@ -65,7 +66,9 @@ function DailyCheckin() {
         wins,
         loading: winsLoading,
         saving: winsSaving,
-        saveWin
+        error: winsError,
+        saveWin,
+        reload: reloadWins,
     } = useWins(spreadsheetId, selectedDateStr);
 
     const {
@@ -93,6 +96,12 @@ function DailyCheckin() {
 
     const loading = habitsLoading || winsLoading || sleep.loading || metrics.loading || reflection.loading;
     const saving = habitsSaving || winsSaving || sleep.saving || metrics.saving || reflection.saving;
+    const dataError = habitsError || winsError || sleep.error || metrics.error || reflection.error;
+    const retrySelectedDate = useCallback(() => {
+        void Promise.allSettled([
+            reloadHabits(), reloadWins(), sleep.reload(), metrics.reload(), reflection.reload(),
+        ]);
+    }, [metrics, reflection, reloadHabits, reloadWins, sleep]);
 
 
     const [mentalInput, setMentalInput] = useState(mentalState[activeDay] || '');
@@ -172,17 +181,11 @@ function DailyCheckin() {
     
     const jumpToToday = goToToday;
 
-    if (habitsError) {
+    if (dataError) {
         return (
             <div className="flex-1 flex flex-col">
                 <Header title="Daily Check-in" subtitle={format(selectedDate, 'EEEE, MMMM d')} />
-                <div className="px-4 py-6 sm:px-10" role="alert">
-                    <div className="glass-card" style={{ padding: '24px' }}>
-                        <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-heading)', marginBottom: '8px' }}>Habits could not be loaded</h2>
-                        <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>{habitsError.message || 'Check your connection and retry.'}</p>
-                        <button className="system-action-button" onClick={reloadHabits}>Retry habits</button>
-                    </div>
-                </div>
+                <LoadErrorState title={`${format(selectedDate, 'MMMM d')} data could not be loaded`} error={dataError} onRetry={retrySelectedDate} />
             </div>
         );
     }
@@ -678,6 +681,7 @@ function DailyCheckin() {
                                     </div>
                                 </div>
                                 <textarea
+                                    maxLength={2000}
                                     value={localWins[cat.id] || ''}
                                     onChange={(e) => handleWinChange(cat.id, e.target.value)}
                                     placeholder={cat.placeholder}

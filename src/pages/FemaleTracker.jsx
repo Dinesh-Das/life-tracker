@@ -10,6 +10,7 @@ import CycleCharts from '../components/female/CycleCharts'
 import FlowCalendar from '../components/female/FlowCalendar'
 import PhaseInfoCard from '../components/female/PhaseInfoCard'
 import LoadingSkeleton from '../components/ui/LoadingSkeleton'
+import LoadErrorState from '../components/ui/LoadErrorState'
 import { useCycleContext } from '../context/CycleContext'
 
 import { useAppContext } from '../context/AppContext'
@@ -26,7 +27,7 @@ function FemaleTracker() {
 
     const { hideFemaleData } = useAppContext();
     const {
-        history, loading, saving, logDay,
+        history, loading, saving, error, logDay, reload,
         currentCycleDay, currentPhase, nextPeriod,
         avgCycleLength, avgPeriodLength,
         ovulationInfo, isPeriodLate
@@ -51,8 +52,6 @@ function FemaleTracker() {
 
     // Sync form state when a new date is selected
     React.useEffect(() => {
-        if (!history || history.length === 0) return;
-
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         const entry = [...history].reverse().find(h => h.date === dateStr);
 
@@ -97,6 +96,15 @@ function FemaleTracker() {
             <div className="flex-1 flex flex-col">
                 <Header title="Female Tracker" />
                 <LoadingSkeleton type="page" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex-1 flex flex-col">
+                <Header title="Female Tracker" />
+                <LoadErrorState title="Cycle history could not be loaded" error={error} onRetry={reload} />
             </div>
         );
     }

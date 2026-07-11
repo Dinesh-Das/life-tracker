@@ -10,6 +10,14 @@ const monthMigrationPromises = new Map();
 const monthMigrationFailures = new Map();
 const MIGRATION_RETRY_COOLDOWN_MS = 5 * 60 * 1000;
 const MONTH_TAB_PATTERN = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?: \d{4})?$/;
+const MUTABLE_HABIT_FIELDS = [
+    'name', 'emoji', 'goal', 'category', 'femaleOnly', 'frequency', 'order',
+    'color', 'focusLink', 'activeFrom', 'archivedAt',
+];
+
+function habitRecordChanged(before, after) {
+    return MUTABLE_HABIT_FIELDS.some(field => String(before?.[field] ?? '') !== String(after?.[field] ?? ''));
+}
 
 async function legacyHabits(spreadsheetId) {
     const rows = await readRange(spreadsheetId, 'Settings!A2:K');
@@ -185,10 +193,12 @@ export async function replaceActiveHabits(spreadsheetId, nextHabits) {
         const value = replacement
             ? { ...habit, ...replacement, archivedAt: '' }
             : (habit.archivedAt ? habit : { ...habit, archivedAt: new Date().toISOString() });
-        writes.push({
-            range: `${HABITS_TAB}!A${habit.sheetRow}:N${habit.sheetRow}`,
-            values: [serializeHabit(value, index)],
-        });
+        if (habitRecordChanged(habit, value)) {
+            writes.push({
+                range: `${HABITS_TAB}!A${habit.sheetRow}:N${habit.sheetRow}`,
+                values: [serializeHabit(value, index)],
+            });
+        }
         nextById.delete(habit.id);
     });
     nextById.forEach(habit => creates.push(serializeHabit(habit)));
