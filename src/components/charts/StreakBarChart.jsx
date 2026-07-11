@@ -16,7 +16,7 @@ const data = habits.map(h => {
 
     return (
         <div className="glass-card" style={{ height: '350px', padding: '24px 28px' }}>
-            <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '16px' }}>Current Streaks By Habit</h4>
+            <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '16px' }}>Best Streaks By Habit</h4>
             <ResponsiveContainer width="100%" height="90%">
                 <BarChart data={data} layout="vertical" margin={{ left: 40 }}>
                     <XAxis type="number" hide />

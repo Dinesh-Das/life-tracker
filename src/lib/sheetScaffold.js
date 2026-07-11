@@ -340,7 +340,9 @@ export function ensureMetricsSheet(spreadsheetId) {
 
 export async function ensureFocusSheet(spreadsheetId) {
     try {
-        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        // FocusLogs is optional in older workbooks and may have been deleted
+        // manually. Always verify live metadata before deciding it exists.
+        const spreadsheet = await getSpreadsheet(spreadsheetId, { forceRefresh: true });
         const hasFocus = spreadsheet.sheets.some(s => s.properties.title === 'FocusLogs');
 
         if (!hasFocus) {

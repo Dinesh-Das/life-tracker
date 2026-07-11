@@ -1,21 +1,25 @@
 import { useState, useEffect } from 'react';
-import { readRange } from '../lib/sheetsApi';
+import { readDataRows } from '../lib/sheetsApi';
 import { ensureSleepSheet } from '../lib/sheetScaffold';
 
 /** Recent sleep entries for the Analytics trend chart. */
-export function useSleepHistory(spreadsheetId, limit = 30) {
+export function useSleepHistory(spreadsheetId, year = new Date().getFullYear(), limit = 30) {
     const [sleepRows, setSleepRows] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadedYear, setLoadedYear] = useState(null);
 
     useEffect(() => {
         let alive = true;
         (async () => {
             if (!spreadsheetId) return;
+            setLoading(true);
+            setSleepRows([]);
+            setLoadedYear(null);
             try {
                 await ensureSleepSheet(spreadsheetId);
-                const rows = await readRange(spreadsheetId, 'SleepLogs!A2:F');
+                const rows = await readDataRows(spreadsheetId, 'SleepLogs!A:F');
                 const parsed = rows
-                    .filter(r => r[0])
+                    .filter(r => String(r?.[0] || '').startsWith(`${year}-`))
                     .map(r => {
                         const night = parseFloat(r[3]);
                         const napMin = parseInt(r[5]);
@@ -34,15 +38,23 @@ export function useSleepHistory(spreadsheetId, limit = 30) {
                     .filter(r => r.hours !== null || r.quality !== null)
                     .sort((a, b) => a.date.localeCompare(b.date))
                     .slice(-limit);
-                if (alive) setSleepRows(parsed);
+                if (alive) {
+                    setSleepRows(parsed);
+                    setLoadedYear(year);
+                }
             } catch (e) {
                 console.error('Failed to load sleep history', e);
+                if (alive) {
+                    setSleepRows([]);
+                    setLoadedYear(year);
+                }
             } finally {
                 if (alive) setLoading(false);
             }
         })();
         return () => { alive = false; };
-    }, [spreadsheetId, limit]);
+    }, [spreadsheetId, year, limit]);
 
-    return { sleepRows, loading };
+    const isSelectedYear = loadedYear === year;
+    return { sleepRows: isSelectedYear ? sleepRows : [], loading: loading || !isSelectedYear };
 }

@@ -14,6 +14,7 @@ export function useYearlyHistory(spreadsheetId, year) {
     const [heatmapData, setHeatmapData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [loadedYear, setLoadedYear] = useState(null);
 
     useEffect(() => {
         let active = true;
@@ -22,6 +23,7 @@ export function useYearlyHistory(spreadsheetId, year) {
             setLoading(true);
             setError(null);
             setHeatmapData([]);
+            setLoadedYear(null);
             try {
                 const [metadata, habits] = await Promise.all([
                     getSpreadsheet(spreadsheetId),
@@ -83,10 +85,14 @@ export function useYearlyHistory(spreadsheetId, year) {
                     const intensity = pct === null || pct === 0 ? 0 : Math.min(5, Math.ceil(pct / 20));
                     return { date, count: value.completed, total: value.total, pct, intensity };
                 });
-                if (active) setHeatmapData(result);
+                if (active) {
+                    setHeatmapData(result);
+                    setLoadedYear(year);
+                }
             } catch (loadError) {
                 if (active) {
                     setHeatmapData([]);
+                    setLoadedYear(year);
                     setError(loadError);
                 }
             } finally {
@@ -96,5 +102,6 @@ export function useYearlyHistory(spreadsheetId, year) {
         return () => { active = false; };
     }, [spreadsheetId, year]);
 
-    return { heatmapData, loading, error };
+    const isSelectedYear = loadedYear === year;
+    return { heatmapData: isSelectedYear ? heatmapData : [], loading: loading || !isSelectedYear, error };
 }

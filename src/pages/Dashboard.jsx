@@ -13,7 +13,6 @@ import { useAppContext } from '../context/AppContext'
 import { Trophy, Flame, Zap, HeartPulse, ActivitySquare, CalendarHeart, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
 import { CheckCircle2 } from 'lucide-react'
 import { format } from 'date-fns'
-import { useSearchParams } from 'react-router-dom'
 
 import { useCycleContext } from '../context/CycleContext'
 import SmartInsights from '../components/charts/SmartInsights'
@@ -25,20 +24,13 @@ import { sleepHabitInsights } from '../lib/sleepCorrelations'
 
 function Dashboard() {
     const { spreadsheetId, userGender } = useAuth();
-    const { hideFemaleData } = useAppContext();
-    const [searchParams, setSearchParams] = useSearchParams();
+    const { hideFemaleData, currentYear, setYear } = useAppContext();
     const realYear = new Date().getFullYear();
-    const requestedYear = Number.parseInt(searchParams.get('year'), 10);
-    const currentYear = Number.isInteger(requestedYear) ? Math.min(realYear, Math.max(2000, requestedYear)) : realYear;
-    const setYear = (year) => setSearchParams(previous => {
-        const next = new URLSearchParams(previous);
-        next.set('year', String(Math.min(realYear, Math.max(2000, year))));
-        return next;
-    });
+    const selectAnalyticsYear = (year) => setYear(Math.min(realYear, Math.max(2000, year)));
     const { stats, yearlyTrend, habits, streaks, loading: dashLoading } = useDashboard(spreadsheetId, currentYear);
     const { heatmapData, loading: heatLoading } = useYearlyHistory(spreadsheetId, currentYear);
-    const { balance, insights: reflectionInsights, loading: refLoading } = useReflectionInsights(spreadsheetId);
-    const { sleepRows } = useSleepHistory(spreadsheetId);
+    const { balance, insights: reflectionInsights, loading: refLoading } = useReflectionInsights(spreadsheetId, currentYear);
+    const { sleepRows } = useSleepHistory(spreadsheetId, currentYear);
     const cycleData = useCycleContext();
 
     const sleepInsights = useMemo(() => sleepHabitInsights(sleepRows, heatmapData), [sleepRows, heatmapData]);
@@ -53,7 +45,7 @@ function Dashboard() {
         { label: 'Active Months', value: `${stats.activeMonths} / 12`, icon: Zap, color: 'text-blue-600', bg: 'bg-blue-50' },
     ];
 
-    const showCycleStats = userGender === 'female' && !hideFemaleData;
+    const showCycleStats = userGender === 'female' && !hideFemaleData && currentYear === realYear;
     const cycleCards = [
         { label: 'Cycle Day', value: cycleData.currentCycleDay ? `Day ${cycleData.currentCycleDay}` : '?', icon: ActivitySquare, color: 'text-rose-600', bg: 'bg-rose-50' },
         { label: 'Avg Length', value: `${cycleData.avgCycleLength} d`, icon: HeartPulse, color: 'text-pink-600', bg: 'bg-pink-50' },
@@ -80,7 +72,7 @@ function Dashboard() {
                     {/* Year Switcher — browse previous years */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '18px' }}>
                     <button
-                        onClick={() => setYear(currentYear - 1)}
+                        onClick={() => selectAnalyticsYear(currentYear - 1)}
                         aria-label="Previous year"
                         className="glass-button"
                         style={{ borderRadius: '9999px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-heading)', border: '1px solid rgba(255,255,255,0.3)' }}
@@ -91,7 +83,7 @@ function Dashboard() {
                         {currentYear}
                     </span>
                     <button
-                        onClick={() => setYear(currentYear + 1)}
+                        onClick={() => selectAnalyticsYear(currentYear + 1)}
                         disabled={isLatestYear}
                         aria-label="Next year"
                         className="glass-button"

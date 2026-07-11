@@ -247,10 +247,20 @@ export async function createSpreadsheet(title) {
  * Cached for 60s and deduped — several hooks request this on every mount.
  * @param {string} spreadsheetId
  */
-export async function getSpreadsheet(spreadsheetId) {
+export async function getSpreadsheet(spreadsheetId, { forceRefresh = false } = {}) {
     const key = `m:${spreadsheetId}`;
-    const hit = fresh(key);
+    const hit = forceRefresh ? undefined : fresh(key);
     if (hit !== undefined) return hit;
+
+    // Sheet tabs can be added/deleted directly in Google Sheets while the app
+    // is open. Callers that must verify a tab before reading can bypass cached
+    // metadata so a deleted tab is never mistaken for an existing one.
+    if (forceRefresh) {
+        const res = await SHEETS().get({ spreadsheetId });
+        const data = res.result;
+        cache.set(key, { data, time: Date.now() });
+        return data;
+    }
 
     const generation = generations.get(spreadsheetId) || 0;
     return dedupe(key, async () => {
