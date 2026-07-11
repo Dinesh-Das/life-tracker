@@ -189,6 +189,152 @@ h1, h2, h3, h4 {
   height: 100dvh;
 }
 
+/* Public landing/login shell — uses the same canvas and glass language. */
+.public-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--main-bg);
+  color: var(--text-body);
+}
+.public-shell-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--main-overlay-1), var(--main-overlay-2);
+}
+.public-nav {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 20px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.public-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  color: var(--text-heading);
+  text-decoration: none;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.public-brand-logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  object-fit: cover;
+  box-shadow: 0 8px 24px rgba(26,46,36,0.14);
+}
+.public-nav-actions { display: flex; align-items: center; gap: 10px; }
+.public-main {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  flex: 1;
+  padding: clamp(36px, 7vw, 88px) 0 72px;
+}
+.public-main-compact {
+  display: grid;
+  place-items: center;
+  padding-top: 30px;
+}
+.public-glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--glass-shadow);
+}
+.public-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--accent-ink);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.public-title {
+  color: var(--text-heading);
+  font-family: var(--font-display);
+  font-size: clamp(48px, 7vw, 82px);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 0.96;
+}
+.public-copy {
+  color: var(--text-muted);
+  font-size: clamp(15px, 2vw, 19px);
+  line-height: 1.7;
+}
+.public-primary-button,
+.public-secondary-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-radius: var(--radius-full);
+  padding: 11px 20px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.public-primary-button {
+  border: 1px solid rgba(45,79,65,0.28);
+  background: var(--primary-container);
+  color: #edf8f1;
+  box-shadow: 0 8px 22px rgba(45,79,65,0.18);
+}
+.public-secondary-button {
+  border: var(--glass-border);
+  background: var(--surface-inner);
+  color: var(--text-heading);
+}
+.public-primary-button:hover,
+.public-secondary-button:hover { transform: translateY(-2px); }
+.public-primary-button:active,
+.public-secondary-button:active { transform: scale(0.98); }
+.public-footer {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 20px 0 28px;
+  border-top: 1px solid var(--divider);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.public-footer div { display: flex; align-items: center; gap: 12px; }
+.public-footer a { color: inherit; font-weight: 700; text-decoration: none; }
+.public-footer a:hover { text-decoration: underline; }
+
+@media (max-width: 640px) {
+  .public-nav { padding-top: 14px; }
+  .public-brand { font-size: 21px; }
+  .public-brand-logo { width: 38px; height: 38px; }
+  .public-main { padding-top: 32px; }
+  .public-footer { flex-direction: column; text-align: center; }
+}
+
 
 /* ═══════════════════════════════════════════════════
    Glass Card — Core Utility

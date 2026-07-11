@@ -1,161 +1,67 @@
-import { useAuth } from '../context/AuthContext'
-import { Calendar, CheckSquare, BarChart3 } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { BarChart3, CalendarDays, CheckCircle2, CheckSquare2, ShieldCheck } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import PublicShell from '../components/layout/PublicShell';
+import { useAuth } from '../context/AuthContext';
+
+function GoogleMark() {
+    return (
+        <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+        </svg>
+    );
+}
 
 function Login() {
     const { signIn } = useAuth();
+    const features = [
+        [CalendarDays, 'One date across every daily record'],
+        [CheckSquare2, 'Habits, wins, sleep and reflections'],
+        [BarChart3, 'Private analytics from your own Sheet'],
+    ];
 
     return (
-        <div
-            style={{
-                minHeight: '100vh',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: '#1a3828',
-                position: 'relative',
-                overflow: 'hidden',
-                padding: '24px',
-            }}
-        >
-            {/* Background radial blobs */}
-            <div aria-hidden="true" style={{
-                position: 'absolute', inset: 0,
-                background: `
-                    radial-gradient(ellipse 70% 50% at 50% 30%, rgba(40,80,55,0.6) 0%, transparent 70%),
-                    radial-gradient(ellipse 50% 40% at 80% 70%, rgba(20,50,30,0.4) 0%, transparent 60%)
-                `,
-                zIndex: 0,
-            }} />
-
-            {/* Content */}
-            <div style={{
-                position: 'relative', zIndex: 1,
-                display: 'flex', flexDirection: 'column',
-                alignItems: 'center', textAlign: 'center',
-                gap: 0, width: '100%', maxWidth: '560px',
-                padding: '48px 24px',
-                animation: 'fadeUp 0.6s ease-out both',
-            }}>
-                {/* Logo */}
-                <img 
-                    src="/logo.png" 
-                    alt="LifeTracker Logo" 
-                    style={{ width: '80px', height: '80px', borderRadius: '20px', marginBottom: '24px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', objectFit: 'cover' }} 
-                />
-
-                {/* App title */}
-                <h1 style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 'clamp(48px, 8vw, 64px)',
-                    fontWeight: 500,
-                    color: '#f0f7f0',
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1,
-                    marginBottom: '16px',
-                }}>
-                    LifeTracker
-                </h1>
-
-                {/* Tagline */}
-                <p style={{
-                    fontFamily: 'var(--font-body)',
-                    fontSize: 'clamp(16px, 3vw, 22px)',
-                    fontWeight: 400,
-                    color: 'rgba(240,247,240,0.8)',
-                    marginBottom: '52px',
-                    letterSpacing: 0,
-                }}>
-                    Turn your life into a game
-                </p>
-
-                {/* Google Sign-in button */}
-                <button
-                    id="google-signin-btn"
-                    onClick={signIn}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '14px',
-                        background: '#fff',
-                        color: '#1a1a1a',
-                        border: 'none',
-                        borderRadius: '9999px',
-                        padding: '18px 48px',
-                        fontFamily: 'var(--font-body)',
-                        fontSize: '18px',
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                        width: '100%',
-                        maxWidth: '420px',
-                        marginBottom: '44px',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
-                        transition: 'transform 0.2s, box-shadow 0.2s',
-                    }}
-                    onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 8px 32px rgba(0,0,0,0.30)';
-                    }}
-                    onMouseLeave={e => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.25)';
-                    }}
-                >
-                    {/* Google G SVG */}
-                    <svg width="22" height="22" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
-                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                    </svg>
-                    Continue with Google
-                </button>
-
-                {/* Feature chips */}
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '48px' }}>
-                    {[
-                        { icon: Calendar, label: 'Monthly Tracker' },
-                        { icon: CheckSquare, label: 'Weekly Planner' },
-                        { icon: BarChart3, label: 'Dashboard' },
-                    ].map(({ icon: Icon, label }) => (
-                        <div
-                            key={label}
-                            style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '10px 20px',
-                                borderRadius: '9999px',
-                                border: '1.5px solid rgba(240,247,240,0.30)',
-                                background: 'rgba(255,255,255,0.06)',
-                                backdropFilter: 'blur(10px)',
-                                WebkitBackdropFilter: 'blur(10px)',
-                                fontSize: '14px',
-                                fontWeight: 500,
-                                fontFamily: 'var(--font-body)',
-                                color: 'rgba(240,247,240,0.85)',
-                            }}
-                        >
-                            <Icon size={15} />
-                            <span>{label}</span>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Footer note & Legal Links */}
-                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '16px', width: '100%' }}>
-                    <p style={{ fontSize: '13px', color: 'rgba(240,247,240,0.6)', fontFamily: 'var(--font-body)', fontWeight: 500 }}>
-                        Your data lives in your own Google Sheet. Transparent. Private. Yours.
+        <PublicShell compact actions={<Link to="/" className="public-secondary-button">Back home</Link>}>
+            <section className="public-glass w-full max-w-5xl overflow-hidden grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr]">
+                <div className="p-7 sm:p-10 lg:p-14" style={{ background: 'rgba(45,79,65,0.72)', color: '#edf8f1' }}>
+                    <span className="inline-flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-[0.14em]" style={{ color: '#bfe1d0' }}>
+                        <ShieldCheck size={14} /> Private by design
+                    </span>
+                    <h1 className="mt-5 font-serif text-5xl sm:text-6xl font-semibold leading-[0.95] tracking-[-0.04em]">Welcome back to your daily rhythm.</h1>
+                    <p className="mt-6 text-sm sm:text-base leading-7" style={{ color: 'rgba(237,248,241,0.72)' }}>
+                        Sign in to reconnect LifeTracker with the Google Sheet you own. Your records stay under your control.
                     </p>
-                    <div style={{ display: 'flex', gap: '24px', fontSize: '14px', fontFamily: 'var(--font-body)', fontWeight: 600 }}>
-                        <Link to="/privacy" style={{ color: '#f0f7f0', textDecoration: 'underline' }}>Privacy Policy</Link>
-                        <Link to="/terms" style={{ color: '#f0f7f0', textDecoration: 'underline' }}>Terms of Service</Link>
+
+                    <div className="mt-9 space-y-3">
+                        {features.map(([Icon, label]) => (
+                            <div key={label} className="flex items-center gap-3 rounded-xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <Icon size={17} style={{ color: '#bfe1d0', flexShrink: 0 }} />
+                                <span className="text-sm font-semibold" style={{ color: 'rgba(237,248,241,0.86)' }}>{label}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
-            </div>
-        </div>
+
+                <div className="p-7 sm:p-10 lg:p-14 flex flex-col justify-center" style={{ background: 'var(--surface-inner)' }}>
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-7" style={{ background: 'var(--primary-container)', boxShadow: '0 10px 28px rgba(45,79,65,0.18)' }}>
+                        <CheckCircle2 size={26} style={{ color: '#bfe1d0' }} />
+                    </div>
+                    <p className="public-eyebrow">Continue tracking</p>
+                    <h2 className="mt-3 font-serif text-4xl font-semibold tracking-[-0.03em]" style={{ color: 'var(--text-heading)' }}>Sign in to LifeTracker</h2>
+                    <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-muted)' }}>Google authentication securely reconnects the app to the LifeTracker spreadsheet it created for you.</p>
+
+                    <button id="google-signin-btn" onClick={signIn} className="mt-8 w-full public-primary-button" style={{ minHeight: '52px', fontSize: '12px' }}>
+                        <GoogleMark /> Continue with Google
+                    </button>
+
+                    <div className="mt-7 pt-6 text-center text-xs leading-6" style={{ borderTop: '1px solid var(--divider)', color: 'var(--text-muted)' }}>
+                        By continuing, you agree to our <Link to="/terms" className="font-bold underline">Terms</Link> and acknowledge our <Link to="/privacy" className="font-bold underline">Privacy Policy</Link>.
+                    </div>
+                </div>
+            </section>
+        </PublicShell>
     );
 }
 

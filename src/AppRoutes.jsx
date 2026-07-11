@@ -108,7 +108,7 @@ function AppRoutes() {
 
     // NEVER block public routes with a loading screen.
     // Google's bot needs to see the Landing page immediately to pass verification.
-    const isPublicRoute = ['/', '/privacy', '/terms'].includes(location.pathname);
+    const isPublicRoute = ['/', '/login', '/privacy', '/terms'].includes(location.pathname);
 
     if (loading && !isPublicRoute) {
         return (
