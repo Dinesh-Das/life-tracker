@@ -4,12 +4,14 @@ import { useAppContext } from '../context/AppContext'
 import { useHabits } from '../hooks/useHabits'
 import { format } from 'date-fns'
 import { useState, useMemo, useEffect, useCallback } from 'react'
-import { CheckCircle2, Circle, Brain, Trophy, Zap, Heart, DollarSign, Star, ChevronLeft, ChevronRight, CalendarClock, Info, Snowflake, Bell, BellOff } from 'lucide-react'
+import { CheckCircle2, Circle, Brain, Trophy, Zap, Heart, DollarSign, Star, ChevronLeft, ChevronRight, CalendarClock, Info, Snowflake, Bell, BellOff, BookOpen } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useWins } from '../hooks/useWins';
 import { useStreaks } from '../hooks/useStreaks';
 import { useSkipDay } from '../hooks/useSkipDay';
 import { useSleep } from '../hooks/useSleep';
 import { useMetrics } from '../hooks/useMetrics';
+import { useJournal } from '../hooks/useJournal';
 import { useReminders } from '../hooks/useReminders';
 import SleepLogger from '../components/ui/SleepLogger';
 import QuickMetrics from '../components/ui/QuickMetrics';
@@ -72,6 +74,7 @@ function DailyCheckin() {
     } = useSkipDay(spreadsheetId, currentMonth, currentYear);
     const sleep = useSleep(spreadsheetId, selectedDateStr);
     const metrics = useMetrics(spreadsheetId, selectedDateStr);
+    const reflection = useJournal(spreadsheetId, selectedDateStr);
     const { remindersOn, toggleReminders } = useReminders();
 
     // Local buffer so typing in the textarea doesn't re-render via hook state on every keystroke.
@@ -88,8 +91,8 @@ function DailyCheckin() {
         saveWin(catId, text);
     }, [saveWin]);
 
-    const loading = habitsLoading || winsLoading;
-    const saving = habitsSaving || winsSaving;
+    const loading = habitsLoading || winsLoading || sleep.loading || metrics.loading || reflection.loading;
+    const saving = habitsSaving || winsSaving || sleep.saving || metrics.saving || reflection.saving;
 
 
     const [mentalInput, setMentalInput] = useState(mentalState[activeDay] || '');
@@ -616,6 +619,17 @@ function DailyCheckin() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-up" style={{ marginBottom: '24px' }}>
                     <SleepLogger sleep={sleep} />
                     <QuickMetrics metrics={metrics} />
+                </div>
+
+                <div className="glass-card animate-fade-up" style={{ padding: '16px 18px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ padding: '8px', borderRadius: '9px', background: 'var(--surface-inner-strong)', color: 'var(--text-heading)' }}><BookOpen size={16} /></div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 800, color: 'var(--text-heading)' }}>Reflections</h4>
+                        <p style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {Object.values(reflection.journal).filter(value => String(value || '').trim()).length}/3 entries for {format(selectedDate, 'MMM d')}
+                        </p>
+                    </div>
+                    <Link to="/journal" className="system-action-button" style={{ minHeight: '34px', padding: '7px 12px', fontSize: '9px', textDecoration: 'none' }}>Open</Link>
                 </div>
 
                 {/* Daily Wins */}

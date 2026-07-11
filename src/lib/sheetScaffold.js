@@ -1,7 +1,10 @@
-import { createSpreadsheet, batchWrite, getSpreadsheet, addSheet } from './sheetsApi';
+import { createSpreadsheet, batchWrite, getSpreadsheet, addSheet, readRange } from './sheetsApi';
 import { MONTHS, DEFAULT_HABITS } from './constants';
 import { HABIT_HEADERS, serializeHabit, normalizeHabit } from './habitSchema';
 import { loadActiveHabits } from './habitRepository';
+import { legacyGlassesToLiters } from './waterUnits';
+
+const metricsEnsurePromises = new Map();
 
 export async function scaffoldSheet(userName) {
     try {
@@ -288,7 +291,7 @@ export async function ensureSleepSheet(spreadsheetId) {
     }
 }
 
-export async function ensureMetricsSheet(spreadsheetId) {
+async function ensureMetricsSheetOnce(spreadsheetId) {
     try {
         const spreadsheet = await getSpreadsheet(spreadsheetId);
         const hasMetrics = spreadsheet.sheets.some(s => s.properties.title === 'MetricsLogs');
@@ -298,15 +301,42 @@ export async function ensureMetricsSheet(spreadsheetId) {
             await addSheet(spreadsheetId, 'MetricsLogs');
             await batchWrite(spreadsheetId, [{
                 range: 'MetricsLogs!A1:C1',
-                values: [['Date', 'Water (glasses)', 'Weight']]
+                values: [['Date', 'Water (L)', 'Weight']]
             }]);
             console.info('MetricsLogs sheet initialized.');
+        } else {
+            const rows = await readRange(spreadsheetId, 'MetricsLogs!A:C');
+            const waterHeader = String(rows?.[0]?.[1] || '');
+            if (/glass/i.test(waterHeader)) {
+                const writes = [{ range: 'MetricsLogs!B1', values: [['Water (L)']] }];
+                rows.slice(1).forEach((row, index) => {
+                    if (row?.[1] === '' || row?.[1] === undefined || row?.[1] === null) return;
+                    const liters = legacyGlassesToLiters(row[1]);
+                    if (liters === null) return;
+                    writes.push({
+                        range: `MetricsLogs!B${index + 2}`,
+                        values: [[liters]],
+                    });
+                });
+                await batchWrite(spreadsheetId, writes);
+                console.info(`Converted ${writes.length - 1} water entries from glasses to liters.`);
+            }
         }
     } catch (e) {
         console.error('Failed to ensure MetricsLogs sheet:', e);
         throw e;
     }
-    }
+}
+
+export function ensureMetricsSheet(spreadsheetId) {
+    if (metricsEnsurePromises.has(spreadsheetId)) return metricsEnsurePromises.get(spreadsheetId);
+    const promise = ensureMetricsSheetOnce(spreadsheetId).catch(error => {
+        metricsEnsurePromises.delete(spreadsheetId);
+        throw error;
+    });
+    metricsEnsurePromises.set(spreadsheetId, promise);
+    return promise;
+}
 
 export async function ensureFocusSheet(spreadsheetId) {
     try {

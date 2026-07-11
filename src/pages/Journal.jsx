@@ -1,7 +1,12 @@
 import { format, subDays, addDays, isSameDay } from 'date-fns';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useAppContext } from '../context/AppContext';
 import { useJournal } from '../hooks/useJournal';
+import { useHabits } from '../hooks/useHabits';
+import { useWins } from '../hooks/useWins';
+import { useSleep } from '../hooks/useSleep';
+import { useMetrics } from '../hooks/useMetrics';
 import { promptsForDate } from '../lib/reflectionPrompts';
 import Header from '../components/layout/Header';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
@@ -12,7 +17,13 @@ const EMPTY_JOURNAL = { gratitude: '', review: '', focus: '' };
 
 function Journal() {
     const { spreadsheetId } = useAuth();
-    const { journal, loading, saving, saveJournal, selectedDate, setSelectedDate } = useJournal(spreadsheetId);
+    const { currentDate: selectedDate, currentMonth, currentYear, currentMonthIndex, gender, selectDate } = useAppContext();
+    const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+    const { journal, loading, saving, saveJournal } = useJournal(spreadsheetId, selectedDateStr);
+    const { habits, checks, loading: habitsLoading } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
+    const { wins, loading: winsLoading } = useWins(spreadsheetId, selectedDateStr);
+    const sleep = useSleep(spreadsheetId, selectedDateStr);
+    const metrics = useMetrics(spreadsheetId, selectedDateStr);
 
     // Local buffer — decouples typing from hook state so no re-renders on every keystroke
     const [localJournal, setLocalJournal] = useState(EMPTY_JOURNAL);
@@ -36,6 +47,11 @@ function Journal() {
 
     const isToday = isSameDay(selectedDate, new Date());
     const prompts = promptsForDate(selectedDate);
+    const visibleHabits = gender === 'female' ? habits : habits.filter(habit => !habit.femaleOnly);
+    const completedHabits = visibleHabits.filter(habit => checks[habit.id]?.[selectedDate.getDate()] === true).length;
+    const winsLogged = Object.values(wins).filter(value => String(value || '').trim()).length;
+    const waterLiters = Number.parseFloat(metrics.data.water);
+    const snapshotLoading = habitsLoading || winsLoading || sleep.loading || metrics.loading;
 
     if (loading) {
         return (
@@ -61,7 +77,7 @@ function Journal() {
                 <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', marginBottom: '24px' }}>
                     <button
                         id="journal-prev-day"
-                        onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+                        onClick={() => selectDate(subDays(selectedDate, 1))}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '6px', borderRadius: '8px', display: 'flex', transition: 'background 0.2s' }}
                         onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
                         onMouseLeave={e => e.currentTarget.style.background = 'none'}
@@ -83,7 +99,7 @@ function Journal() {
 
                     <button
                         id="journal-next-day"
-                        onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+                        onClick={() => selectDate(addDays(selectedDate, 1))}
                         disabled={isToday}
                         style={{
                             background: 'none', border: 'none', cursor: isToday ? 'not-allowed' : 'pointer',
@@ -95,6 +111,23 @@ function Journal() {
                     >
                         <ChevronRight size={22} />
                     </button>
+                </div>
+
+                <div className="glass-card" style={{ padding: '16px 18px', marginBottom: '20px' }} aria-busy={snapshotLoading}>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '12px' }}>Selected day snapshot</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        {[
+                            ['Habits', snapshotLoading ? '—' : `${completedHabits}/${visibleHabits.length}`],
+                            ['Wins', snapshotLoading ? '—' : String(winsLogged)],
+                            ['Sleep', snapshotLoading ? '—' : (sleep.totalHours == null ? '—' : `${sleep.totalHours} h`)],
+                            ['Water', snapshotLoading ? '—' : (Number.isFinite(waterLiters) ? `${waterLiters} L` : '—')],
+                        ].map(([label, value]) => (
+                            <div key={label} style={{ padding: '12px', borderRadius: 'var(--radius-sm)', background: 'var(--surface-inner)', textAlign: 'center' }}>
+                                <strong style={{ display: 'block', fontFamily: 'var(--font-display)', fontSize: '18px', color: 'var(--text-heading)' }}>{value}</strong>
+                                <span style={{ fontFamily: 'var(--font-body)', fontSize: '9px', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{label}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Journal sections */}

@@ -1,4 +1,5 @@
 import { Droplets, Scale, Minus, Plus } from 'lucide-react';
+import { formatLiters, roundLiters } from '../../lib/waterUnits';
 
 const btnStyle = {
     width: '30px', height: '30px', borderRadius: '8px',
@@ -10,7 +11,11 @@ const btnStyle = {
 /** Quick daily metrics card — water counter and weight input. */
 function QuickMetrics({ metrics }) {
     const { data, saveMetric } = metrics;
-    const water = parseInt(data.water) || 0;
+    const water = Number.parseFloat(data.water) || 0;
+    const updateWater = (delta) => {
+        const next = Math.min(10, Math.max(0, roundLiters(water + delta) || 0));
+        saveMetric('water', String(next));
+    };
 
     return (
         <div className="glass-card" style={{ padding: '16px 18px' }}>
@@ -23,16 +28,16 @@ function QuickMetrics({ metrics }) {
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', width: '60px' }}>Water</span>
-                <button style={btnStyle} onClick={() => saveMetric('water', String(Math.max(0, water - 1)))} aria-label="Remove a glass of water">
+                <button style={btnStyle} onClick={() => updateWater(-0.25)} aria-label="Remove 0.25 liters of water">
                     <Minus size={14} />
                 </button>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 600, color: 'var(--text-heading)', minWidth: '2ch', textAlign: 'center' }} aria-live="polite">
-                    {water}
+                    {formatLiters(water)}
                 </span>
-                <button style={btnStyle} onClick={() => saveMetric('water', String(Math.min(20, water + 1)))} aria-label="Add a glass of water">
+                <button style={btnStyle} onClick={() => updateWater(0.25)} aria-label="Add 0.25 liters of water">
                     <Plus size={14} />
                 </button>
-                <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: 'var(--text-muted)' }}>glasses</span>
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: 'var(--text-muted)' }}>L</span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

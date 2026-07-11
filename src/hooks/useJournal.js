@@ -8,8 +8,7 @@ import toast from 'react-hot-toast';
 const EMPTY = { gratitude: '', review: '', focus: '' };
 const FIELDS = Object.keys(EMPTY);
 
-export function useJournal(spreadsheetId) {
-    const [selectedDate, setSelectedDate] = useState(new Date());
+export function useJournal(spreadsheetId, dateStr) {
     const [journal, setJournal] = useState(EMPTY);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -18,7 +17,7 @@ export function useJournal(spreadsheetId) {
     const currentRow = useRef(null);
     const latest = useRef(EMPTY);
     const generation = useRef(0);
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const targetDateStr = dateStr || format(new Date(), 'yyyy-MM-dd');
 
     const persistSnapshot = useCallback(async (snapshot) => {
         const row = [snapshot.date, ...FIELDS.map(field => snapshot.values[field] || '')];
@@ -59,13 +58,13 @@ export function useJournal(spreadsheetId) {
             await ensureJournalSheet(spreadsheetId);
             const rows = await readRange(spreadsheetId, 'JournalLogs!A2:D');
             if (request !== generation.current) return;
-            const index = rows.findIndex(row => row[0] === dateStr);
+            const index = rows.findIndex(row => row[0] === targetDateStr);
             const next = index === -1 ? { ...EMPTY } : {
                 gratitude: rows[index][1] || '',
                 review: rows[index][2] || '',
                 focus: rows[index][3] || '',
             };
-            currentRow.current = { date: dateStr, index: index === -1 ? null : index + 2 };
+            currentRow.current = { date: targetDateStr, index: index === -1 ? null : index + 2 };
             latest.current = next;
             setJournal(next);
         } catch (error) {
@@ -73,7 +72,7 @@ export function useJournal(spreadsheetId) {
         } finally {
             if (request === generation.current) setLoading(false);
         }
-    }, [spreadsheetId, dateStr]);
+    }, [spreadsheetId, targetDateStr]);
 
     useEffect(() => {
         loadJournal();
@@ -90,13 +89,13 @@ export function useJournal(spreadsheetId) {
         setJournal(next);
         setSaving(true);
         pending.current = {
-            date: dateStr,
-            rowIndex: currentRow.current?.date === dateStr ? currentRow.current.index : null,
+            date: targetDateStr,
+            rowIndex: currentRow.current?.date === targetDateStr ? currentRow.current.index : null,
             values: { ...next },
         };
         if (timer.current) clearTimeout(timer.current);
         timer.current = setTimeout(() => { void flushPending(); }, 800);
-    }, [dateStr, flushPending]);
+    }, [targetDateStr, flushPending]);
 
-    return { journal, loading, saving, saveJournal, selectedDate, setSelectedDate, flushPending };
+    return { journal, loading, saving, saveJournal, flushPending };
 }
