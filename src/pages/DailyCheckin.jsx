@@ -29,6 +29,10 @@ import { useDecayWarnings } from '../hooks/useDecayWarnings';
 import { recordFreezeEvent } from '../lib/freezeLedger';
 import toast from 'react-hot-toast';
 import LoadErrorState from '../components/ui/LoadErrorState';
+import GoalForecastCard from '../components/ui/GoalForecastCard';
+import MobileQuickEntry from '../components/ui/MobileQuickEntry';
+import { isHabitScheduledForDate } from '../lib/habitSchedule';
+import { useProductSettings } from '../hooks/useProductSettings';
 
 const EMPTY_WINS = { Physical: '', Mental: '', Social: '', Financial: '', Spiritual: '' };
 
@@ -78,6 +82,7 @@ function DailyCheckin() {
     const sleep = useSleep(spreadsheetId, selectedDateStr);
     const metrics = useMetrics(spreadsheetId, selectedDateStr);
     const reflection = useJournal(spreadsheetId, selectedDateStr);
+    const { settings: productSettings } = useProductSettings(spreadsheetId);
     const { remindersOn, toggleReminders } = useReminders();
 
     // Local buffer so typing in the textarea doesn't re-render via hook state on every keystroke.
@@ -111,13 +116,14 @@ function DailyCheckin() {
         setMentalInput(mentalState[activeDay] !== undefined ? mentalState[activeDay] : '');
     }, [mentalState, activeDay]);
 
-    // Filter habits by gender
+    const globalPause = useMemo(() => ({ from: productSettings.pauseFrom || '', until: productSettings.pauseUntil || '' }), [productSettings.pauseFrom, productSettings.pauseUntil]);
+    // Filter habits by gender and the selected day's schedule. Paused/rest days are
+    // neutral: they do not appear as failures and do not dilute completion.
     const visibleHabits = useMemo(() => {
-        if (gender === 'female') return habits;
-        return habits.filter(h => !h.femaleOnly);
-    }, [habits, gender]);
+        return habits.filter(h => (gender === 'female' || !h.femaleOnly) && isHabitScheduledForDate(h, selectedDate, globalPause));
+    }, [globalPause, habits, gender, selectedDate]);
 
-    const { habitStreaks } = useStreaks(visibleHabits, checks);
+    const { habitStreaks } = useStreaks(visibleHabits, checks, { year: currentYear, monthIndex: currentMonthIndex, globalPause });
     const [detailHabit, setDetailHabit] = useState(null);
     const [localSkipped, setLocalSkipped] = useState({});
     const [repaired, setRepaired] = useState({});
@@ -233,7 +239,7 @@ function DailyCheckin() {
                             <ChevronRight size={16} />
                         </button>
                     </div>
-                    <div className="scrollbar-thin" style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+                    <div className="day-picker-grid">
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
                             const isFuture = isCurrentMonth ? d > todayDay : isFutureMonth;
                             const isSelected = d === activeDay;
@@ -343,6 +349,8 @@ function DailyCheckin() {
                     upToDay={isCurrentMonth ? todayDay : (isFutureMonth ? 0 : daysInMonth)}
                     monthLabel={currentMonth}
                 />
+
+                <GoalForecastCard habits={visibleHabits} checks={checks} selectedDate={selectedDate} daysInMonth={daysInMonth} />
 
                 {/* Streak Bank — freeze-token budget, progress and history */}
                 <StreakBankCard
@@ -706,6 +714,11 @@ function DailyCheckin() {
             {celebration && (
                 <CelebrationOverlay milestone={celebration} onClose={() => setCelebration(null)} />
             )}
+            <MobileQuickEntry
+                habits={visibleHabits} checks={checks} activeDay={activeDay} toggleCheck={toggleCheck}
+                metrics={metrics} mentalValue={mentalInput}
+                setMentalValue={value => { setMentalInput(value); updateMentalState(activeDay, value); }}
+            />
             
             <HabitDetailModal
                 isOpen={!!detailHabit}

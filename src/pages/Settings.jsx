@@ -1,5 +1,6 @@
 import Header from '../components/layout/Header'
-import { Plus, Trash2, Edit2, User, Shield, ExternalLink, Copy, RefreshCw, Search, ArchiveRestore } from 'lucide-react'
+import { Plus, Trash2, Edit2, User, Shield, ExternalLink, Copy, RefreshCw, Search, ArchiveRestore, ArrowUp, ArrowDown, Wrench } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useSettings } from '../hooks/useSettings'
 import { useAppContext } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
@@ -11,6 +12,10 @@ import { CATEGORIES } from '../lib/constants'
 import toast from 'react-hot-toast'
 import { validateHabit } from '../lib/habitSchema'
 import { clearSpreadsheetCache } from '../lib/sheetsApi'
+import { recordActivity } from '../lib/activityLog'
+
+const WEEKDAYS = [['S', 0], ['M', 1], ['T', 2], ['W', 3], ['T', 4], ['F', 5], ['S', 6]];
+const EMPTY_HABIT = { name: '', emoji: '✨', goal: 30, category: 'Health', frequency: 'Daily', scheduleType: 'frequency', scheduleDays: [], intervalDays: 1, timesPerMonth: 12, pausedFrom: '', pausedUntil: '', routine: '', tags: [] };
 
 function Settings() {
     const { spreadsheetId, user, userGender, updateUserGender } = useAuth();
@@ -23,7 +28,9 @@ function Settings() {
     const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
     const [habitQuery, setHabitQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('All');
-    const [currentHabit, setCurrentHabit] = useState({ name: '', emoji: '✨', goal: 30, category: 'Health' });
+    const [currentHabit, setCurrentHabit] = useState(EMPTY_HABIT);
+    const [selectedHabitIds, setSelectedHabitIds] = useState([]);
+    const [bulkCategory, setBulkCategory] = useState('Health');
 
     const filteredHabits = useMemo(() => {
         const query = habitQuery.trim().toLocaleLowerCase();
@@ -45,9 +52,16 @@ function Settings() {
         toast.success(`Gender updated to ${newGender}`);
     };
 
+    const commitHabitChange = async (next, type, label) => {
+        const snapshot = habits;
+        const saved = await saveHabits(next);
+        if (saved) recordActivity(type, label, snapshot);
+        return saved;
+    };
+
     const handleDeleteHabit = (id) => {
         if (confirm('Archive this habit? Its history will be preserved.')) {
-            saveHabits(habits.filter(h => h.id !== id));
+            void commitHabitChange(habits.filter(h => h.id !== id), 'archive', 'Archived a habit');
         }
     };
 
@@ -57,7 +71,7 @@ function Settings() {
             setCurrentHabit(habit);
         } else {
             setHabitModalMode('create');
-            setCurrentHabit({ name: '', emoji: '✨', goal: 30, category: 'Health', id: crypto.randomUUID() });
+            setCurrentHabit({ ...EMPTY_HABIT, id: crypto.randomUUID() });
         }
         setIsHabitModalOpen(true);
     };
@@ -72,9 +86,9 @@ function Settings() {
         const exists = habits.find(h => h.id === currentHabit.id);
         let saved;
         if (exists) {
-            saved = await saveHabits(habits.map(h => h.id === currentHabit.id ? validation.value : h));
+            saved = await commitHabitChange(habits.map(h => h.id === currentHabit.id ? validation.value : h), 'edit', `Edited ${validation.value.name}`);
         } else {
-            saved = await saveHabits([...habits, validation.value]);
+            saved = await commitHabitChange([...habits, validation.value], 'create', `Created ${validation.value.name}`);
         }
         if (saved) setIsHabitModalOpen(false);
     };
@@ -87,10 +101,36 @@ function Settings() {
     };
 
     const handleRestoreHabit = async (habit) => {
-        await saveHabits([
+        await commitHabitChange([
             ...habits,
             { ...habit, archivedAt: '', order: habits.length + 1 },
-        ]);
+        ], 'restore', `Restored ${habit.name}`);
+    };
+
+    const moveHabit = async (id, direction) => {
+        const index = habits.findIndex(habit => habit.id === id);
+        const target = index + direction;
+        if (index < 0 || target < 0 || target >= habits.length) return;
+        const next = [...habits];
+        [next[index], next[target]] = [next[target], next[index]];
+        await commitHabitChange(next, 'reorder', `Reordered ${habits[index].name}`);
+    };
+
+    const duplicateHabit = async habit => {
+        const copy = { ...habit, id: crypto.randomUUID(), name: `${habit.name} copy`, createdAt: new Date().toISOString(), archivedAt: '', sheetRow: null };
+        await commitHabitChange([...habits, copy], 'duplicate', `Duplicated ${habit.name}`);
+    };
+
+    const applyBulkCategory = async () => {
+        if (!selectedHabitIds.length) return;
+        const ids = new Set(selectedHabitIds);
+        if (await commitHabitChange(habits.map(habit => ids.has(habit.id) ? { ...habit, category: bulkCategory } : habit), 'bulk-edit', `Updated ${ids.size} habit categories`)) setSelectedHabitIds([]);
+    };
+
+    const bulkArchive = async () => {
+        if (!selectedHabitIds.length || !confirm(`Archive ${selectedHabitIds.length} selected habits? History will be preserved.`)) return;
+        const ids = new Set(selectedHabitIds);
+        if (await commitHabitChange(habits.filter(habit => !ids.has(habit.id)), 'bulk-archive', `Archived ${ids.size} habits`)) setSelectedHabitIds([]);
     };
 
     const hardRefresh = async () => {
@@ -266,9 +306,21 @@ function Settings() {
                             </label>
                         </div>
 
+                        <div className="mobile-stack" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <button type="button" className="glass-button" onClick={() => setSelectedHabitIds(selectedHabitIds.length === filteredHabits.length ? [] : filteredHabits.map(habit => habit.id))}>
+                                {selectedHabitIds.length === filteredHabits.length && filteredHabits.length ? 'Clear selection' : 'Select visible'}
+                            </button>
+                            {selectedHabitIds.length > 0 && <>
+                                <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{selectedHabitIds.length} selected</span>
+                                <select value={bulkCategory} onChange={event => setBulkCategory(event.target.value)} style={{ minHeight: 36, borderRadius: 9, border: '1px solid var(--divider)', background: 'var(--card-solid-bg)', color: 'var(--text-heading)', padding: '6px 9px' }}>{CATEGORIES.map(category => <option key={category}>{category}</option>)}</select>
+                                <button type="button" className="system-action-button" disabled={saving} onClick={applyBulkCategory}>Apply category</button>
+                                <button type="button" className="system-action-button" disabled={saving} onClick={bulkArchive}>Archive selected</button>
+                            </>}
+                        </div>
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {filteredHabits.map((habit, idx) => (
-                                <div key={habit.id} style={{
+                                <div key={habit.id} className="habit-setting-row" style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                     padding: '10px 14px',
                                     borderRadius: 'var(--radius-sm)',
@@ -278,7 +330,8 @@ function Settings() {
                                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.45)'}
                                     onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
                                 >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                        <input type="checkbox" checked={selectedHabitIds.includes(habit.id)} onChange={event => setSelectedHabitIds(ids => event.target.checked ? [...ids, habit.id] : ids.filter(id => id !== habit.id))} aria-label={`Select ${habit.name}`} />
                                         <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', width: '18px', textAlign: 'right' }}>{idx + 1}</span>
                                         <span style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.5)', borderRadius: '8px', fontSize: '18px' }}>{habit.emoji}</span>
                                         <div>
@@ -286,7 +339,10 @@ function Settings() {
                                             <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{habit.category} • {habit.goal} days/mo</span>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                    <div className="habit-setting-actions" style={{ display: 'flex', gap: '4px' }}>
+                                        <button onClick={() => moveHabit(habit.id, -1)} disabled={idx === 0} aria-label={`Move ${habit.name} up`} className="habit-icon-action"><ArrowUp size={14} /></button>
+                                        <button onClick={() => moveHabit(habit.id, 1)} disabled={idx === filteredHabits.length - 1} aria-label={`Move ${habit.name} down`} className="habit-icon-action"><ArrowDown size={14} /></button>
+                                        <button onClick={() => duplicateHabit(habit)} aria-label={`Duplicate ${habit.name}`} className="habit-icon-action"><Copy size={14} /></button>
                                         <button
                                             onClick={() => openHabitModal(habit)}
                                             aria-label={`Edit ${habit.name}`}
@@ -383,6 +439,13 @@ function Settings() {
                         </section>
                     )}
 
+                    <section className="glass-card" style={{ padding: '18px 22px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                            <div><h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text-heading)' }}>Product tools</h3><p style={{ color: 'var(--text-muted)', fontSize: 11 }}>Backups, repair, routines, vacation mode, activity history and push reminders.</p></div>
+                            <Link to="/tools" className="system-action-button"><Wrench size={14} /> Open tools</Link>
+                        </div>
+                    </section>
+
                 </div>
             </div>
 
@@ -440,6 +503,37 @@ function Settings() {
                                 className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-200"
                             />
                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label htmlFor="habit-schedule" className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Schedule</label>
+                            <select id="habit-schedule" value={currentHabit.scheduleType || 'frequency'} onChange={e => setCurrentHabit({ ...currentHabit, scheduleType: e.target.value })} className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-200">
+                                <option value="frequency">Daily / weekly target</option>
+                                <option value="weekdays">Selected weekdays</option>
+                                <option value="interval">Every N days</option>
+                                <option value="monthly">Times per month</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label htmlFor="habit-frequency" className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Weekly target</label>
+                            <select id="habit-frequency" value={currentHabit.frequency || 'Daily'} onChange={e => setCurrentHabit({ ...currentHabit, frequency: e.target.value })} className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-200">
+                                <option>Daily</option>{[1,2,3,4,5,6].map(count => <option key={count}>{count}x/week</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    {currentHabit.scheduleType === 'weekdays' && <div className="space-y-2"><span className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Active weekdays</span><div className="flex gap-2 flex-wrap">{WEEKDAYS.map(([label, day], index) => <button type="button" key={`${label}-${index}`} onClick={() => setCurrentHabit({ ...currentHabit, scheduleDays: (currentHabit.scheduleDays || []).includes(day) ? currentHabit.scheduleDays.filter(value => value !== day) : [...(currentHabit.scheduleDays || []), day] })} aria-pressed={(currentHabit.scheduleDays || []).includes(day)} className={(currentHabit.scheduleDays || []).includes(day) ? 'system-action-button' : 'glass-button'} style={{ width: 38, padding: 0 }}>{label}</button>)}</div></div>}
+                    {currentHabit.scheduleType === 'interval' && <label className="space-y-1 block"><span className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Repeat every N days</span><input type="number" min="1" max="365" value={currentHabit.intervalDays || 1} onChange={e => setCurrentHabit({ ...currentHabit, intervalDays: Number(e.target.value) })} className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm" /></label>}
+                    {currentHabit.scheduleType === 'monthly' && <label className="space-y-1 block"><span className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Times per month</span><input type="number" min="1" max="31" value={currentHabit.timesPerMonth || 1} onChange={e => setCurrentHabit({ ...currentHabit, timesPerMonth: Number(e.target.value) })} className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm" /></label>}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <label className="space-y-1"><span className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Pause from</span><input type="date" value={currentHabit.pausedFrom || ''} onChange={e => setCurrentHabit({ ...currentHabit, pausedFrom: e.target.value })} className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm" /></label>
+                        <label className="space-y-1"><span className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Pause until</span><input type="date" value={currentHabit.pausedUntil || ''} onChange={e => setCurrentHabit({ ...currentHabit, pausedUntil: e.target.value })} className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm" /></label>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <label className="space-y-1"><span className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Routine</span><input maxLength="60" value={currentHabit.routine || ''} onChange={e => setCurrentHabit({ ...currentHabit, routine: e.target.value })} placeholder="Morning reset" className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm" /></label>
+                        <label className="space-y-1"><span className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Tags</span><input maxLength="180" value={(currentHabit.tags || []).join(', ')} onChange={e => setCurrentHabit({ ...currentHabit, tags: e.target.value.split(',').map(value => value.trim()).filter(Boolean) })} placeholder="home, energy" className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm" /></label>
                     </div>
 
                     <button

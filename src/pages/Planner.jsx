@@ -128,7 +128,7 @@ function Planner() {
                 position: 'sticky', top: 0, zIndex: 40,
             }}>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px' }}>Select Month</p>
-                <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }} className="scrollbar-thin">
+                <div className="month-picker-grid">
                     {MONTHS.map((m, idx) => (
                         <button
                             key={m}
@@ -171,7 +171,7 @@ function Planner() {
                         onAddHabit={() => navigate('/settings')}
                     />
 
-                    <div className="overflow-x-auto pb-4 scrollbar-thin" style={{ borderRadius: 'var(--radius-lg)', marginTop: '12px' }}>
+                    <div className="hidden sm:block overflow-x-auto pb-4 scrollbar-thin" style={{ borderRadius: 'var(--radius-lg)', marginTop: '12px' }}>
                         <HabitGrid
                             currentMonth={currentMonth}
                             habits={visibleHabits}
@@ -186,6 +186,12 @@ function Planner() {
                             onUpdate={updateHabit}
                             onMentalStateChange={updateMentalState}
                         />
+                    </div>
+                    <div className="sm:hidden" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+                        {visibleHabits.map(habit => <div key={habit.id} className="glass-card" style={{ padding: 12 }}>
+                            <strong style={{ display: 'flex', gap: 8, color: 'var(--text-heading)', marginBottom: 9 }}><span>{habit.emoji}</span>{habit.name}</strong>
+                            <div className="mobile-month-checks">{Array.from({ length: daysInMonth }, (_, index) => index + 1).map(day => <button key={day} onClick={() => toggleCheck(habit.id, day)} aria-label={`${habit.name}, day ${day}`} aria-pressed={checks[habit.id]?.[day] === true} className={checks[habit.id]?.[day] === true ? 'is-done' : ''}>{day}</button>)}</div>
+                        </div>)}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ marginTop: '20px' }}>
@@ -213,7 +219,7 @@ function Planner() {
                     <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 600, color: 'var(--text-heading)', marginBottom: '16px' }}>Weekly Tasks</h2>
 
                     {/* Week Selector */}
-                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.2)', marginBottom: '20px' }} className="scrollbar-thin">
+                    <div className="week-picker-grid" style={{ borderBottom: '1px solid rgba(255,255,255,0.2)', marginBottom: '20px' }}>
                         {weeks.map((w, idx) => (
                             <button
                                 key={w.key}
@@ -248,8 +254,8 @@ function Planner() {
                     </div>
 
                     {/* 7-Column Task Grid */}
-                    <div className="overflow-x-auto pb-4 scrollbar-thin">
-                        <div style={{ display: 'flex', gap: '12px', minWidth: 'max-content' }}>
+                    <div>
+                        <div className="planner-days-grid">
                             {days.map((day, idx) => (
                                 <DayColumn
                                     key={day.name + idx}

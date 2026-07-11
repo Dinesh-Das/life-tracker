@@ -4,6 +4,7 @@ import { format, getDaysInMonth } from 'date-fns';
 import { MONTHS } from './constants';
 import { loadAllHabits } from './habitRepository';
 import { MONTH_HABIT_ID_INDEX, decodeCheck, legacyLabelMatchesHabit } from './sheetLayout';
+import { isHabitScheduledForDate } from './habitSchedule';
 
 const MONTH_TAB_RE = new RegExp(`^(${MONTHS.join('|')}) (\\d{4})$`);
 
@@ -31,8 +32,12 @@ export async function recomputeStreaksForHabits(spreadsheetId, habitIds) {
         .sort((a, b) => a.year - b.year || a.monthIndex - b.monthIndex);
     if (!monthTabs.length) return {};
 
-    const ranges = monthTabs.map(tab => `'${tab.title}'!A6:AG`);
+    const hasAppSettings = (metadata.sheets || []).some(sheet => sheet.properties?.title === 'AppSettings');
+    const ranges = [...monthTabs.map(tab => `'${tab.title}'!A6:AG`), ...(hasAppSettings ? ['AppSettings!A2:C'] : [])];
     const valueRanges = await batchRead(spreadsheetId, ranges);
+    const settingsRows = hasAppSettings ? (valueRanges.at(-1)?.values || []) : [];
+    const productSettings = Object.fromEntries(settingsRows.filter(row => row[0]).map(row => [String(row[0]), String(row[1] || '')]));
+    const globalPause = { from: productSettings.pauseFrom || '', until: productSettings.pauseUntil || '' };
     const today = format(new Date(), 'yyyy-MM-dd');
     const streakRows = await readRange(spreadsheetId, 'Streaks!A2:E');
     const writes = [];
@@ -52,7 +57,7 @@ export async function recomputeStreaksForHabits(spreadsheetId, habitIds) {
                 const value = decodeCheck(row[day]);
                 const date = format(new Date(tab.year, tab.monthIndex, day), 'yyyy-MM-dd');
                 if (value === true) doneDates.push(date);
-                if (value === 'skip') skippedDates.push(date);
+                if (value === 'skip' || !isHabitScheduledForDate(habit, date, globalPause)) skippedDates.push(date);
             }
         });
         const stats = computeStreaks(doneDates, today, skippedDates);

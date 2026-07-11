@@ -58,10 +58,10 @@ function HabitHeatmap({ data, year }) {
                 </div>
             </div>
 
-            <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-200">
-                <div className="flex gap-1 min-w-max">
+            <div style={{ width: '100%', minWidth: 0, paddingBottom: 4 }}>
+                <div className="heatmap-grid-wrap">
                     {/* Y-Axis Labels (Mon, Wed, Fri) */}
-                    <div className="flex flex-col gap-1 pr-2 text-[9px] font-bold mt-[14px]" style={{ color: 'var(--text-muted)' }}>
+                    <div className="mobile-hide flex flex-col gap-1 pr-2 text-[9px] font-bold mt-[14px]" style={{ color: 'var(--text-muted)' }}>
                         <div className="h-3 leading-3"></div>
                         <div className="h-3 leading-3">Mon</div>
                         <div className="h-3 leading-3"></div>
@@ -73,7 +73,7 @@ function HabitHeatmap({ data, year }) {
 
                     {/* Grid */}
                     {Array.from({ length: weeks }).map((_, wIdx) => (
-                        <div key={`week-${wIdx}`} className="flex flex-col gap-1 relative group">
+                        <div key={`week-${wIdx}`} className="heatmap-week relative group">
                             {/* Simple month label for the first week of a month */}
                             {wIdx % 4 === 0 && wIdx < 50 && (
                                 <div className="absolute -top-5 text-[9px] font-bold whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
@@ -85,7 +85,7 @@ function HabitHeatmap({ data, year }) {
                                 const dayData = paddedDays[wIdx * 7 + dIdx];
 
                                 if (dayData.isPad) {
-                                    return <div key={`pad-${wIdx}-${dIdx}`} className="w-3 h-3 bg-transparent" />;
+                                    return <div key={`pad-${wIdx}-${dIdx}`} className="heatmap-cell bg-transparent" />;
                                 }
 
                                 const tooltip = `${format(parseISO(dayData.date), 'MMM d, yyyy')}: ${dayData.count} habits`;
@@ -94,12 +94,12 @@ function HabitHeatmap({ data, year }) {
                                     <div
                                         key={dayData.date}
                                         style={{
-                                            width: '12px', height: '12px', borderRadius: '3px',
+                                            borderRadius: '3px',
                                             background: getIntensityColor(dayData.intensity),
                                             transition: 'all 0.15s',
                                             cursor: 'pointer',
                                         }}
-                                        title={tooltip}
+                                        className="heatmap-cell" title={tooltip}
                                     />
                                 );
                             })}

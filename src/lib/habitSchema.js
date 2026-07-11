@@ -1,9 +1,11 @@
 export const HABITS_TAB = 'Habits';
-export const HABIT_COLUMNS = 14;
+export const HABIT_COLUMNS = 22;
 export const HABIT_HEADERS = [
     'ID', 'Habit Name', 'Emoji', 'Monthly Goal', 'Category', 'Female Only?',
     'Frequency', 'Order', 'Created At', 'Color', 'Focus Link', 'Active From',
-    'Archived At', 'Updated At'
+    'Archived At', 'Updated At', 'Schedule Type', 'Schedule Days',
+    'Interval Days', 'Times Per Month', 'Paused From', 'Paused Until',
+    'Routine', 'Tags'
 ];
 
 export function normalizeHabit(raw = {}, index = 0) {
@@ -26,6 +28,18 @@ export function normalizeHabit(raw = {}, index = 0) {
         activeFrom: raw.activeFrom || String(raw.createdAt || now).slice(0, 10),
         archivedAt: raw.archivedAt || '',
         updatedAt: raw.updatedAt || now,
+        scheduleType: String(raw.scheduleType || 'frequency').slice(0, 24),
+        scheduleDays: Array.isArray(raw.scheduleDays)
+            ? raw.scheduleDays.map(Number).filter(day => day >= 0 && day <= 6)
+            : String(raw.scheduleDays || '').split(',').map(value => value.trim()).filter(value => value !== '').map(Number).filter(day => Number.isFinite(day) && day >= 0 && day <= 6),
+        intervalDays: Math.min(365, Math.max(1, Number.parseInt(raw.intervalDays, 10) || 1)),
+        timesPerMonth: Math.min(31, Math.max(1, Number.parseInt(raw.timesPerMonth, 10) || parsedGoal || 1)),
+        pausedFrom: String(raw.pausedFrom || '').slice(0, 10),
+        pausedUntil: String(raw.pausedUntil || '').slice(0, 10),
+        routine: String(raw.routine || '').trim().slice(0, 60),
+        tags: Array.isArray(raw.tags)
+            ? raw.tags.map(tag => String(tag).trim()).filter(Boolean).slice(0, 12)
+            : String(raw.tags || '').split(',').map(tag => tag.trim()).filter(Boolean).slice(0, 12),
         sheetRow: raw.sheetRow || null,
     };
 }
@@ -47,6 +61,14 @@ export function parseHabitRow(row = [], index = 0, sheetRow = null) {
         activeFrom: row[11],
         archivedAt: row[12],
         updatedAt: row[13],
+        scheduleType: row[14],
+        scheduleDays: row[15],
+        intervalDays: row[16],
+        timesPerMonth: row[17],
+        pausedFrom: row[18],
+        pausedUntil: row[19],
+        routine: row[20],
+        tags: row[21],
         sheetRow,
     }, index);
 }
@@ -58,6 +80,8 @@ export function serializeHabit(habit, index = 0) {
         h.femaleOnly ? 'TRUE' : 'FALSE', h.frequency, h.order,
         h.createdAt, h.color, h.focusLink ? 'TRUE' : 'FALSE',
         h.activeFrom, h.archivedAt, new Date().toISOString(),
+        h.scheduleType, h.scheduleDays.join(','), h.intervalDays, h.timesPerMonth,
+        h.pausedFrom, h.pausedUntil, h.routine, h.tags.join(','),
     ];
 }
 

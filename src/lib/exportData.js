@@ -1,7 +1,7 @@
 import { getSpreadsheet, batchRead } from './sheetsApi';
 import { format } from 'date-fns';
 
-function download(filename, content, mime) {
+export function download(filename, content, mime) {
     const blob = new Blob([content], { type: mime });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -24,15 +24,8 @@ function escapeCsvCell(c) {
  * spreadsheet as a single JSON or CSV download.
  */
 export async function exportAllData(spreadsheetId, fmt = 'json') {
-    const spreadsheet = await getSpreadsheet(spreadsheetId);
-    const titles = spreadsheet.sheets.map(s => s.properties.title);
-    const ranges = titles.map(t => `'${t.replaceAll("'", "''")}'!A:AZ`);
-    const results = await batchRead(spreadsheetId, ranges);
-
-    const data = {};
-    titles.forEach((t, i) => {
-        data[t] = results[i]?.values || [];
-    });
+    const data = await collectAllData(spreadsheetId);
+    const titles = Object.keys(data);
 
     const stamp = format(new Date(), 'yyyy-MM-dd');
     if (fmt === 'json') {
@@ -44,4 +37,18 @@ export async function exportAllData(spreadsheetId, fmt = 'json') {
         });
         download(`lifetracker-export-${stamp}.csv`, sections.join('\n\n'), 'text/csv');
     }
+}
+
+export async function collectAllData(spreadsheetId) {
+    const spreadsheet = await getSpreadsheet(spreadsheetId);
+    const titles = spreadsheet.sheets.map(s => s.properties.title);
+    const ranges = titles.map(t => `'${t.replaceAll("'", "''")}'!A:AZ`);
+    const results = await batchRead(spreadsheetId, ranges);
+
+    const data = {};
+    titles.forEach((t, i) => {
+        data[t] = results[i]?.values || [];
+    });
+
+    return data;
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { Calendar, CheckSquare, LayoutDashboard, Settings, Flower2, LogOut, PenLine, Timer, TrendingUp, Award, Moon, Sun } from 'lucide-react'
+import { Calendar, CheckSquare, LayoutDashboard, Settings, Flower2, LogOut, PenLine, Timer, TrendingUp, Award, Moon, Sun, Wrench } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAppContext } from '../../context/AppContext'
 import { initTheme, toggleTheme } from '../../lib/theme'
@@ -27,6 +27,7 @@ function Sidebar() {
     ];
 
     const bottomItems = [
+        { to: '/tools', icon: Wrench, label: 'Tools & Safety' },
         { to: '/settings', icon: Settings, label: 'Settings' },
     ];
 

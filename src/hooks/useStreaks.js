@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { isHabitScheduledForDate } from '../lib/habitSchedule';
 
 
 /**
@@ -9,7 +10,7 @@ import { useMemo } from 'react';
  *            but does not increment it)
  *   falsy  — not completed
  */
-export function useStreaks(habits, checks) {
+export function useStreaks(habits, checks, options = {}) {
     const habitStreaks = useMemo(() => {
         const streaks = {};
         const todayDay = new Date().getDate();
@@ -26,7 +27,7 @@ export function useStreaks(habits, checks) {
                 if (habitChecks[d] === true) { 
                     tempStreak++;
                     if (tempStreak > best) best = tempStreak;
-                } else if (habitChecks[d] === 'skip') {
+                } else if (habitChecks[d] === 'skip' || (options.year !== undefined && !isHabitScheduledForDate(habit, new Date(options.year, options.monthIndex, d), options.globalPause))) {
                     // bridge — keep tempStreak as-is
                 } else {
                     tempStreak = 0;
@@ -34,7 +35,7 @@ export function useStreaks(habits, checks) {
             }
 
             // 2. Calculate Current Streak (counting backwards from today)
-            const active = (d) => habitChecks[d] === true || habitChecks[d] === 'skip';
+            const active = (d) => habitChecks[d] === true || habitChecks[d] === 'skip' || (options.year !== undefined && !isHabitScheduledForDate(habit, new Date(options.year, options.monthIndex, d), options.globalPause));
             let d = todayDay;
              if (!active(d)) d = todayDay - 1; // today not logged yet — try yesterday
             while (d > 0 && active(d)) {
@@ -46,7 +47,7 @@ export function useStreaks(habits, checks) {
         });
 
         return streaks;
-    }, [habits, checks]);
+    }, [habits, checks, options.globalPause, options.monthIndex, options.year]);
 
     const overallStreak = useMemo(() => {
         // Count how many consecutive days any habit was completed

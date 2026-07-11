@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Calendar, LayoutDashboard, CheckSquare, Settings, PenLine, Flower2, TrendingUp, Timer, Award, LayoutGrid } from 'lucide-react'
+import { Calendar, LayoutDashboard, CheckSquare, Settings, PenLine, Flower2, TrendingUp, Timer, Award, LayoutGrid, Wrench } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAppContext } from '../../context/AppContext'
 
@@ -23,6 +23,7 @@ const MobileNav = () => {
         { to: '/journal',  icon: PenLine,  label: 'Journal' },
         { to: '/focus',    icon: Timer,    label: 'Focus' },
         { to: '/wrapped',  icon: Award,    label: 'Wrapped' },
+        { to: '/tools',    icon: Wrench,   label: 'Tools' },
         ...(userGender === 'female' && !hideFemaleData
             ? [{ to: '/female', icon: Flower2, label: 'Cycle' }]
             : []),

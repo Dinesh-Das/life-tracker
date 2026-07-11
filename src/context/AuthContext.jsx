@@ -19,6 +19,30 @@ const TOKEN_REFRESH_MS = (3600 - 300) * 1000;
 // localStorage flag: the user has signed in before, so we can attempt a
 // silent re-auth on launch (no tap needed — important for the installed PWA).
 const SIGNED_IN_KEY = 'lt_signed_in';
+const SESSION_KEY = 'lt_google_session';
+
+function readCachedSession() {
+    try {
+        const cached = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+        if (!cached?.accessToken || !cached?.profile || !cached?.spreadsheetId) return null;
+        if (Number(cached.expiresAt || 0) <= Date.now() + 60_000) return null;
+        return cached;
+    } catch {
+        return null;
+    }
+}
+
+function cacheSession({ accessToken, expiresIn, profile, spreadsheetId, gender }) {
+    try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+            accessToken,
+            expiresAt: Date.now() + (Number(expiresIn || 3600) * 1000),
+            profile,
+            spreadsheetId,
+            gender,
+        }));
+    } catch { /* storage can be unavailable in hardened browsers */ }
+}
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
@@ -32,14 +56,14 @@ export function AuthProvider({ children }) {
     const silentAttempt = useRef(false);
 
     // Silently refresh the access token before it expires
-    const scheduleTokenRefresh = useCallback(() => {
+    const scheduleTokenRefresh = useCallback((delayMs = TOKEN_REFRESH_MS) => {
         if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current);
         tokenRefreshTimer.current = setTimeout(() => {
             if (tokenClient.current) {
                 // Silent re-auth — no consent prompt if already granted
                 tokenClient.current.requestAccessToken({ prompt: '' });
             }
-        }, TOKEN_REFRESH_MS);
+        }, Math.max(5_000, delayMs));
     }, []);
 
     useEffect(() => {
@@ -68,6 +92,20 @@ export function AuthProvider({ children }) {
                         'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'
                     ],
                 });
+
+                const cachedSession = readCachedSession();
+                if (cachedSession) {
+                    window.gapi.client.setToken({ access_token: cachedSession.accessToken });
+                    setToken(cachedSession.accessToken);
+                    setUser({
+                        getName: () => cachedSession.profile.name,
+                        getEmail: () => cachedSession.profile.email,
+                        getImageUrl: () => cachedSession.profile.picture,
+                        firstName: cachedSession.profile.given_name,
+                    });
+                    setSpreadsheetId(cachedSession.spreadsheetId);
+                    setUserGender(cachedSession.gender || 'needs_selection');
+                }
 
                 tokenClient.current = window.google.accounts.oauth2.initTokenClient({
                     client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
@@ -132,11 +170,14 @@ export function AuthProvider({ children }) {
                                     const savedGender = genderRes.result.values?.[0]?.[0];
                                     if (savedGender === 'male' || savedGender === 'female') {
                                         setUserGender(savedGender);
+                                        cacheSession({ accessToken: response.access_token, expiresIn: response.expires_in, profile, spreadsheetId: existingSheet.id, gender: savedGender });
                                     } else {
                                         setUserGender('needs_selection');
+                                        cacheSession({ accessToken: response.access_token, expiresIn: response.expires_in, profile, spreadsheetId: existingSheet.id, gender: 'needs_selection' });
                                     }
                                 } catch {
                                     setUserGender('needs_selection');
+                                    cacheSession({ accessToken: response.access_token, expiresIn: response.expires_in, profile, spreadsheetId: existingSheet.id, gender: 'needs_selection' });
                                 }
                                 // Skip the toast on silent launches — only show it for explicit sign-ins
                                 if (!wasSilent) toast.success('Synced with your LifeTracker!');
@@ -144,6 +185,7 @@ export function AuthProvider({ children }) {
                                 toast('Setting up your LifeTracker for the first time...', { icon: '🏗️' });
                                 const newId = await scaffoldSheet(profile.name);
                                 setSpreadsheetId(newId);
+                                cacheSession({ accessToken: response.access_token, expiresIn: response.expires_in, profile, spreadsheetId: newId, gender: 'needs_selection' });
                                 import('../lib/syncQueue').then(({ initSyncQueue, flush }) => {
                                     initSyncQueue();
                                     void flush(newId);
@@ -164,7 +206,10 @@ export function AuthProvider({ children }) {
                 console.info("Token client initialized successfully.");
                 // Silent re-auth on launch for returning users — restores the session
                 // without a tap (important for the installed PWA experience).
-                if (localStorage.getItem(SIGNED_IN_KEY) === '1') {
+                if (cachedSession) {
+                    scheduleTokenRefresh(cachedSession.expiresAt - Date.now() - 300_000);
+                    setLoading(false);
+                } else if (localStorage.getItem(SIGNED_IN_KEY) === '1') {
                     silentAttempt.current = true;
                     tokenClient.current.requestAccessToken({ prompt: '' });
                     // Safety net: if the silent attempt never calls back (e.g. popup
@@ -203,6 +248,7 @@ export function AuthProvider({ children }) {
     const signOut = () => {
         if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current);
         localStorage.removeItem(SIGNED_IN_KEY);
+        sessionStorage.removeItem(SESSION_KEY);
         if (token) {
             window.google.accounts.oauth2.revoke(token, () => {
                 setUser(null);
@@ -216,6 +262,10 @@ export function AuthProvider({ children }) {
 
     const updateUserGender = async (gender) => {
         setUserGender(gender);
+        try {
+            const cached = JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null');
+            if (cached) sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ...cached, gender }));
+        } catch { /* noop */ }
         if (spreadsheetId) {
             try {
                 await window.gapi.client.sheets.spreadsheets.values.update({

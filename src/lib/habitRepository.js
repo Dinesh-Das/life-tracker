@@ -13,6 +13,8 @@ const MONTH_TAB_PATTERN = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?:
 const MUTABLE_HABIT_FIELDS = [
     'name', 'emoji', 'goal', 'category', 'femaleOnly', 'frequency', 'order',
     'color', 'focusLink', 'activeFrom', 'archivedAt',
+    'scheduleType', 'scheduleDays', 'intervalDays', 'timesPerMonth',
+    'pausedFrom', 'pausedUntil', 'routine', 'tags',
 ];
 
 function habitRecordChanged(before, after) {
@@ -45,7 +47,10 @@ export async function ensureHabitsSheet(spreadsheetId) {
     const promise = (async () => {
         const metadata = await getSpreadsheet(spreadsheetId);
         const exists = metadata.sheets?.some(sheet => sheet.properties?.title === HABITS_TAB);
-        if (exists) return;
+        if (exists) {
+            await batchWrite(spreadsheetId, [{ range: `${HABITS_TAB}!A1:V1`, values: [HABIT_HEADERS] }]);
+            return;
+        }
 
         const migrated = await legacyHabits(spreadsheetId);
         const habits = migrated.length
@@ -54,7 +59,7 @@ export async function ensureHabitsSheet(spreadsheetId) {
 
         await addSheet(spreadsheetId, HABITS_TAB);
         await batchWrite(spreadsheetId, [{
-            range: `${HABITS_TAB}!A1:N${habits.length + 1}`,
+            range: `${HABITS_TAB}!A1:V${habits.length + 1}`,
             values: [HABIT_HEADERS, ...habits.map(serializeHabit)],
         }]);
     })().catch(error => {
@@ -68,7 +73,7 @@ export async function ensureHabitsSheet(spreadsheetId) {
 
 export async function loadAllHabits(spreadsheetId) {
     await ensureHabitsSheet(spreadsheetId);
-    const rows = await readRange(spreadsheetId, `${HABITS_TAB}!A2:N`);
+    const rows = await readRange(spreadsheetId, `${HABITS_TAB}!A2:V`);
     return (rows || [])
         .map((row, index) => parseHabitRow(row, index, index + 2))
         .filter(Boolean)
@@ -153,7 +158,7 @@ export async function createHabit(spreadsheetId, input, order) {
         order,
         createdAt: input.createdAt || new Date().toISOString(),
     }, order - 1);
-    await appendRows(spreadsheetId, `${HABITS_TAB}!A:N`, [serializeHabit(habit, order - 1)]);
+    await appendRows(spreadsheetId, `${HABITS_TAB}!A:V`, [serializeHabit(habit, order - 1)]);
     // A new definition may correspond to a legacy name row in an older tab.
     // Allow the next page load to rescan those tabs and attach this ID too.
     monthMigrationPromises.delete(spreadsheetId);
@@ -169,7 +174,7 @@ export async function updateHabitRecord(spreadsheetId, habit) {
     if (!target?.sheetRow) throw new Error(`Habit ${habit.id} was not found`);
     const updated = normalizeHabit({ ...target, ...habit, updatedAt: new Date().toISOString() });
     await batchWrite(spreadsheetId, [{
-        range: `${HABITS_TAB}!A${target.sheetRow}:N${target.sheetRow}`,
+        range: `${HABITS_TAB}!A${target.sheetRow}:V${target.sheetRow}`,
         values: [serializeHabit(updated, updated.order - 1)],
     }]);
     return { ...updated, sheetRow: target.sheetRow };
@@ -195,7 +200,7 @@ export async function replaceActiveHabits(spreadsheetId, nextHabits) {
             : (habit.archivedAt ? habit : { ...habit, archivedAt: new Date().toISOString() });
         if (habitRecordChanged(habit, value)) {
             writes.push({
-                range: `${HABITS_TAB}!A${habit.sheetRow}:N${habit.sheetRow}`,
+                range: `${HABITS_TAB}!A${habit.sheetRow}:V${habit.sheetRow}`,
                 values: [serializeHabit(value, index)],
             });
         }
@@ -204,7 +209,7 @@ export async function replaceActiveHabits(spreadsheetId, nextHabits) {
     nextById.forEach(habit => creates.push(serializeHabit(habit)));
 
     if (writes.length) await batchWrite(spreadsheetId, writes);
-    if (creates.length) await appendRows(spreadsheetId, `${HABITS_TAB}!A:N`, creates);
+    if (creates.length) await appendRows(spreadsheetId, `${HABITS_TAB}!A:V`, creates);
     monthMigrationPromises.delete(spreadsheetId);
     return loadAllHabits(spreadsheetId);
 }

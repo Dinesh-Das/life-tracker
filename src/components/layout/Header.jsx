@@ -15,7 +15,7 @@ function Header({ title, subtitle, saving }) {
 
 
     return (
-        <div style={{ padding: '36px 40px 0', paddingBottom: 0, position: 'relative' }}>
+        <div className="page-header" style={{ padding: 'clamp(22px, 5vw, 36px) clamp(16px, 5vw, 40px) 0', paddingBottom: 0, position: 'relative', maxWidth: '100%' }}>
             <button
                 className="lg:hidden"
                 onClick={() => setTheme(toggleTheme())}

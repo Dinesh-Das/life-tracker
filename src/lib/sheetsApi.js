@@ -212,6 +212,18 @@ export async function batchWrite(spreadsheetId, data) {
     return res;
 }
 
+export async function clearRange(spreadsheetId, range) {
+    const res = await SHEETS().values.clear({ spreadsheetId, range, resource: {} });
+    invalidateSpreadsheet(spreadsheetId);
+    return res;
+}
+
+export async function batchClear(spreadsheetId, ranges) {
+    const res = await SHEETS().values.batchClear({ spreadsheetId, resource: { ranges } });
+    invalidateSpreadsheet(spreadsheetId);
+    return res;
+}
+
 /**
 * Append rows to a tab. Invalidates cached reads for the spreadsheet.
  * @param {string} spreadsheetId

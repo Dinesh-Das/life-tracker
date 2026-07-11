@@ -4,10 +4,12 @@ import { MONTHS } from '../lib/constants';
 import { loadAllHabits } from '../lib/habitRepository';
 import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel, normalizeHabitName } from '../lib/sheetLayout';
 import { format } from 'date-fns';
+import { isHabitScheduledForDate } from '../lib/habitSchedule';
 
-function activeOn(habit, dateKey) {
+function activeOn(habit, dateKey, globalPause) {
     return (!habit.activeFrom || habit.activeFrom <= dateKey) &&
-        (!habit.archivedAt || habit.archivedAt.slice(0, 10) > dateKey);
+        (!habit.archivedAt || habit.archivedAt.slice(0, 10) > dateKey) &&
+        isHabitScheduledForDate(habit, dateKey, globalPause);
 }
 
 export function useDashboard(spreadsheetId, year) {
@@ -62,7 +64,12 @@ export function useDashboard(spreadsheetId, year) {
                 return null;
             }).filter(Boolean);
             const ranges = monthMappings.map(month => `'${month.title}'!A6:AG`);
-            const monthData = ranges.length ? await batchRead(spreadsheetId, ranges) : [];
+            const hasAppSettings = titles.includes('AppSettings');
+            const responses = ranges.length || hasAppSettings ? await batchRead(spreadsheetId, [...ranges, ...(hasAppSettings ? ['AppSettings!A2:C'] : [])]) : [];
+            const monthData = responses.slice(0, ranges.length);
+            const settingsRows = hasAppSettings ? (responses.at(-1)?.values || []) : [];
+            const productSettings = Object.fromEntries(settingsRows.filter(row => row[0]).map(row => [String(row[0]), String(row[1] || '')]));
+            const globalPause = { from: productSettings.pauseFrom || '', until: productSettings.pauseUntil || '' };
 
             const habitStats = new Map(definitions.map(habit => [habit.id, { ...habit, done: 0, total: 0, pct: 0 }]));
             const completedDates = new Map(definitions.map(habit => [habit.id, new Set()]));
@@ -93,7 +100,7 @@ export function useDashboard(spreadsheetId, year) {
                     const aggregate = habitStats.get(habit.id);
                     for (let day = 1; day <= upToDay; day++) {
                         const dateKey = format(new Date(year, monthIndex, day), 'yyyy-MM-dd');
-                        if (!activeOn(habit, dateKey)) continue;
+                        if (!activeOn(habit, dateKey, globalPause)) continue;
                         monthPossible++;
                         aggregate.total++;
                         if (decodeCheck(row[day]) === true) {

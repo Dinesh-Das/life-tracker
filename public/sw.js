@@ -1,6 +1,6 @@
 /* LifeTracker service worker — app shell + runtime caching.
    Bump CACHE_VERSION to invalidate old caches on deploy. */
-const CACHE_VERSION = 'lifetracker-v1';
+const CACHE_VERSION = 'lifetracker-v2';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/logo.png'];
 
 self.addEventListener('install', (event) => {
@@ -63,4 +63,23 @@ self.addEventListener('fetch', (event) => {
     if (/\.(js|css|png|svg|woff2?)$/.test(url.pathname)) {
         event.respondWith(staleWhileRevalidate(request));
     }
+});
+
+self.addEventListener('push', (event) => {
+    let payload = {};
+    try { payload = event.data?.json() || {}; } catch { payload = { body: event.data?.text() }; }
+    event.waitUntil(self.registration.showNotification(payload.title || 'LifeTracker', {
+        body: payload.body || 'It is time for your check-in.',
+        icon: '/logo.png', badge: '/logo.png', data: { url: payload.url || '/daily' },
+        tag: payload.tag || 'lifetracker-reminder', renotify: true,
+    }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = event.notification.data?.url || '/daily';
+    event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windows => {
+        const existing = windows.find(client => new URL(client.url).pathname === url);
+        return existing ? existing.focus() : clients.openWindow(url);
+    }));
 });

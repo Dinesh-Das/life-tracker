@@ -89,7 +89,7 @@ export async function scaffoldSheet(userName) {
             order: index + 1,
         }, index));
         spreadsheetRanges.push({
-            range: `Habits!A1:N${normalizedHabits.length + 1}`,
+            range: `Habits!A1:V${normalizedHabits.length + 1}`,
             values: [HABIT_HEADERS, ...normalizedHabits.map(serializeHabit)],
         });
 
@@ -329,5 +329,14 @@ export async function ensureDailyStateSheet(spreadsheetId) {
             range: 'DailyState!A1:C1',
             values: [['Date', 'Mental Score', 'Updated At']],
         }]);
+    }
+}
+
+export async function ensureAppSettingsSheet(spreadsheetId) {
+    const spreadsheet = await getSpreadsheet(spreadsheetId);
+    const exists = spreadsheet.sheets.some(s => s.properties.title === 'AppSettings');
+    if (!exists) {
+        await addSheet(spreadsheetId, 'AppSettings');
+        await batchWrite(spreadsheetId, [{ range: 'AppSettings!A1:C1', values: [['Key', 'Value', 'Updated At']] }]);
     }
 }

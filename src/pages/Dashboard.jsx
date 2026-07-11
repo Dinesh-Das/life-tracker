@@ -22,6 +22,7 @@ import { useReflectionInsights } from '../hooks/useReflectionInsights'
 import { useSleepHistory } from '../hooks/useSleepHistory'
 import { sleepHabitInsights } from '../lib/sleepCorrelations'
 import LoadErrorState from '../components/ui/LoadErrorState'
+import CustomRangeSummary from '../components/charts/CustomRangeSummary'
 
 function Dashboard() {
     const { spreadsheetId, userGender } = useAuth();
@@ -106,6 +107,8 @@ function Dashboard() {
                     </button>
                 </div>
 
+                <CustomRangeSummary data={heatmapData} year={currentYear} />
+
                 {/* AI Insights Section */}
                 <div style={{ marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
@@ -171,13 +174,8 @@ function Dashboard() {
                 <div className="glass-card" style={{ padding: '24px 28px', marginTop: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
                         <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'var(--text-heading)' }}>Yearly Habit Heatmap</h3>
-                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, color: '#4a7a62', background: 'rgba(45,79,65,0.2)', padding: '4px 10px', borderRadius: '20px' }} className="md:hidden">Slide to view →</span>
                     </div>
-                    <div className="overflow-x-auto pb-4 scrollbar-thin">
-                        <div style={{ minWidth: '800px' }}>
-                            <HabitHeatmap data={heatmapData} year={currentYear} />
-                        </div>
-                    </div>
+                    <HabitHeatmap data={heatmapData} year={currentYear} />
                 </div>
             </div>
         </>

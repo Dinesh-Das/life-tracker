@@ -20,6 +20,7 @@ const FemaleTracker = lazy(() => import('./pages/FemaleTracker'))
 const Journal = lazy(() => import('./pages/Journal'))
 const Focus = lazy(() => import('./pages/Focus'))
 const Wrapped = lazy(() => import('./pages/Wrapped'))
+const ProductTools = lazy(() => import('./pages/ProductTools'))
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'))
 const TermsOfService = lazy(() => import('./pages/TermsOfService'))
 
@@ -144,6 +145,7 @@ function AppRoutes() {
             } />
             <Route path="/wrapped" element={protect(<Wrapped />)} />
             <Route path="/settings" element={protect(<Settings />)} />
+            <Route path="/tools" element={protect(<ProductTools />)} />
             {/* Public Legal Routes */}
             <Route path="/privacy" element={<Suspense fallback={<PageFallback />}><PrivacyPolicy /></Suspense>} />
             <Route path="/terms" element={<Suspense fallback={<PageFallback />}><TermsOfService /></Suspense>} />

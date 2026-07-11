@@ -3,6 +3,79 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body, #root {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  overflow-x: clip;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+img, svg, canvas { max-width: 100%; }
+
+.app-shell, .app-main, .page-content {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+.responsive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+}
+
+.mobile-stack { min-width: 0; }
+
+.quick-entry-fab {
+  position: fixed; right: 18px; bottom: calc(82px + env(safe-area-inset-bottom)); z-index: 38;
+  width: 48px; height: 48px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25);
+  background: #2d4f41; color: #d8e6db; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 24px rgba(10,22,15,.3);
+}
+.quick-entry-panel {
+  position: fixed; left: 12px; right: 12px; bottom: calc(140px + env(safe-area-inset-bottom)); z-index: 37;
+  padding: 16px; max-height: min(60vh, 430px); overflow-y: auto;
+}
+.quick-entry-action {
+  width: 100%; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 11px 12px;
+  margin-top: 7px; border: 1px solid var(--control-border); border-radius: 10px;
+  background: var(--surface-inner); color: var(--text-heading); text-decoration: none; font-size: 13px;
+}
+.quick-entry-action input { min-width: 0; flex: 1; }
+.tool-title { display: flex; align-items: center; gap: 9px; color: var(--text-heading); font: 600 19px var(--font-display); margin-bottom: 8px; }
+.tool-copy { color: var(--text-muted); font-size: 12px; line-height: 1.55; margin-bottom: 12px; }
+.tool-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tool-actions > * { max-width: 100%; min-width: 0; }
+.tool-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 10px; margin-bottom: 12px; }
+.tool-fields label { color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+.tool-fields input, .tool-fields select { display: block; width: 100%; margin-top: 5px; padding: 8px 10px; border: 1px solid var(--control-border); border-radius: 9px; background: var(--surface-inner); color: var(--text-heading); }
+.tool-report { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; padding: 12px; border-radius: 10px; background: var(--surface-inner); color: var(--text-muted); font-size: 12px; }
+.tool-report strong { color: var(--text-heading); }
+.activity-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--divider); color: var(--text-heading); }
+.activity-row span { display: flex; flex-direction: column; min-width: 0; }
+.activity-row small { color: var(--text-muted); margin-top: 3px; }
+.habit-icon-action { background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+.habit-icon-action:hover { background: var(--surface-inner-strong); color: var(--text-heading); }
+.habit-icon-action:disabled { opacity: .25; cursor: not-allowed; }
+.day-picker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap: 6px; }
+.month-picker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 8px; }
+.week-picker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; padding-bottom: 12px; }
+.planner-days-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.mobile-month-checks { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.mobile-month-checks button { aspect-ratio: 1; min-height: 34px; border: 1px solid var(--control-border); border-radius: 8px; background: var(--surface-inner); color: var(--text-muted); font-size: 10px; }
+.mobile-month-checks button.is-done { background: rgba(45,79,65,.72); color: #d8e6db; }
+@media (max-width: 767px) { .planner-days-grid { grid-template-columns: 1fr; } }
+.heatmap-grid-wrap { width: 100%; display: flex; gap: clamp(1px, .25vw, 4px); min-width: 0; }
+.heatmap-week { display: flex; flex: 1 1 0; min-width: 0; flex-direction: column; gap: clamp(1px, .25vw, 4px); }
+.heatmap-cell { width: 100%; aspect-ratio: 1; min-width: 0; }
+@media (max-width: 640px) {
+  .habit-setting-row { align-items: flex-start !important; gap: 6px; }
+  .habit-setting-actions { flex-wrap: wrap; justify-content: flex-end; max-width: 96px; }
+  .habit-setting-row h4 { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
 /* ═══════════════════════════════════════════════════
    Digital Sanctuary — Design Tokens
    ═══════════════════════════════════════════════════ */
@@ -698,6 +771,12 @@ input, textarea, select {
 
 /* Lighter backdrop blurs on small screens — heavy blur janks low-end mobile GPUs */
 @media (max-width: 640px) {
+  .page-title { font-size: clamp(26px, 9vw, 38px) !important; padding-right: 48px; }
+  .page-subtitle { padding-right: 48px; }
+  .glass-card { max-width: 100%; min-width: 0; }
+  .mobile-stack { flex-direction: column !important; align-items: stretch !important; }
+  .mobile-hide { display: none !important; }
+  .mobile-full { width: 100% !important; max-width: 100% !important; }
   .glass-card {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
