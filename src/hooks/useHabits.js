@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { appendRows, batchWrite, readRange } from '../lib/sheetsApi';
+import { appendRows, readRange } from '../lib/sheetsApi';
 import { resilientBatchWrite } from '../lib/syncQueue';
 import { getDaysInMonth, format } from 'date-fns';
 import { recomputeStreaksForHabit } from '../lib/streakRecompute';
 import {
-    archiveHabitRecord, createHabit, loadAllHabits, migrateHabitIdsAcrossMonths, updateHabitRecord,
+    archiveHabitRecord, createHabit, loadAllHabits, updateHabitRecord,
 } from '../lib/habitRepository';
 import { ensureDailyStateSheet, ensureMonthTab } from '../lib/sheetScaffold';
 import {
@@ -43,13 +43,6 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             const monthStartKey = localDateKey(new Date(currentYear, currentMonthIndex, 1));
             const monthEndKey = localDateKey(new Date(currentYear, currentMonthIndex + 1, 0));
             const allHabits = await loadAllHabits(spreadsheetId);
-            try {
-                await migrateHabitIdsAcrossMonths(spreadsheetId, allHabits);
-            } catch (migrationError) {
-                // Current-month name migration below remains a safe fallback;
-                // retry the complete spreadsheet migration on the next load.
-                console.error('Habit ID migration incomplete', migrationError);
-            }
             const activeHabits = allHabits.filter(habit =>
                 (!habit.activeFrom || habit.activeFrom <= monthEndKey) &&
                 (!habit.archivedAt || habit.archivedAt.slice(0, 10) > monthStartKey)
@@ -86,7 +79,6 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             });
 
             const resolvedRows = new Map();
-            const idMigrations = [];
             (monthRows || []).forEach((row, index) => {
                 const sheetRow = MONTH_HABIT_START_ROW + index;
                 let habitId = String(row?.[MONTH_HABIT_ID_INDEX] || '');
@@ -95,19 +87,11 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
                     const nameMatches = idsByName.get(normalizeHabitName(row?.[0], { legacyLabel: true })) || [];
                     const matches = exactMatches.length ? exactMatches : nameMatches;
                     habitId = matches.length === 1 ? matches[0] : '';
-                    if (habitId) {
-                        idMigrations.push({
-                            range: `'${tabName}'!AG${sheetRow}`,
-                            values: [[habitId]],
-                        });
-                    }
                 }
                 if (habitId && habitsById.has(habitId) && !resolvedRows.has(habitId)) {
                     resolvedRows.set(habitId, { sheetRow, row });
                 }
             });
-
-            if (idMigrations.length) await batchWrite(spreadsheetId, idMigrations);
 
             const missing = activeHabits.filter(habit => !resolvedRows.has(habit.id));
             if (missing.length) {

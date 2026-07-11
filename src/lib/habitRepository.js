@@ -1,4 +1,4 @@
-import { addSheet, appendRows, batchRead, batchWrite, getSpreadsheet, readRange, writeCell } from './sheetsApi';
+import { addSheet, appendRows, batchRead, batchWrite, getSpreadsheet, readRange } from './sheetsApi';
 import { DEFAULT_HABITS } from './constants';
 import {
     HABITS_TAB, HABIT_HEADERS, normalizeHabit, parseHabitRow, serializeHabit,
@@ -7,6 +7,8 @@ import { MONTH_HABIT_ID_INDEX, MONTH_HABIT_START_ROW, legacyLabelMatchesHabit } 
 
 const ensurePromises = new Map();
 const monthMigrationPromises = new Map();
+const monthMigrationFailures = new Map();
+const MIGRATION_RETRY_COOLDOWN_MS = 5 * 60 * 1000;
 const MONTH_TAB_PATTERN = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?: \d{4})?$/;
 
 async function legacyHabits(spreadsheetId) {
@@ -73,6 +75,10 @@ export async function loadAllHabits(spreadsheetId) {
 export async function migrateHabitIdsAcrossMonths(spreadsheetId, habits = null) {
     if (!spreadsheetId) return { migrated: 0, tabs: 0 };
     if (monthMigrationPromises.has(spreadsheetId)) return monthMigrationPromises.get(spreadsheetId);
+    const lastFailure = monthMigrationFailures.get(spreadsheetId) || 0;
+    if (Date.now() - lastFailure < MIGRATION_RETRY_COOLDOWN_MS) {
+        return { migrated: 0, tabs: 0, deferred: true };
+    }
 
     const promise = (async () => {
         const definitions = habits || await loadAllHabits(spreadsheetId);
@@ -83,15 +89,20 @@ export async function migrateHabitIdsAcrossMonths(spreadsheetId, habits = null) 
             .filter(title => MONTH_TAB_PATTERN.test(title));
         if (!tabs.length) return { migrated: 0, tabs: 0 };
 
-        const responses = await batchRead(spreadsheetId, tabs.map(tab => `'${tab.replaceAll("'", "''")}'!A6:AG`));
+        // Start at row 5 so the header and habit rows are inspected together.
+        // sheetsApi normalizes this to a valid whole-column request internally.
+        const responses = await batchRead(spreadsheetId, tabs.map(tab => `'${tab.replaceAll("'", "''")}'!A5:AG`));
         const writes = [];
-        const headerWrites = tabs.map(tab => ({
-            range: `'${tab.replaceAll("'", "''")}'!AG5`,
-            values: [['Habit ID']],
-        }));
         responses.forEach((response, tabIndex) => {
             const tab = tabs[tabIndex];
-            (response?.values || []).forEach((row, rowIndex) => {
+            const rows = response?.values || [];
+            if (String(rows[0]?.[MONTH_HABIT_ID_INDEX] || '') !== 'Habit ID') {
+                writes.push({
+                    range: `'${tab.replaceAll("'", "''")}'!AG5`,
+                    values: [['Habit ID']],
+                });
+            }
+            rows.slice(1).forEach((row, rowIndex) => {
                 const currentId = String(row?.[MONTH_HABIT_ID_INDEX] || '');
                 if (currentId && byId.has(currentId)) return;
                 const matches = definitions.filter(habit => legacyLabelMatchesHabit(row?.[0], habit));
@@ -102,17 +113,12 @@ export async function migrateHabitIdsAcrossMonths(spreadsheetId, habits = null) 
                 });
             });
         });
-        // Use explicit single-cell updates for the migration. This avoids any
-        // ambiguity between the 1-cell AG range and the 32 day-grid columns,
-        // and makes the preservation boundary obvious: AG only is changed.
-        const allWrites = [...headerWrites, ...writes];
-        for (let offset = 0; offset < allWrites.length; offset += 20) {
-            await Promise.all(allWrites.slice(offset, offset + 20).map(write =>
-                writeCell(spreadsheetId, write.range, write.values[0][0])
-            ));
-        }
-        return { migrated: writes.length, tabs: tabs.length };
+        // One HTTP request, with each entry still constrained to one AG cell.
+        if (writes.length) await batchWrite(spreadsheetId, writes);
+        monthMigrationFailures.delete(spreadsheetId);
+        return { migrated: writes.filter(write => !write.range.endsWith('AG5')).length, tabs: tabs.length };
     })().catch(error => {
+        monthMigrationFailures.set(spreadsheetId, Date.now());
         monthMigrationPromises.delete(spreadsheetId);
         throw error;
     });
