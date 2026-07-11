@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { readRange, appendRows, batchWrite } from '../lib/sheetsApi';
+import { readDataRows, appendRows, batchWrite } from '../lib/sheetsApi';
 import { format, differenceInDays, addDays, parseISO, isAfter, isBefore } from 'date-fns';
 import toast from 'react-hot-toast';
 import { getCyclePhase, getDayInCycle, calculateOvulationAndFertility } from '../lib/cycleUtils';
@@ -21,12 +21,20 @@ export function useCycle(spreadsheetId) {
     const fetchHistory = useCallback(async () => {
         if (!spreadsheetId) return;
         setLoading(true);
+        setHistory([]);
+        setCurrentCycleDay(null);
+        setCurrentPhase(null);
+        setNextPeriod(null);
+        setAvgCycleLength(28);
+        setAvgPeriodLength(5);
+        setOvulationInfo(null);
+        setIsPeriodLate(false);
         try {
             // Sheet columns (0-indexed):
             // A(0): date, B(1): cycleDay, C(2): phase, D(3): flowIntensity
             // E(4): mood, F(5): energy, G(6): symptoms, H(7): notes
             // I(8): periodStart, J(9): periodEnd, K(10): sleep, L(11): cramps
-            const response = await readRange(spreadsheetId, 'Female!A2:L');
+            const response = await readDataRows(spreadsheetId, 'Female!A:L');
             const rows = response || [];
 
             const formattedHistory = rows
@@ -218,7 +226,7 @@ export function useCycle(spreadsheetId) {
             ]];
 
             // Use stored rowIndex for accurate updates (prevents wrong-row overwrites)
-            const existing = history.find(h => h.date === dateStr);
+            const existing = [...history].reverse().find(h => h.date === dateStr);
             if (existing && existing.rowIndex) {
                 await batchWrite(spreadsheetId, [{
                     range: `Female!A${existing.rowIndex}:L${existing.rowIndex}`,

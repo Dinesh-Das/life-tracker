@@ -45,9 +45,9 @@ function trimLeadingRows(values, skipRows) {
 
 function canUseOfflineFallback(error) {
     const status = error?.status ?? error?.result?.error?.code;
-    // A missing status is usually a network failure. Never hide permanent
-    // request/auth errors (400/401/403/404) behind stale local data.
-    return status === undefined || status === 0 || status === 408 || status === 429 || status >= 500;
+    // Only a genuine network/offline failure may use persisted data. A server
+    // response (including 429/5xx) must surface instead of showing stale rows.
+    return status === undefined || status === 0;
 }
 
 function fresh(key) {
@@ -128,6 +128,12 @@ export async function readRange(spreadsheetId, range) {
             throw err;
         }
     });
+}
+
+/** Read a valid whole-column range and remove its header rows. */
+export async function readDataRows(spreadsheetId, range, headerRows = 1) {
+    const rows = await readRange(spreadsheetId, range);
+    return (rows || []).slice(headerRows);
 }
 
 /**

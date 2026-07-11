@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { readRange, appendRows } from '../lib/sheetsApi';
+import { readDataRows, appendRows } from '../lib/sheetsApi';
 import { ensureFocusSheet } from '../lib/sheetScaffold';
 import { autoCheckLinkedHabits } from '../lib/focusHabitLink';
 import { format, startOfWeek } from 'date-fns';
@@ -18,7 +18,8 @@ export function useFocusSessions(spreadsheetId) {
         if (!spreadsheetId) return;
         setLoading(true);
         try {
-            const rows = await readRange(spreadsheetId, 'FocusLogs!A2:D');
+            await ensureFocusSheet(spreadsheetId);
+            const rows = await readDataRows(spreadsheetId, 'FocusLogs!A:D');
             setSessions((rows || [])
                 .filter(r => r && r[0])
                 .map(r => ({

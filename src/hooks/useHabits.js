@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { appendRows, readRange } from '../lib/sheetsApi';
+import { appendRows, readDataRows, readRange } from '../lib/sheetsApi';
 import { resilientBatchWrite } from '../lib/syncQueue';
 import { getDaysInMonth, format } from 'date-fns';
 import { recomputeStreaksForHabit } from '../lib/streakRecompute';
@@ -36,7 +36,14 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
     const loadMonthData = useCallback(async () => {
         if (!spreadsheetId || !currentMonth || currentMonthIndex === undefined) return;
         const request = ++generation.current;
-        setStatus(trustedSnapshot.current ? 'refreshing' : 'loading');
+        trustedSnapshot.current = false;
+        rowByHabitId.current = new Map();
+        dailyStateRowByDate.current = new Map();
+        checksRef.current = {};
+        setHabits([]);
+        setChecks({});
+        setMentalState({});
+        setStatus('loading');
         setError(null);
 
         try {
@@ -56,7 +63,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
 
             const [monthRows, dailyRows, legacyMental] = await Promise.all([
                 readRange(spreadsheetId, monthHabitRange(tabName)),
-                readRange(spreadsheetId, `${DAILY_STATE_TAB}!A2:C`),
+                readDataRows(spreadsheetId, `${DAILY_STATE_TAB}!A:C`),
                 readRange(spreadsheetId, `'${tabName}'!B22:AF22`).catch(() => []),
             ]);
 
@@ -157,7 +164,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             if (request !== generation.current) return;
             console.error('Failed to load month data', loadError);
             setError(loadError);
-            setStatus(trustedSnapshot.current ? 'stale' : 'error');
+            setStatus('error');
         }
     }, [spreadsheetId, currentMonth, currentYear, currentMonthIndex, daysInMonth]);
 

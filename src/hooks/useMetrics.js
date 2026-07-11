@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { readRange } from '../lib/sheetsApi';
+import { readDataRows } from '../lib/sheetsApi';
+import { findLatestDateRowIndex } from '../lib/dateRows';
 import { resilientBatchWrite, resilientAppendRows } from '../lib/syncQueue';
 import { ensureMetricsSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
@@ -53,11 +54,15 @@ export function useMetrics(spreadsheetId, dateStr) {
         if (!spreadsheetId) return;
         const request = ++generation.current;
         setLoading(true);
+        const empty = { ...EMPTY };
+        latest.current = empty;
+        currentRow.current = { date: targetDateStr, index: null };
+        setData(empty);
         try {
             await ensureMetricsSheet(spreadsheetId);
-            const rows = await readRange(spreadsheetId, 'MetricsLogs!A2:C');
+            const rows = await readDataRows(spreadsheetId, 'MetricsLogs!A:C');
             if (request !== generation.current) return;
-            const index = rows.findIndex(row => row[0] === targetDateStr);
+            const index = findLatestDateRowIndex(rows, targetDateStr);
             const next = index === -1 ? { ...EMPTY } : {
                 water: rows[index][1] || '', weight: rows[index][2] || '',
             };

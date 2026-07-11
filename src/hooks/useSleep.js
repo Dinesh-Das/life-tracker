@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { readRange } from '../lib/sheetsApi';
+import { readDataRows } from '../lib/sheetsApi';
+import { findLatestDateRowIndex } from '../lib/dateRows';
 import { resilientBatchWrite, resilientAppendRows } from '../lib/syncQueue';
 import { ensureSleepSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
@@ -65,11 +66,15 @@ export function useSleep(spreadsheetId, dateStr) {
         if (!spreadsheetId) return;
         const request = ++generation.current;
         setLoading(true);
+        const empty = { ...EMPTY };
+        latest.current = empty;
+        currentRow.current = { date: targetDateStr, index: null };
+        setData(empty);
         try {
             await ensureSleepSheet(spreadsheetId);
-            const rows = await readRange(spreadsheetId, 'SleepLogs!A2:F');
+            const rows = await readDataRows(spreadsheetId, 'SleepLogs!A:F');
             if (request !== generation.current) return;
-            const index = rows.findIndex(row => row[0] === targetDateStr);
+            const index = findLatestDateRowIndex(rows, targetDateStr);
             const next = index === -1 ? { ...EMPTY } : {
                 bedtime: rows[index][1] || '',
                 wakeTime: rows[index][2] || '',

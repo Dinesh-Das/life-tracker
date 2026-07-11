@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { batchRead, readRange } from '../lib/sheetsApi';
+import { batchRead, readDataRows } from '../lib/sheetsApi';
 import { computeMonthlyStats, focusMinutesForMonth } from '../lib/monthlyWrapped';
 
 /**
@@ -15,6 +15,7 @@ export function useMonthlyWrapped(spreadsheetId, currentMonth, currentYear, curr
         let cancelled = false;
         (async () => {
             setLoading(true);
+            setStats(null);
             try {
                 const tab = `${currentMonth} ${currentYear}`;
                 const today = new Date();
@@ -32,7 +33,7 @@ export function useMonthlyWrapped(spreadsheetId, currentMonth, currentYear, curr
 
                 let focusRows = [];
                 try {
-                    focusRows = await readRange(spreadsheetId, 'FocusLogs!A2:D');
+                    focusRows = await readDataRows(spreadsheetId, 'FocusLogs!A:D');
                 } catch {
                     // FocusLogs tab may not exist yet — focus time simply reads 0
                 }

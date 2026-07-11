@@ -21,6 +21,7 @@ export function useYearlyHistory(spreadsheetId, year) {
             if (!spreadsheetId || !year) return;
             setLoading(true);
             setError(null);
+            setHeatmapData([]);
             try {
                 const [metadata, habits] = await Promise.all([
                     getSpreadsheet(spreadsheetId),
@@ -84,7 +85,10 @@ export function useYearlyHistory(spreadsheetId, year) {
                 });
                 if (active) setHeatmapData(result);
             } catch (loadError) {
-                if (active) setError(loadError);
+                if (active) {
+                    setHeatmapData([]);
+                    setError(loadError);
+                }
             } finally {
                 if (active) setLoading(false);
             }

@@ -1,18 +1,21 @@
-import { useState, useEffect, useCallback } from 'react';
-import { readRange, appendRows, batchWrite } from '../lib/sheetsApi';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { readDataRows, appendRows, batchWrite } from '../lib/sheetsApi';
 import toast from 'react-hot-toast';
 
 export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
     const [tasks, setTasks] = useState({ 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] });
     const [loading, setLoading] = useState(false);
+    const generation = useRef(0);
 
     const weekKey = `${year}-W${String(weekNumber).padStart(2, '0')}-M${monthIndex}`;
 
     const loadTasks = useCallback(async () => {
         if (!spreadsheetId) return;
+        const request = ++generation.current;
         setLoading(true);
+        setTasks({ 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] });
         try {
-            const rows = await readRange(spreadsheetId, 'Weekly!A2:I');
+            const rows = await readDataRows(spreadsheetId, 'Weekly!A:I');
 
             const grouped = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
             rows.forEach((row, idx) => {
@@ -30,16 +33,17 @@ export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
                     });
                 }
             });
-            setTasks(grouped);
+            if (request === generation.current) setTasks(grouped);
         } catch (error) {
-            console.error('Failed to load tasks:', error);
+            if (request === generation.current) console.error('Failed to load tasks:', error);
         } finally {
-            setLoading(false);
+            if (request === generation.current) setLoading(false);
         }
     }, [spreadsheetId, weekKey]);
 
     useEffect(() => {
         loadTasks();
+        return () => { generation.current += 1; };
     }, [loadTasks]);
 
     const toggleTask = async (dayIndex, taskId) => {
@@ -77,8 +81,8 @@ export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
         try {
             await appendRows(spreadsheetId, 'Weekly!A:I', [[
                 weekKey,
-                String(new Date().getFullYear()),
-                String(new Date().getMonth()),
+                String(year),
+                String(monthIndex),
                 String(dayIndex),
                 taskId,
                 text,

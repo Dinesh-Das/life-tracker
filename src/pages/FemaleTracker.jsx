@@ -54,7 +54,7 @@ function FemaleTracker() {
         if (!history || history.length === 0) return;
 
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
-        const entry = history.find(h => h.date === dateStr);
+        const entry = [...history].reverse().find(h => h.date === dateStr);
 
         if (entry) {
             setFlow(entry.flow || 'none');

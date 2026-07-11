@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { batchRead, readRange, getSpreadsheet } from '../lib/sheetsApi';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { batchRead, readDataRows, getSpreadsheet } from '../lib/sheetsApi';
 import { MONTHS } from '../lib/constants';
 import { loadAllHabits } from '../lib/habitRepository';
 import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel, normalizeHabitName } from '../lib/sheetLayout';
@@ -22,11 +22,17 @@ export function useDashboard(spreadsheetId, year) {
     const [yearlyTrend, setYearlyTrend] = useState([]);
     const [habits, setHabits] = useState([]);
     const [streaks, setStreaks] = useState({});
+    const generation = useRef(0);
 
     const fetchDashboardData = useCallback(async () => {
         if (!spreadsheetId || !year) return;
+        const request = ++generation.current;
         setLoading(true);
         setError(null);
+        setStats({ totalCompleted: 0, bestMonth: { name: '–', pct: 0 }, bestStreak: 0, activeMonths: 0 });
+        setYearlyTrend([]);
+        setHabits([]);
+        setStreaks({});
         try {
             const [definitions, spreadsheet] = await Promise.all([
                 loadAllHabits(spreadsheetId),
@@ -105,7 +111,7 @@ export function useDashboard(spreadsheetId, year) {
                 .filter(habit => habit.total > 0 || !habit.archivedAt)
                 .map(habit => ({ ...habit, pct: habit.total ? Math.round((habit.done / habit.total) * 100) : 0 }));
 
-            const streakRows = await readRange(spreadsheetId, 'Streaks!A2:E').catch(() => []);
+            const streakRows = await readDataRows(spreadsheetId, 'Streaks!A:E').catch(() => []);
             const streakMap = {};
             let bestStreak = 0;
             streakRows.forEach(row => {
@@ -119,18 +125,23 @@ export function useDashboard(spreadsheetId, year) {
                 bestStreak = Math.max(bestStreak, streakMap[row[0]].best);
             });
 
+            if (request !== generation.current) return;
             setHabits(visibleHabits);
             setStreaks(streakMap);
             setStats({ totalCompleted, bestMonth, bestStreak, activeMonths });
             setYearlyTrend(trend);
         } catch (loadError) {
+            if (request !== generation.current) return;
             console.error('Dashboard Fetch Error:', loadError);
             setError(loadError);
         } finally {
-            setLoading(false);
+            if (request === generation.current) setLoading(false);
         }
     }, [spreadsheetId, year]);
 
-    useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
+    useEffect(() => {
+        fetchDashboardData();
+        return () => { generation.current += 1; };
+    }, [fetchDashboardData]);
     return { stats, yearlyTrend, habits, streaks, loading, error, retry: fetchDashboardData };
 }

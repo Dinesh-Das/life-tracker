@@ -33,7 +33,7 @@ function Journal() {
         if (!loading) {
             setLocalJournal({ ...EMPTY_JOURNAL, ...journal });
         }
-    }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [journal, loading, selectedDateStr]);
 
     // Also reset local state immediately when the date changes (before load completes)
     useEffect(() => {

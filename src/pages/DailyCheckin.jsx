@@ -84,7 +84,7 @@ function DailyCheckin() {
         if (!winsLoading) {
             setLocalWins({ ...EMPTY_WINS, ...wins });
         }
-    }, [winsLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [wins, winsLoading, selectedDateStr]);
 
     const handleWinChange = useCallback((catId, text) => {
         setLocalWins(prev => ({ ...prev, [catId]: text }));

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { readRange } from '../lib/sheetsApi';
+import { readDataRows } from '../lib/sheetsApi';
+import { findLatestDateRowIndex } from '../lib/dateRows';
 import { resilientBatchWrite, resilientAppendRows } from '../lib/syncQueue';
 import { ensureDailyWinsSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
@@ -55,11 +56,15 @@ export function useWins(spreadsheetId, dateStr) {
         if (!spreadsheetId) return;
         const request = ++generation.current;
         setLoading(true);
+        const empty = { ...EMPTY };
+        latest.current = empty;
+        currentRow.current = { date: targetDateStr, index: null };
+        setWins(empty);
         try {
             await ensureDailyWinsSheet(spreadsheetId);
-            const rows = await readRange(spreadsheetId, 'DailyWins!A2:F');
+            const rows = await readDataRows(spreadsheetId, 'DailyWins!A:F');
             if (request !== generation.current) return;
-            const index = rows.findIndex(row => row[0] === targetDateStr);
+            const index = findLatestDateRowIndex(rows, targetDateStr);
             const next = index === -1 ? { ...EMPTY } : {
                 Physical: rows[index][1] || '',
                 Mental: rows[index][2] || '',
