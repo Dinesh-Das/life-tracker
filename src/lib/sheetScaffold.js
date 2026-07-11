@@ -91,7 +91,7 @@ export async function scaffoldSheet(userName) {
                 Array(33).fill(''),
                 ['Date', ...numHeaders, ''],
                 ['Day', ...dayHeaders, ''],
-                Array(33).fill('')
+                [...Array(32).fill(''), 'Habit ID']
             ];
 
             normalizedHabits.forEach((h) => {
@@ -238,7 +238,7 @@ export async function ensureMonthTab(spreadsheetId, month, year, suppliedHabits 
                 Array(33).fill(''),
                 ['Date', ...numHeaders, ''],
                 ['Day', ...dayHeaders, ''],
-                Array(33).fill('')
+                [...Array(32).fill(''), 'Habit ID']
             ];
 
             const activeHabits = suppliedHabits || await loadActiveHabits(

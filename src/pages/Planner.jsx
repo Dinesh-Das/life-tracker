@@ -98,7 +98,7 @@ function Planner() {
                     <div className="glass-card" style={{ padding: '24px' }}>
                         <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-heading)', marginBottom: '8px' }}>Planner habits could not be loaded</h2>
                         <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>{habitsError.message || 'Check your connection and retry.'}</p>
-                        <button className="glass-button" onClick={reloadHabits} style={{ padding: '10px 18px', borderRadius: '9999px' }}>Retry habits</button>
+                        <button className="system-action-button" onClick={reloadHabits}>Retry habits</button>
                     </div>
                 </div>
             </div>

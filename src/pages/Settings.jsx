@@ -106,8 +106,8 @@ function Settings() {
                         <h2 style={{ color: 'var(--text-heading)', marginBottom: '8px' }}>Settings could not be loaded</h2>
                         <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>{error?.message || 'Please check your connection and try again.'}</p>
                         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                            <button className="glass-button" onClick={refresh} style={{ padding: '10px 18px', borderRadius: '9999px' }}>Retry</button>
-                            <button className="glass-button" onClick={hardRefresh} style={{ padding: '10px 18px', borderRadius: '9999px' }}>Clear cache & reload</button>
+                            <button className="system-action-button" onClick={refresh}>Retry</button>
+                            <button className="system-action-button" onClick={hardRefresh}>Clear cache & reload</button>
                         </div>
                     </div>
                 </div>
@@ -283,9 +283,9 @@ function Settings() {
                                 <button
                                     type="button"
                                     onClick={hardRefresh}
-                                    className="glass-button"
+                                    className="system-action-button"
                                     title="Clear local cached sheet data and reload"
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '9999px' }}
+                                    style={{ minHeight: '36px', padding: '8px 12px', fontSize: '10px' }}
                                 >
                                     <RefreshCw size={14} /> Hard refresh
                                 </button>

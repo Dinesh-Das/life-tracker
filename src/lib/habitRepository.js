@@ -1,4 +1,4 @@
-import { addSheet, appendRows, batchRead, batchWrite, getSpreadsheet, readRange } from './sheetsApi';
+import { addSheet, appendRows, batchRead, batchWrite, getSpreadsheet, readRange, writeCell } from './sheetsApi';
 import { DEFAULT_HABITS } from './constants';
 import {
     HABITS_TAB, HABIT_HEADERS, normalizeHabit, parseHabitRow, serializeHabit,
@@ -85,6 +85,10 @@ export async function migrateHabitIdsAcrossMonths(spreadsheetId, habits = null) 
 
         const responses = await batchRead(spreadsheetId, tabs.map(tab => `'${tab.replaceAll("'", "''")}'!A6:AG`));
         const writes = [];
+        const headerWrites = tabs.map(tab => ({
+            range: `'${tab.replaceAll("'", "''")}'!AG5`,
+            values: [['Habit ID']],
+        }));
         responses.forEach((response, tabIndex) => {
             const tab = tabs[tabIndex];
             (response?.values || []).forEach((row, rowIndex) => {
@@ -98,7 +102,15 @@ export async function migrateHabitIdsAcrossMonths(spreadsheetId, habits = null) 
                 });
             });
         });
-        if (writes.length) await batchWrite(spreadsheetId, writes);
+        // Use explicit single-cell updates for the migration. This avoids any
+        // ambiguity between the 1-cell AG range and the 32 day-grid columns,
+        // and makes the preservation boundary obvious: AG only is changed.
+        const allWrites = [...headerWrites, ...writes];
+        for (let offset = 0; offset < allWrites.length; offset += 20) {
+            await Promise.all(allWrites.slice(offset, offset + 20).map(write =>
+                writeCell(spreadsheetId, write.range, write.values[0][0])
+            ));
+        }
         return { migrated: writes.length, tabs: tabs.length };
     })().catch(error => {
         monthMigrationPromises.delete(spreadsheetId);
