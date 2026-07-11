@@ -1,5 +1,7 @@
 import { createSpreadsheet, batchWrite, getSpreadsheet, addSheet } from './sheetsApi';
 import { MONTHS, DEFAULT_HABITS } from './constants';
+import { HABIT_HEADERS, serializeHabit, normalizeHabit } from './habitSchema';
+import { loadActiveHabits } from './habitRepository';
 
 export async function scaffoldSheet(userName) {
     try {
@@ -13,7 +15,7 @@ export async function scaffoldSheet(userName) {
 
         // 2. Add all necessary tabs
         // JournalLogs MUST be in this list — it's written to in batchWrite below
-        const allTabs = ['Settings', ...MONTHS.map(m => `${m} ${currentYear}`), 'Female', 'Weekly', 'Streaks', 'DailyWins', 'JournalLogs', 'FocusLogs'];
+        const allTabs = ['Settings', 'Habits', ...MONTHS.map(m => `${m} ${currentYear}`), 'DailyState', 'AppSettings', 'Meta', 'Female', 'Weekly', 'Streaks', 'DailyWins', 'JournalLogs', 'FocusLogs'];
         const requests = [];
 
         // Rename default "Sheet1" to "Settings"
@@ -60,6 +62,17 @@ export async function scaffoldSheet(userName) {
             values: [...settingsHeaders, ...habitRows]
         });
 
+        const normalizedHabits = DEFAULT_HABITS.map((habit, index) => normalizeHabit({
+            ...habit,
+            id: `habit_${index + 1}`,
+            femaleOnly: habit.category === 'Female',
+            order: index + 1,
+        }, index));
+        spreadsheetRanges.push({
+            range: `Habits!A1:N${normalizedHabits.length + 1}`,
+            values: [HABIT_HEADERS, ...normalizedHabits.map(serializeHabit)],
+        });
+
         // Month Tabs — correctly handle leap years for February
         const daysInMonthTable = [31, isLeapYear(currentYear) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
@@ -81,8 +94,8 @@ export async function scaffoldSheet(userName) {
                 Array(32).fill('')
             ];
 
-            DEFAULT_HABITS.forEach((h) => {
-                const row = [`${h.emoji} ${h.name}`, ...Array(31).fill('')];
+            normalizedHabits.forEach((h) => {
+                const row = [`${h.emoji} ${h.name}`, ...Array(31).fill(''), h.id];
                 monthData.push(row);
             });
 
@@ -93,9 +106,22 @@ export async function scaffoldSheet(userName) {
 
             // Use "Month YYYY" naming to match how the app reads tabs throughout
             spreadsheetRanges.push({
-                range: `'${month} ${currentYear}'!A1:AF25`,
+                range: `'${month} ${currentYear}'!A1:AG25`,
                 values: monthData
             });
+        });
+
+        spreadsheetRanges.push({
+            range: 'DailyState!A1:C1',
+            values: [['Date', 'Mental Score', 'Updated At']],
+        });
+        spreadsheetRanges.push({
+            range: 'AppSettings!A1:C1',
+            values: [['Key', 'Value', 'Updated At']],
+        });
+        spreadsheetRanges.push({
+            range: 'Meta!A1:B2',
+            values: [['Key', 'Value'], ['Schema Version', '2']],
         });
 
         // Female Tab — columns A-L
@@ -184,7 +210,7 @@ export async function ensureDailyWinsSheet(spreadsheetId) {
         throw e;
     }
 }
-export async function ensureMonthTab(spreadsheetId, month, year) {
+export async function ensureMonthTab(spreadsheetId, month, year, suppliedHabits = null) {
     try {
         const spreadsheet = await getSpreadsheet(spreadsheetId);
         const tabName = `${month} ${year}`;
@@ -215,12 +241,12 @@ export async function ensureMonthTab(spreadsheetId, month, year) {
                 Array(32).fill('')
             ];
 
-            // In a real scenario we might want to fetch current habits from Settings, 
-            // but for simplicity we'll use DEFAULT_HABITS here or fetch them if needed.
-            // Ideally, we'd fetch them from 'Settings!A2:J50'.
-            // Let's assume DEFAULT_HABITS for now to match the original scaffold logic.
-            DEFAULT_HABITS.forEach((h) => {
-                const row = [`${h.emoji} ${h.name}`, ...Array(31).fill('')];
+            const activeHabits = suppliedHabits || await loadActiveHabits(
+                spreadsheetId,
+                new Date(year, monthIndex, 1)
+            );
+            activeHabits.forEach((h) => {
+                const row = [`${h.emoji} ${h.name}`, ...Array(31).fill(''), h.id];
                 monthData.push(row);
             });
 
@@ -230,7 +256,7 @@ export async function ensureMonthTab(spreadsheetId, month, year) {
             monthData.push(['🧠 Mental State (1-10)', ...Array(31).fill('')]);
 
             await batchWrite(spreadsheetId, [{
-                range: `'${tabName}'!A1:AF25`,
+                range: `'${tabName}'!A1:AG${Math.max(25, monthData.length)}`,
                 values: monthData
             }]);
             console.info(`${tabName} sheet initialized.`);
@@ -299,5 +325,17 @@ export async function ensureFocusSheet(spreadsheetId) {
     } catch (e) {
         console.error('Failed to ensure FocusLogs sheet:', e);
         throw e;
+    }
+}
+
+export async function ensureDailyStateSheet(spreadsheetId) {
+    const spreadsheet = await getSpreadsheet(spreadsheetId);
+    const exists = spreadsheet.sheets.some(s => s.properties.title === 'DailyState');
+    if (!exists) {
+        await addSheet(spreadsheetId, 'DailyState');
+        await batchWrite(spreadsheetId, [{
+            range: 'DailyState!A1:C1',
+            values: [['Date', 'Mental Score', 'Updated At']],
+        }]);
     }
 }

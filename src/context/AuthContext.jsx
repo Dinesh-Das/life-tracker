@@ -7,7 +7,6 @@ import { scaffoldSheet } from '../lib/sheetScaffold';
 const AuthContext = createContext();
 
 const SCOPES = [
-    'https://www.googleapis.com/auth/spreadsheets',
     'https://www.googleapis.com/auth/drive.file',
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/userinfo.email',
@@ -72,7 +71,7 @@ export function AuthProvider({ children }) {
                 tokenClient.current = window.google.accounts.oauth2.initTokenClient({
                     client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
                     scope: SCOPES,
-                    include_granted_scopes: true,
+                    include_granted_scopes: false,
                     callback: async (response) => {
                         if (response.error) {
                             if (silentAttempt.current) {
@@ -92,12 +91,6 @@ export function AuthProvider({ children }) {
 
                         setToken(response.access_token);
                         scheduleTokenRefresh(); // start the refresh countdown
-                        // Replay any writes queued while offline / signed out
-                        import('../lib/syncQueue').then(({ initSyncQueue, flush }) => {
-                            initSyncQueue();
-                            flush();
-                        });
-
                         try {
                             const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
                                 headers: { Authorization: `Bearer ${response.access_token}` },
@@ -120,6 +113,10 @@ export function AuthProvider({ children }) {
 
                             if (existingSheet) {
                                 setSpreadsheetId(existingSheet.id);
+                                import('../lib/syncQueue').then(({ initSyncQueue, flush }) => {
+                                    initSyncQueue();
+                                    void flush(existingSheet.id);
+                                });
                                 try {
                                     const genderRes = await window.gapi.client.sheets.spreadsheets.values.get({
                                         spreadsheetId: existingSheet.id,
@@ -141,6 +138,10 @@ export function AuthProvider({ children }) {
                                 toast('Setting up your LifeTracker for the first time...', { icon: '🏗️' });
                                 const newId = await scaffoldSheet(profile.name);
                                 setSpreadsheetId(newId);
+                                import('../lib/syncQueue').then(({ initSyncQueue, flush }) => {
+                                    initSyncQueue();
+                                    void flush(newId);
+                                });
                                 setUserGender('needs_selection');
                                 toast.success('Your LifeTracker is ready!');
                             }
@@ -169,7 +170,6 @@ export function AuthProvider({ children }) {
             } catch (error) {
                 console.error('GAPI/GIS full initialization error:', error);
                 setGapiError(true);
-            } finally {
                 setLoading(false);
             }
         };

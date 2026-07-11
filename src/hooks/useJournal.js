@@ -1,94 +1,102 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { readRange, batchWrite, appendRows } from '../lib/sheetsApi';
+import { readRange } from '../lib/sheetsApi';
+import { resilientAppendRows, resilientBatchWrite } from '../lib/syncQueue';
 import { ensureJournalSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
+const EMPTY = { gratitude: '', review: '', focus: '' };
+const FIELDS = Object.keys(EMPTY);
+
 export function useJournal(spreadsheetId) {
     const [selectedDate, setSelectedDate] = useState(new Date());
-    const [journal, setJournal] = useState({
-        gratitude: '',
-        review: '',
-        focus: ''
-    });
+    const [journal, setJournal] = useState(EMPTY);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-
-    const batchTimer = useRef(null);
-    const currentRowIndex = useRef(null);
+    const timer = useRef(null);
+    const pending = useRef(null);
+    const currentRow = useRef(null);
+    const latest = useRef(EMPTY);
+    const generation = useRef(0);
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
-    // silent=true → refresh row index without triggering the loading skeleton
-    const loadJournal = useCallback(async (silent = false) => {
+    const persistSnapshot = useCallback(async (snapshot) => {
+        const row = [snapshot.date, ...FIELDS.map(field => snapshot.values[field] || '')];
+        if (snapshot.rowIndex) {
+            await resilientBatchWrite(spreadsheetId, [{
+                range: `JournalLogs!A${snapshot.rowIndex}:D${snapshot.rowIndex}`,
+                values: [row],
+            }]);
+        } else {
+            const result = await resilientAppendRows(spreadsheetId, 'JournalLogs!A:D', [row]);
+            const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
+            if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
+        }
+    }, [spreadsheetId]);
+
+    const flushPending = useCallback(async () => {
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = null;
+        const snapshot = pending.current;
+        pending.current = null;
+        if (!snapshot) return;
+        setSaving(true);
+        try {
+            await persistSnapshot(snapshot);
+        } catch (error) {
+            console.error('Failed to save reflection', error);
+            toast.error('Failed to save reflection');
+        } finally {
+            setSaving(false);
+        }
+    }, [persistSnapshot]);
+
+    const loadJournal = useCallback(async () => {
         if (!spreadsheetId) return;
-        if (!silent) setLoading(true);
+        const request = ++generation.current;
+        setLoading(true);
         try {
             await ensureJournalSheet(spreadsheetId);
-            const rows = await readRange(spreadsheetId, 'JournalLogs!A2:D500');
-
-            const rowIndex = rows.findIndex(row => row[0] === dateStr);
-
-            if (rowIndex !== -1) {
-                const row = rows[rowIndex];
-                currentRowIndex.current = rowIndex + 2;
-                // Only overwrite displayed text on initial (non-silent) loads
-                if (!silent) {
-                    setJournal({
-                        gratitude: row[1] || '',
-                        review: row[2] || '',
-                        focus: row[3] || ''
-                    });
-                }
-            } else {
-                currentRowIndex.current = null;
-                if (!silent) {
-                    setJournal({ gratitude: '', review: '', focus: '' });
-                }
-            }
+            const rows = await readRange(spreadsheetId, 'JournalLogs!A2:D');
+            if (request !== generation.current) return;
+            const index = rows.findIndex(row => row[0] === dateStr);
+            const next = index === -1 ? { ...EMPTY } : {
+                gratitude: rows[index][1] || '',
+                review: rows[index][2] || '',
+                focus: rows[index][3] || '',
+            };
+            currentRow.current = { date: dateStr, index: index === -1 ? null : index + 2 };
+            latest.current = next;
+            setJournal(next);
         } catch (error) {
-            console.error('Failed to load journal', error);
+            if (request === generation.current) console.error('Failed to load journal', error);
         } finally {
-            if (!silent) setLoading(false);
+            if (request === generation.current) setLoading(false);
         }
     }, [spreadsheetId, dateStr]);
 
     useEffect(() => {
         loadJournal();
-    }, [loadJournal]);
+        return () => {
+            generation.current += 1;
+            void flushPending();
+        };
+    }, [loadJournal, flushPending]);
 
     const saveJournal = useCallback((field, text) => {
-        setJournal(prev => ({ ...prev, [field]: text }));
+        if (!FIELDS.includes(field)) return;
+        const next = { ...latest.current, [field]: text };
+        latest.current = next;
+        setJournal(next);
         setSaving(true);
+        pending.current = {
+            date: dateStr,
+            rowIndex: currentRow.current?.date === dateStr ? currentRow.current.index : null,
+            values: { ...next },
+        };
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => { void flushPending(); }, 800);
+    }, [dateStr, flushPending]);
 
-        if (batchTimer.current) clearTimeout(batchTimer.current);
-
-        batchTimer.current = setTimeout(async () => {
-            try {
-                const fields = ['gratitude', 'review', 'focus'];
-                const colIndex = fields.indexOf(field);
-                if (colIndex === -1) return;
-
-                const colLetter = String.fromCharCode(66 + colIndex); // B, C, D
-
-                if (currentRowIndex.current) {
-                    await batchWrite(spreadsheetId, [{
-                        range: `JournalLogs!${colLetter}${currentRowIndex.current}`,
-                        values: [[text]]
-                    }]);
-                } else {
-                    const newRow = [dateStr, '', '', ''];
-                    newRow[colIndex + 1] = text;
-                    await appendRows(spreadsheetId, 'JournalLogs!A:D', [newRow]);
-                    // Silent reload — get the new row index without showing the loading skeleton
-                    await loadJournal(true);
-                }
-            } catch (error) {
-                toast.error('Failed to save reflection');
-            } finally {
-                setSaving(false);
-            }
-        }, 1000);
-    }, [spreadsheetId, dateStr, loadJournal]);
-
-    return { journal, loading, saving, saveJournal, selectedDate, setSelectedDate };
+    return { journal, loading, saving, saveJournal, selectedDate, setSelectedDate, flushPending };
 }

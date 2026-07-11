@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
  * and right after (re-)authentication.
  */
 const KEY = 'lt_sync_queue_v1';
+const MAX_QUEUE_SIZE = 1000;
 
 let flushing = false;
 let initialized = false;
@@ -25,8 +26,11 @@ const loadQueue = () => {
 const saveQueue = (q) => {
     try {
         localStorage.setItem(KEY, JSON.stringify(q));
+        return true;
     } catch (e) {
         console.error('Sync queue persist failed', e);
+        toast.error('Offline storage is full. Reconnect before making more changes.');
+        return false;
     }
 };
 
@@ -34,8 +38,9 @@ export const pendingCount = () => loadQueue().length;
 
 export function enqueue(op) {
     const q = loadQueue();
-    q.push({ ...op, ts: Date.now() });
-    saveQueue(q);
+    if (q.length >= MAX_QUEUE_SIZE) throw new Error('Offline sync queue is full');
+    q.push({ ...op, id: op.id || crypto.randomUUID(), attempts: 0, ts: Date.now() });
+    if (!saveQueue(q)) throw new Error('Could not persist the offline change');
 }
 
 const RETRYABLE_CODES = new Set([0, 408, 429, 500, 502, 503, 504]);
@@ -58,10 +63,14 @@ function notifyQueued() {
 async function runOp(op) {
     if (op.type === 'batchWrite') return batchWrite(op.spreadsheetId, op.data);
     if (op.type === 'appendRows') return appendRows(op.spreadsheetId, op.range, op.rows);
+    if (op.type === 'recomputeStreak') {
+        const { recomputeStreaksForHabit } = await import('./streakRecompute');
+        return recomputeStreaksForHabit(op.spreadsheetId, op.habitId);
+    }
     console.warn('Unknown sync op skipped:', op.type);
 }
 
-export async function flush() {
+export async function flush(activeSpreadsheetId = null) {
     if (flushing) return;
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
     if (!window.gapi?.client?.sheets) return; // gapi not ready / not authenticated
@@ -72,9 +81,10 @@ export async function flush() {
     flushing = true;
     const count = q.length;
     try {
-        while (q.length > 0) {
-            await runOp(q[0]);
-            q = q.slice(1);
+        while (q.some(op => !activeSpreadsheetId || op.spreadsheetId === activeSpreadsheetId)) {
+            const index = q.findIndex(op => !activeSpreadsheetId || op.spreadsheetId === activeSpreadsheetId);
+            await runOp(q[index]);
+            q = q.filter((_, itemIndex) => itemIndex !== index);
             saveQueue(q);
         }
         toast.success(`Synced ${count} offline ${count === 1 ? 'change' : 'changes'}`);

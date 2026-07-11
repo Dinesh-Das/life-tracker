@@ -1,58 +1,69 @@
-import { getSpreadsheet, batchRead, batchWrite, readRange } from './sheetsApi';
+import { appendRows, batchRead, batchWrite, getSpreadsheet, readRange } from './sheetsApi';
 import { computeStreaks } from './streakLogic';
 import { format, getDaysInMonth } from 'date-fns';
+import { MONTHS } from './constants';
+import { loadAllHabits } from './habitRepository';
+import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel } from './sheetLayout';
 
-const MONTH_TAB_RE = /^(January|February|March|April|May|June|July|August|September|October|November|December) (\d{4})$/;
+const MONTH_TAB_RE = new RegExp(`^(${MONTHS.join('|')}) (\\d{4})$`);
 
-/**
- * Recompute a habit's streaks from its complete history across all month tabs
- * and persist the result to the Streaks sheet.
- *
- * Used after backfill (past-day) toggles, where incremental updates would
- * corrupt current/best. Assumes the habit occupies row (6 + habitIndex) in
- * every month tab — the same assumption the scaffold and useHabits make.
- *
- * @param {string} spreadsheetId
- * @param {string} habitId     habit id as stored in Streaks!A
- * @param {number} habitIndex  zero-based position of the habit in the list
- */
-export async function recomputeStreaksForHabit(spreadsheetId, habitId, habitIndex) {
-    const meta = await getSpreadsheet(spreadsheetId);
-    const monthTabs = (meta.sheets || [])
-        .map(s => s.properties?.title)
-        .filter(t => t && MONTH_TAB_RE.test(t));
+function parseMonthTab(title) {
+    const match = String(title || '').match(MONTH_TAB_RE);
+    if (match) return { title, monthIndex: MONTHS.indexOf(match[1]), year: Number(match[2]) };
+    const legacyIndex = MONTHS.indexOf(String(title || ''));
+    if (legacyIndex !== -1) return { title, monthIndex: legacyIndex, year: new Date().getFullYear() };
+    return null;
+}
 
-    if (monthTabs.length === 0) return;
+export async function recomputeStreaksForHabit(spreadsheetId, habitId) {
+    const [metadata, habits] = await Promise.all([
+        getSpreadsheet(spreadsheetId),
+        loadAllHabits(spreadsheetId),
+    ]);
+    const habit = habits.find(item => item.id === habitId);
+    if (!habit) return null;
 
-    const row = 6 + habitIndex;
-    const ranges = monthTabs.map(t => `'${t}'!B${row}:AF${row}`); // B..AF = days 1..31
+    const monthTabs = (metadata.sheets || [])
+        .map(sheet => parseMonthTab(sheet.properties?.title))
+        .filter(Boolean)
+        .sort((a, b) => a.year - b.year || a.monthIndex - b.monthIndex);
+    if (!monthTabs.length) return null;
+
+    const ranges = monthTabs.map(tab => `'${tab.title}'!A6:AG`);
     const valueRanges = await batchRead(spreadsheetId, ranges);
-
+    const wantedLabel = normalizeHabitLabel(habitLabel(habit));
     const doneDates = [];
-    monthTabs.forEach((tab, i) => {
-        const match = tab.match(MONTH_TAB_RE);
-        if (!match) return;
-        const monthDate = new Date(`${match[1]} 1, ${match[2]}`);
+    const skippedDates = [];
+
+    monthTabs.forEach((tab, index) => {
+        const rows = valueRanges?.[index]?.values || [];
+        const row = rows.find(candidate => String(candidate?.[MONTH_HABIT_ID_INDEX] || '') === habitId)
+            || rows.find(candidate => normalizeHabitLabel(candidate?.[0]) === wantedLabel);
+        if (!row) return;
+
+        const monthDate = new Date(tab.year, tab.monthIndex, 1);
         const days = getDaysInMonth(monthDate);
-        const vals = valueRanges?.[i]?.values?.[0] || [];
-        for (let d = 0; d < days; d++) {
-            const v = vals[d];
-            if (v === true || v === 'TRUE' || v === '✓') {
-                doneDates.push(format(new Date(monthDate.getFullYear(), monthDate.getMonth(), d + 1), 'yyyy-MM-dd'));
-            }
+        for (let day = 1; day <= days; day++) {
+            const value = decodeCheck(row[day]);
+            const date = format(new Date(tab.year, tab.monthIndex, day), 'yyyy-MM-dd');
+            if (value === true) doneDates.push(date);
+            if (value === 'skip') skippedDates.push(date);
         }
     });
 
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
-    const { current, best, lastDone, total } = computeStreaks(doneDates, todayStr);
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const stats = computeStreaks(doneDates, today, skippedDates);
+    const streakRows = await readRange(spreadsheetId, 'Streaks!A2:E');
+    const rowIndex = (streakRows || []).findIndex(row => row[0] === habitId);
+    const values = [[habitId, stats.current, stats.best, stats.lastDone, stats.total]];
 
-    // Locate (or append) the habit's row in the Streaks sheet
-    const streakRows = await readRange(spreadsheetId, 'Streaks!A2:E50');
-    let rowIndex = streakRows.findIndex(r => r[0] === habitId);
-    if (rowIndex === -1) rowIndex = streakRows.length;
-
-    await batchWrite(spreadsheetId, [{
-        range: `Streaks!A${rowIndex + 2}:E${rowIndex + 2}`,
-        values: [[habitId, current, best, lastDone, total]]
-    }]);
+    if (rowIndex === -1) {
+        await appendRows(spreadsheetId, 'Streaks!A:E', values);
+    } else {
+        await batchWrite(spreadsheetId, [{
+            range: `Streaks!A${rowIndex + 2}:E${rowIndex + 2}`,
+            values,
+        }]);
+    }
+    return stats;
 }

@@ -26,13 +26,13 @@ export function useMonthlyWrapped(spreadsheetId, currentMonth, currentYear, curr
 
                 const [labelsR, gridR, mentalR] = await batchRead(spreadsheetId, [
                     `'${tab}'!A6:A20`,
-                    `'${tab}'!B6:AF20`,
+                    `'${tab}'!B6:AF`,
                     `'${tab}'!B22:AF22`,
                 ]);
 
                 let focusRows = [];
                 try {
-                    focusRows = await readRange(spreadsheetId, 'FocusLogs!A2:D1000');
+                    focusRows = await readRange(spreadsheetId, 'FocusLogs!A2:D');
                 } catch {
                     // FocusLogs tab may not exist yet — focus time simply reads 0
                 }

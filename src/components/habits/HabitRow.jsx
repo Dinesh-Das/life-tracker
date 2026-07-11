@@ -1,7 +1,7 @@
 import HabitCheckbox from './HabitCheckbox';
 import StreakBadge from '../ui/StreakBadge';
 import { X } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 
 function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate }) {
     const [isHovered, setIsHovered] = useState(false);
@@ -15,12 +15,13 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
         }
     };
 
-    const actual = Object.values(checks || {}).filter(Boolean).length;
+    const actual = Object.values(checks || {}).filter(status => status === true).length;
     const progressPct = Math.round((actual / habit.goal) * 100);
 
     return (
         <tr
             className="group transition-colors hover:bg-background-subtle border-b border-gray-100"
+            style={{ contentVisibility: 'auto', containIntrinsicSize: '48px' }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
@@ -51,6 +52,7 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
 
                     <button
                         onClick={() => onDelete(habit.id)}
+                        aria-label={`Archive ${habit.name}`}
                         className={`text-red-400 hover:text-red-600 transition-opacity p-1 rounded-full hover:bg-red-50 shrink-0 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
                     >
                         <X size={14} />
@@ -67,7 +69,7 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
                         className={`p-[3px] text-center min-w-[22px] ${isNewWeek ? 'border-l-2 border-gray-200' : 'border-l border-gray-100'}`}
                     >
                         <HabitCheckbox
-                            done={checks?.[day] || false}
+                            done={checks?.[day] === true}
                             onClick={() => onToggle(habit.id, day)}
                         />
                     </td>
@@ -94,4 +96,4 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
     );
 }
 
-export default HabitRow;
+export default memo(HabitRow);

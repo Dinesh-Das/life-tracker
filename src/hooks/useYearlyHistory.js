@@ -1,134 +1,90 @@
 import { useState, useEffect } from 'react';
 import { batchRead, getSpreadsheet } from '../lib/sheetsApi';
 import { MONTHS } from '../lib/constants';
+import { loadAllHabits } from '../lib/habitRepository';
+import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel } from '../lib/sheetLayout';
+import { format } from 'date-fns';
 
-// Hook to fetch and aggregate daily habit completion counts for the entire year
+function activeOn(habit, dateKey) {
+    return (!habit.activeFrom || habit.activeFrom <= dateKey) &&
+        (!habit.archivedAt || habit.archivedAt.slice(0, 10) > dateKey);
+}
+
 export function useYearlyHistory(spreadsheetId, year) {
     const [heatmapData, setHeatmapData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        let isMounted = true;
-
-        const fetchYearlyData = async () => {
+        let active = true;
+        (async () => {
             if (!spreadsheetId || !year) return;
             setLoading(true);
-
+            setError(null);
             try {
-                // Fetch existing sheets
-                const spreadsheet = await getSpreadsheet(spreadsheetId);
-                const existingTitles = spreadsheet.sheets.map(s => s.properties.title);
-
-                const monthMappings = MONTHS.map(m => {
-                    const yearPrefix = `${m} ${year}`;
-                    if (existingTitles.includes(yearPrefix)) return { month: m, title: yearPrefix };
-                    if (existingTitles.includes(m)) return { month: m, title: m };
+                const [metadata, habits] = await Promise.all([
+                    getSpreadsheet(spreadsheetId),
+                    loadAllHabits(spreadsheetId),
+                ]);
+                const byId = new Map(habits.map(habit => [habit.id, habit]));
+                const byLabel = new Map();
+                habits.forEach(habit => {
+                    const label = normalizeHabitLabel(habitLabel(habit));
+                    const values = byLabel.get(label) || [];
+                    values.push(habit);
+                    byLabel.set(label, values);
+                });
+                const titles = metadata.sheets.map(sheet => sheet.properties.title);
+                const mappings = MONTHS.map(month => {
+                    const titled = `${month} ${year}`;
+                    if (titles.includes(titled)) return { month, title: titled };
+                    if (titles.includes(month) && year === new Date().getFullYear()) return { month, title: month };
                     return null;
                 }).filter(Boolean);
-
-                const ranges = monthMappings.map(m => `'${m.title}'!A6:AF21`);
-
-                let responses = [];
-                if (ranges.length > 0) {
-                    responses = await batchRead(spreadsheetId, ranges);
+                const responses = mappings.length
+                    ? await batchRead(spreadsheetId, mappings.map(mapping => `'${mapping.title}'!A6:AG`))
+                    : [];
+                const map = {};
+                const todayKey = format(new Date(), 'yyyy-MM-dd');
+                for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
+                    const days = new Date(year, monthIndex + 1, 0).getDate();
+                    for (let day = 1; day <= days; day++) {
+                        map[format(new Date(year, monthIndex, day), 'yyyy-MM-dd')] = { completed: 0, total: 0 };
+                    }
                 }
-
-                // We'll build a map from YYYY-MM-DD to completion count.
-                // Heatmaps usually expect a sorted list of days.
-                const yearlyMap = {};
-
-                // Initialize all days of the year to 0 count.
-                const startDate = new Date(year, 0, 1);
-                const endDate = new Date(year, 11, 31);
-                for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-                    // Need a localized YYYY-MM-DD string
-                    const dateStr = [
-                        d.getFullYear(),
-                        String(d.getMonth() + 1).padStart(2, '0'),
-                        String(d.getDate()).padStart(2, '0')
-                    ].join('-');
-                    yearlyMap[dateStr] = 0;
-                }
-
-                // Process sheets
-                responses.forEach((rangeObj, idx) => {
-                    const monthName = monthMappings[idx].month;
-                    const monthIndex = MONTHS.indexOf(monthName);
-                    const rows = rangeObj.values;
-                    if (!rows || rows.length === 0) return;
-
-                    // rows[0] is habit 1, rows[14] is habit 15
-                    // cell 0 is habit name, cell 1 is day 1, cell 31 is day 31
-
-                    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-
-                    for (let day = 1; day <= daysInMonth; day++) {
-                        let completedHabits = 0;
-                        let totalHabits = 0;
-
-                        rows.forEach(row => {
-                            if (!row || row.length === 0) return; // skip empty
-                            // Is this a habit row? (Has an emoji + name in col 0)
-                            const label = row[0];
-                            if (label && label.length > 2 && !label.includes('Mental State')) {
-                                totalHabits++;
-                                const cellValue = row[day];
-                                if (cellValue === '✓' || cellValue === 'TRUE' || cellValue === true) {
-                                    completedHabits++;
-                                }
-                            }
-                        });
-
-                        const dateStr = [
-                            year,
-                            String(monthIndex + 1).padStart(2, '0'),
-                            String(day).padStart(2, '0')
-                        ].join('-');
-
-                        if (yearlyMap[dateStr] !== undefined) {
-                            yearlyMap[dateStr] = {
-                                completed: completedHabits,
-                                total: totalHabits
-                            };
+                responses.forEach((response, index) => {
+                    const monthIndex = MONTHS.indexOf(mappings[index].month);
+                    const days = new Date(year, monthIndex + 1, 0).getDate();
+                    (response.values || []).forEach(row => {
+                        let habit = byId.get(String(row?.[MONTH_HABIT_ID_INDEX] || ''));
+                        if (!habit) {
+                            const matches = byLabel.get(normalizeHabitLabel(row?.[0])) || [];
+                            if (matches.length === 1) habit = matches[0];
                         }
-                    }
+                        if (!habit) return;
+                        for (let day = 1; day <= days; day++) {
+                            const key = format(new Date(year, monthIndex, day), 'yyyy-MM-dd');
+                            if (key > todayKey) continue;
+                            if (!activeOn(habit, key)) continue;
+                            map[key].total++;
+                            if (decodeCheck(row[day]) === true) map[key].completed++;
+                        }
+                    });
                 });
-
-                // Convert map to array sorted by date
-                const finalData = Object.keys(yearlyMap).sort().map(dateStr => {
-                    const dataObj = yearlyMap[dateStr];
-                    const completed = dataObj?.completed || 0;
-                    const total = dataObj?.total || 0;
-                    
-                    let intensity = 0;
-                    if (completed > 0 && total > 0) {
-                        const pct = completed / total;
-                        if (pct <= 0.2) intensity = 1;
-                        else if (pct <= 0.4) intensity = 2;
-                        else if (pct <= 0.6) intensity = 3;
-                        else if (pct <= 0.8) intensity = 4;
-                        else intensity = 5;
-                    }
-
-                    const pct = total > 0 ? Math.round((completed / total) * 100) : null;
-
-                    return { date: dateStr, count: completed, intensity, pct };
+                const result = Object.entries(map).sort(([a], [b]) => a.localeCompare(b)).map(([date, value]) => {
+                    const pct = value.total ? Math.round((value.completed / value.total) * 100) : null;
+                    const intensity = pct === null || pct === 0 ? 0 : Math.min(5, Math.ceil(pct / 20));
+                    return { date, count: value.completed, total: value.total, pct, intensity };
                 });
-
-                if (isMounted) {
-                    setHeatmapData(finalData);
-                }
-            } catch (error) {
-                console.error("Failed to fetch yearly heatmap data:", error);
+                if (active) setHeatmapData(result);
+            } catch (loadError) {
+                if (active) setError(loadError);
             } finally {
-                if (isMounted) setLoading(false);
+                if (active) setLoading(false);
             }
-        };
-
-        fetchYearlyData();
-
-        return () => { isMounted = false; };
+        })();
+        return () => { active = false; };
     }, [spreadsheetId, year]);
 
-    return { heatmapData, loading };
+    return { heatmapData, loading, error };
 }

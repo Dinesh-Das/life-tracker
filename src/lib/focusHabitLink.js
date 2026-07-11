@@ -1,92 +1,48 @@
-import { readRange, batchRead, batchWrite, colIndexToLabel } from './sheetsApi';
-import { applyDailyToggle } from './streakLogic';
+import { batchRead, batchWrite, readRange } from './sheetsApi';
 import { MONTHS } from './constants';
-import { format } from 'date-fns';
+import { loadActiveHabits } from './habitRepository';
+import { ensureMonthTab } from './sheetScaffold';
+import {
+    MONTH_HABIT_ID_INDEX, MONTH_HABIT_START_ROW, dayColumn,
+    decodeCheck, habitLabel, monthHabitRange, normalizeHabitLabel,
+} from './sheetLayout';
+import { recomputeStreaksForHabit } from './streakRecompute';
 
-/**
- * Focus-to-habit linking — after a completed Deep Work session, habits
- * marked "Focus Link" in Settings (column K) are auto-checked for today
- * on the month tab, and the persisted Streaks tab is updated with the
- * same incremental logic a manual toggle uses.
- *
- * A frozen ('S') day is overwritten with '✓' — an actual completion
- * beats a freeze, and applyDailyToggle handles the streak either way.
- *
- * @returns habits that were newly checked: [{ id, name, emoji }]
- */
 export async function autoCheckLinkedHabits(spreadsheetId) {
     if (!spreadsheetId) return [];
-
-    const settingsRows = await readRange(spreadsheetId, 'Settings!A2:K50');
-    const habits = (settingsRows || [])
-        .filter(r => r && r[1])
-        .map((r, i) => ({
-            id: r[0] || String(i + 1),
-            name: r[1],
-            emoji: r[2] || '✨',
-            focusLink: r[10] === 'TRUE' || r[10] === true,
-            idx: i, // month-tab sheet row = 6 + idx (same order as useHabits)
-        }));
-    const linked = habits.filter(h => h.focusLink);
-    if (linked.length === 0) return [];
-
     const now = new Date();
+    const habits = await loadActiveHabits(spreadsheetId, now);
+    const linked = habits.filter(habit => habit.focusLink);
+    if (!linked.length) return [];
+
     const tabName = `${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
-    const col = colIndexToLabel(now.getDate());
-    const todayStr = format(now, 'yyyy-MM-dd');
-
-    // Which linked habits are still unchecked today?
-    const cellRanges = linked.map(h => `'${tabName}'!${col}${6 + h.idx}`);
-    let cells;
-    try {
-        cells = await batchRead(spreadsheetId, cellRanges);
-    } catch (err) {
-        // Month tab may not exist yet (first session of a new month)
-        if (err.status === 400 || err.code === 400) {
-            const { ensureMonthTab } = await import('./sheetScaffold');
-            await ensureMonthTab(spreadsheetId, MONTHS[now.getMonth()], now.getFullYear());
-            cells = await batchRead(spreadsheetId, cellRanges);
-        } else {
-            throw err;
-        }
-    }
-
-    const toCheck = linked.filter((h, i) => {
-        const val = cells?.[i]?.values?.[0]?.[0];
-        return !(val === '✓' || val === true || val === 'TRUE');
+    await ensureMonthTab(spreadsheetId, MONTHS[now.getMonth()], now.getFullYear(), habits);
+    const rows = await readRange(spreadsheetId, monthHabitRange(tabName));
+    const byId = new Map();
+    rows.forEach((row, index) => {
+        const id = String(row?.[MONTH_HABIT_ID_INDEX] || '');
+        if (id) byId.set(id, MONTH_HABIT_START_ROW + index);
     });
-    if (toCheck.length === 0) return [];
+    linked.forEach(habit => {
+        if (byId.has(habit.id)) return;
+        const wanted = normalizeHabitLabel(habitLabel(habit));
+        const index = rows.findIndex(row => normalizeHabitLabel(row?.[0]) === wanted);
+        if (index !== -1) byId.set(habit.id, MONTH_HABIT_START_ROW + index);
+    });
 
-    const writes = toCheck.map(h => ({
-        range: `'${tabName}'!${col}${6 + h.idx}`,
+    const resolved = linked.filter(habit => byId.has(habit.id));
+    const column = dayColumn(now.getDate());
+    const ranges = resolved.map(habit => `'${tabName}'!${column}${byId.get(habit.id)}`);
+    const cells = ranges.length ? await batchRead(spreadsheetId, ranges) : [];
+    const toCheck = resolved.filter((habit, index) =>
+        decodeCheck(cells?.[index]?.values?.[0]?.[0]) !== true
+    );
+    if (!toCheck.length) return [];
+
+    await batchWrite(spreadsheetId, toCheck.map(habit => ({
+        range: `'${tabName}'!${column}${byId.get(habit.id)}`,
         values: [['✓']],
-    }));
-
-    // Keep the persisted Streaks tab consistent with the new checks
-    const streakRows = await readRange(spreadsheetId, 'Streaks!A2:E50');
-    let nextRow = (streakRows || []).length;
-    toCheck.forEach(h => {
-        let rowIndex = (streakRows || []).findIndex(r => r[0] === h.id);
-        let stats = { current: 0, best: 0, lastDone: '', total: 0 };
-        if (rowIndex !== -1) {
-            const row = streakRows[rowIndex];
-            stats = {
-                current: parseInt(row[1]) || 0,
-                best: parseInt(row[2]) || 0,
-                lastDone: row[3] || '',
-                total: parseInt(row[4]) || 0,
-            };
-        } else {
-            rowIndex = nextRow;
-            nextRow++;
-        }
-        const next = applyDailyToggle(stats, todayStr, true);
-        writes.push({
-            range: `Streaks!A${rowIndex + 2}:E${rowIndex + 2}`,
-            values: [[h.id, next.current, next.best, next.lastDone, next.total]],
-        });
-    });
-
-    await batchWrite(spreadsheetId, writes);
+    })));
+    await Promise.all(toCheck.map(habit => recomputeStreaksForHabit(spreadsheetId, habit.id)));
     return toCheck.map(({ id, name, emoji }) => ({ id, name, emoji }));
 }

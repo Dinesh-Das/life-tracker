@@ -1,20 +1,18 @@
-import { getDaysInMonth } from 'date-fns';
-
 function MonthHeader({
     month = 'March',
     habits = [],
     checks = {},
+    daysInMonth = 31,
     onAddHabit
 }) {
     // Compute global stats
     const totalHabits = habits.length;
-    const dim = getDaysInMonth(new Date());
-    const totalSlots = totalHabits * dim;
+    const totalSlots = totalHabits * daysInMonth;
 
     let completedCount = 0;
     Object.values(checks).forEach(habitChecks => {
-        Object.values(habitChecks).forEach(done => {
-            if (done) completedCount++;
+        Object.values(habitChecks).forEach(status => {
+            if (status === true) completedCount++;
         });
     });
 
@@ -51,7 +49,7 @@ function MonthHeader({
                 onClick={onAddHabit}
                 className="bg-primary hover:bg-primary-dark text-white px-8 py-3 rounded-full font-black text-sm uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95"
             >
-                + Add Habit
+                Manage Habits
             </button>
         </div>
     );

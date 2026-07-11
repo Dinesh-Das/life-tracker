@@ -25,7 +25,7 @@ export async function ensureHabitNotesSheet(spreadsheetId) {
 /** All non-empty notes for one habit, oldest first. */
 export async function loadNotesForHabit(spreadsheetId, habitId) {
     await ensureHabitNotesSheet(spreadsheetId);
-    const rows = await readRange(spreadsheetId, `${TAB}!A2:C1000`);
+    const rows = await readRange(spreadsheetId, `${TAB}!A2:C`);
     return rows
         .map((r, i) => ({ row: i + 2, date: r[0], habitId: r[1], note: r[2] || '' }))
         .filter(r => r.habitId === habitId && r.note);
@@ -34,7 +34,7 @@ export async function loadNotesForHabit(spreadsheetId, habitId) {
 /** Upsert the note for (habit, date). Offline-safe. */
 export async function saveNote(spreadsheetId, habitId, dateStr, note) {
     await ensureHabitNotesSheet(spreadsheetId);
-    const rows = await readRange(spreadsheetId, `${TAB}!A2:C1000`);
+    const rows = await readRange(spreadsheetId, `${TAB}!A2:C`);
     const idx = rows.findIndex(r => r[0] === dateStr && r[1] === habitId);
     if (idx !== -1) {
         await resilientBatchWrite(spreadsheetId, [{

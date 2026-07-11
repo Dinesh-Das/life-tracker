@@ -29,7 +29,7 @@ export function useOverallStreak(spreadsheetId) {
         let cancelled = false;
         (async () => {
             try {
-                const rows = await readRange(spreadsheetId, 'Streaks!A2:E50');
+                const rows = await readRange(spreadsheetId, 'Streaks!A2:E');
                 const overall = (rows || []).reduce((max, row) => {
                     const current = parseInt(row?.[1]) || 0;
                     const lastDone = row?.[3];

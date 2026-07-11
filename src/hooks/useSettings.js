@@ -1,72 +1,72 @@
-import { useState, useEffect, useCallback } from 'react';
-import { readRange, batchWrite } from '../lib/sheetsApi';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { loadAllHabits, replaceActiveHabits } from '../lib/habitRepository';
 import toast from 'react-hot-toast';
 
 export function useSettings(spreadsheetId) {
     const [habits, setHabits] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [archivedHabits, setArchivedHabits] = useState([]);
+    const [status, setStatus] = useState('loading');
+    const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
+    const generation = useRef(0);
+    const hasTrustedData = useRef(false);
 
     const loadSettings = useCallback(async () => {
         if (!spreadsheetId) return;
-        setLoading(true);
+        const request = ++generation.current;
+        setStatus(previous => previous === 'success' ? 'refreshing' : 'loading');
+        setError(null);
         try {
-            const rows = await readRange(spreadsheetId, 'Settings!A2:K50');
-            const loadedHabits = rows
-                .filter(row => row[1]) // has a name
-                .map(row => ({
-                    id: row[0],
-                    name: row[1],
-                    emoji: row[2] || '✨',
-                    goal: parseInt(row[3]) || 30,
-                    category: row[4] || 'Health',
-                    femaleOnly: row[5] === 'TRUE' || row[5] === true,
-                    frequency: row[6] || 'Daily',
-                    order: parseInt(row[7]) || 1,
-                    color: row[9] || '',
-                    focusLink: row[10] === 'TRUE' || row[10] === true,
-                }));
-
-            setHabits(loadedHabits);
-        } catch (error) {
-            console.error('Failed to load settings:', error);
-        } finally {
-            setLoading(false);
+            const rows = await loadAllHabits(spreadsheetId);
+            if (request !== generation.current) return;
+            setHabits(rows.filter(habit => !habit.archivedAt));
+            setArchivedHabits(rows.filter(habit => habit.archivedAt));
+            setStatus('success');
+            hasTrustedData.current = true;
+        } catch (loadError) {
+            if (request !== generation.current) return;
+            console.error('Failed to load settings:', loadError);
+            setError(loadError);
+            setStatus(hasTrustedData.current ? 'stale' : 'error');
         }
     }, [spreadsheetId]);
 
     useEffect(() => {
         loadSettings();
+        return () => { generation.current += 1; };
     }, [loadSettings]);
 
     const saveHabits = async (newHabits) => {
+        if (status === 'error' || status === 'loading') {
+            toast.error('Habits are not loaded yet. Retry before making changes.');
+            return false;
+        }
         setSaving(true);
         try {
-            // Clear existing rows first, then write new ones
-            const clearRange = 'Settings!A2:K50';
-            const emptyRows = Array(49).fill(0).map(() => Array(11).fill(''));
-
-            // Write new data
-            const data = [
-                {
-                    range: clearRange,
-                    values: newHabits.map(h => [
-                        h.id, h.name, h.emoji || '✨', h.goal || 30, h.category || 'Health',
-                        h.femaleOnly ? 'TRUE' : 'FALSE',
-                        h.frequency || 'Daily', h.order || 1, new Date().toISOString(), h.color || '',
-                        h.focusLink ? 'TRUE' : 'FALSE'
-                    ]).concat(emptyRows.slice(newHabits.length))
-                }
-            ];
-            await batchWrite(spreadsheetId, data);
-            setHabits(newHabits);
+            const all = await replaceActiveHabits(spreadsheetId, newHabits);
+            setHabits(all.filter(habit => !habit.archivedAt));
+            setArchivedHabits(all.filter(habit => habit.archivedAt));
+            setStatus('success');
             toast.success('Habits updated');
-        } catch (error) {
+            return true;
+        } catch (saveError) {
+            setError(saveError);
+            setStatus(hasTrustedData.current ? 'stale' : 'error');
             toast.error('Failed to save habits');
+            return false;
         } finally {
             setSaving(false);
         }
     };
 
-    return { habits, loading, saving, saveHabits, refresh: loadSettings };
+    return {
+        habits,
+        archivedHabits,
+        loading: status === 'loading',
+        saving,
+        status,
+        error,
+        saveHabits,
+        refresh: loadSettings,
+    };
 }

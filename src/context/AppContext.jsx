@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { getMonthName } from '../lib/dateUtils';
 import { useAuth } from './AuthContext';
 
@@ -38,16 +38,33 @@ export function AppProvider({ children }) {
         return () => clearInterval(interval);
     }, [currentDate, isFollowingToday]);
 
-    const toggleHideFemaleData = (val) => {
+    const toggleHideFemaleData = useCallback((val) => {
         setHideFemaleData(val);
         localStorage.setItem('hideFemaleData', val);
-    };
+    }, []);
 
     // Gender comes from Auth context (Google profile / Settings sheet)
     // 'male' | 'female' | 'needs_selection' | null
     const gender = userGender || 'needs_selection';
 
-    const setMonth = (monthIndex) => {
+    const selectDate = useCallback((value) => {
+        if (!(value instanceof Date) || Number.isNaN(value.getTime())) return;
+        const next = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+        const today = new Date();
+        const followsToday =
+            next.getFullYear() === today.getFullYear() &&
+            next.getMonth() === today.getMonth() &&
+            next.getDate() === today.getDate();
+        setCurrentDate(followsToday ? today : next);
+        setIsFollowingToday(followsToday);
+    }, []);
+
+    const goToToday = useCallback(() => {
+        setCurrentDate(new Date());
+        setIsFollowingToday(true);
+    }, []);
+
+    const setMonth = useCallback((monthIndex) => {
         const today = new Date();
         // Set day=1 first to prevent rollover bugs (e.g. March 31 → April 31 → May 1)
         const d = new Date(currentDate);
@@ -62,11 +79,11 @@ export function AppProvider({ children }) {
             setCurrentDate(d);
             setIsFollowingToday(false);
         }
-    };
+    }, [currentDate]);
 
     // Multi-year support: jump to any year. Returning to the real current
     // year resumes live-following of today.
-    const setYear = (year) => {
+    const setYear = useCallback((year) => {
         const today = new Date();
         if (year === today.getFullYear()) {
             setCurrentDate(today);
@@ -78,8 +95,8 @@ export function AppProvider({ children }) {
             setCurrentDate(d);
             setIsFollowingToday(false);
         }
-    };
-    const nextMonth = () => {
+    }, [currentDate]);
+    const nextMonth = useCallback(() => {
         const next = new Date(currentDate);
         next.setDate(1);
         next.setMonth(next.getMonth() + 1);
@@ -92,9 +109,9 @@ export function AppProvider({ children }) {
             setCurrentDate(next);
             setIsFollowingToday(false);
         }
-    };
+    }, [currentDate]);
 
-    const prevMonth = () => {
+    const prevMonth = useCallback(() => {
         const prev = new Date(currentDate);
         prev.setDate(1);
         prev.setMonth(prev.getMonth() - 1);
@@ -107,10 +124,9 @@ export function AppProvider({ children }) {
             setCurrentDate(prev);
             setIsFollowingToday(false);
         }
-    };
+    }, [currentDate]);
 
-    return (
-        <AppContext.Provider value={{
+    const value = useMemo(() => ({
             currentDate,
             currentMonth,
             currentYear,
@@ -122,9 +138,18 @@ export function AppProvider({ children }) {
             setYear,
             nextMonth,
             prevMonth,
+            selectDate,
+            goToToday,
             hideFemaleData,
             toggleHideFemaleData,
-        }}>
+        }), [
+            currentDate, currentMonth, currentYear, currentMonthIndex, gender, view,
+            setMonth, setYear, nextMonth, prevMonth, selectDate, goToToday,
+            hideFemaleData, toggleHideFemaleData,
+        ]);
+
+    return (
+        <AppContext.Provider value={value}>
             {children}
         </AppContext.Provider>
     );

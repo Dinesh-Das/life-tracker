@@ -12,7 +12,7 @@ export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
         if (!spreadsheetId) return;
         setLoading(true);
         try {
-            const rows = await readRange(spreadsheetId, 'Weekly!A2:I500');
+            const rows = await readRange(spreadsheetId, 'Weekly!A2:I');
 
             const grouped = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
             rows.forEach((row, idx) => {

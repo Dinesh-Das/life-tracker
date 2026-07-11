@@ -9,7 +9,9 @@ function HabitGrid({
     onToggle,
     onDelete,
     onUpdate,
-    onMentalStateChange
+    onMentalStateChange,
+    currentYear = new Date().getFullYear(),
+    currentMonthIndex = new Date().getMonth()
 }) {
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
@@ -17,7 +19,7 @@ function HabitGrid({
     const getDailyStats = (day) => {
         let done = 0;
         habits.forEach(h => {
-            if (checks[h.id]?.[day]) done++;
+            if (checks[h.id]?.[day] === true) done++;
         });
         return {
             done,
@@ -51,7 +53,7 @@ function HabitGrid({
                                     className={`p-1 min-w-[22px] text-center ${isNewWeek ? 'border-l-2 border-gray-200' : 'border-l border-gray-100'}`}
                                 >
                                     <div className="flex flex-col text-[8px] md:text-[9px] leading-tight">
-                                        <span className="opacity-60">{['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'][(day - 1) % 7]}</span>
+                                        <span className="opacity-60">{['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][new Date(currentYear, currentMonthIndex, day).getDay()]}</span>
                                         <span className="text-gray-900 font-black">{day}</span>
                                     </div>
                                 </th>
@@ -152,6 +154,7 @@ function HabitGrid({
                                         className="w-5 bg-transparent border-none text-center text-amber-950 font-black outline-none appearance-none"
                                         value={mentalState[day] || ''}
                                         onChange={(e) => onMentalStateChange(day, e.target.value)}
+                                        aria-label={`Mental state for day ${day}`}
                                     />
                                 </td>
                             );

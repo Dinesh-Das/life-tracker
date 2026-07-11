@@ -5,80 +5,94 @@ import { ensureMetricsSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 
-/**
- * Quick daily metrics (water glasses, weight) for a given date.
- * MetricsLogs columns: Date | Water (glasses) | Weight
- */
+const EMPTY = { water: '', weight: '' };
+
 export function useMetrics(spreadsheetId, dateStr) {
-    const [data, setData] = useState({ water: '', weight: '' });
+    const [data, setData] = useState(EMPTY);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-
-    const batchTimer = useRef(null);
-    const currentRowIndex = useRef(null);
-    const latest = useRef({ water: '', weight: '' });
+    const timer = useRef(null);
+    const pending = useRef(null);
+    const currentRow = useRef(null);
+    const latest = useRef(EMPTY);
+    const generation = useRef(0);
     const targetDateStr = dateStr || format(new Date(), 'yyyy-MM-dd');
 
-    const load = useCallback(async (silent = false) => {
+    const persistSnapshot = useCallback(async (snapshot) => {
+        const row = [snapshot.date, snapshot.values.water, snapshot.values.weight];
+        if (snapshot.rowIndex) {
+            await resilientBatchWrite(spreadsheetId, [{
+                range: `MetricsLogs!A${snapshot.rowIndex}:C${snapshot.rowIndex}`,
+                values: [row],
+            }]);
+        } else {
+            const result = await resilientAppendRows(spreadsheetId, 'MetricsLogs!A:C', [row]);
+            const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
+            if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
+        }
+    }, [spreadsheetId]);
+
+    const flushPending = useCallback(async () => {
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = null;
+        const snapshot = pending.current;
+        pending.current = null;
+        if (!snapshot) return;
+        setSaving(true);
+        try {
+            await persistSnapshot(snapshot);
+        } catch (error) {
+            console.error('Failed to save metric', error);
+            toast.error('Failed to save metric');
+        } finally {
+            setSaving(false);
+        }
+    }, [persistSnapshot]);
+
+    const load = useCallback(async () => {
         if (!spreadsheetId) return;
-        if (!silent) setLoading(true);
+        const request = ++generation.current;
+        setLoading(true);
         try {
             await ensureMetricsSheet(spreadsheetId);
-            const rows = await readRange(spreadsheetId, 'MetricsLogs!A2:C500');
-            const rowIndex = rows.findIndex(r => r[0] === targetDateStr);
-            if (rowIndex !== -1) {
-                currentRowIndex.current = rowIndex + 2;
-                if (!silent) {
-                    const row = rows[rowIndex];
-                    const next = { water: row[1] || '', weight: row[2] || '' };
-                    latest.current = next;
-                    setData(next);
-                }
-            } else {
-                currentRowIndex.current = null;
-                if (!silent) {
-                    const next = { water: '', weight: '' };
-                    latest.current = next;
-                    setData(next);
-                }
-            }
-        } catch (e) {
-            console.error('Failed to load metrics', e);
+            const rows = await readRange(spreadsheetId, 'MetricsLogs!A2:C');
+            if (request !== generation.current) return;
+            const index = rows.findIndex(row => row[0] === targetDateStr);
+            const next = index === -1 ? { ...EMPTY } : {
+                water: rows[index][1] || '', weight: rows[index][2] || '',
+            };
+            currentRow.current = { date: targetDateStr, index: index === -1 ? null : index + 2 };
+            latest.current = next;
+            setData(next);
+        } catch (error) {
+            if (request === generation.current) console.error('Failed to load metrics', error);
         } finally {
-            if (!silent) setLoading(false);
+            if (request === generation.current) setLoading(false);
         }
     }, [spreadsheetId, targetDateStr]);
 
-    useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        load();
+        return () => {
+            generation.current += 1;
+            void flushPending();
+        };
+    }, [load, flushPending]);
 
     const saveMetric = useCallback((field, value) => {
+        if (!(field in EMPTY)) return;
         const next = { ...latest.current, [field]: value };
         latest.current = next;
         setData(next);
         setSaving(true);
+        pending.current = {
+            date: targetDateStr,
+            rowIndex: currentRow.current?.date === targetDateStr ? currentRow.current.index : null,
+            values: { ...next },
+        };
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => { void flushPending(); }, 600);
+    }, [flushPending, targetDateStr]);
 
-        if (batchTimer.current) clearTimeout(batchTimer.current);
-        batchTimer.current = setTimeout(async () => {
-            try {
-                const d = latest.current;
-                const row = [targetDateStr, d.water, d.weight];
-                if (currentRowIndex.current) {
-                    await resilientBatchWrite(spreadsheetId, [{
-                        range: `MetricsLogs!A${currentRowIndex.current}:C${currentRowIndex.current}`,
-                        values: [row]
-                    }]);
-                } else {
-                    await resilientAppendRows(spreadsheetId, 'MetricsLogs!A:C', [row]);
-                    await load(true);
-                }
-            } catch (e) {
-                console.error('Failed to save metric', e);
-                toast.error('Failed to save metric');
-            } finally {
-                setSaving(false);
-            }
-        }, 800);
-    }, [spreadsheetId, targetDateStr, load]);
-
-    return { data, loading, saving, saveMetric };
+    return { data, loading, saving, saveMetric, flushPending };
 }

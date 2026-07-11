@@ -1,4 +1,4 @@
-import { cacheGet, cacheSet } from './localCache';
+import { cacheDelete, cacheGet, cacheSet } from './localCache';
 
 const SHEETS = () => window.gapi.client.sheets.spreadsheets;
 
@@ -20,6 +20,8 @@ const SHEETS = () => window.gapi.client.sheets.spreadsheets;
  */
 const cache = new Map();    // key -> { data, time }
 const inflight = new Map(); // key -> Promise
+const generations = new Map(); // spreadsheetId -> invalidation generation
+const offlineKeys = new Map(); // spreadsheetId -> persisted cache keys used this session
 const READ_TTL = 60_000;
 
 function fresh(key) {
@@ -29,6 +31,7 @@ function fresh(key) {
 
 /** Drop all cached reads + metadata for one spreadsheet (called on writes). */
 function invalidateSpreadsheet(spreadsheetId) {
+    generations.set(spreadsheetId, (generations.get(spreadsheetId) || 0) + 1);
     const marker = `:${spreadsheetId}:`;
     const metaKey = `m:${spreadsheetId}`;
     for (const key of [...cache.keys()]) {
@@ -37,12 +40,16 @@ function invalidateSpreadsheet(spreadsheetId) {
     for (const key of [...inflight.keys()]) {
         if (key.includes(marker) || key === metaKey) inflight.delete(key);
     }
+    for (const key of offlineKeys.get(spreadsheetId) || []) void cacheDelete(key);
+    offlineKeys.delete(spreadsheetId);
 }
 
 /** Share one promise for concurrent identical requests. */
 function dedupe(key, fn) {
     if (inflight.has(key)) return inflight.get(key);
-    const p = fn().finally(() => inflight.delete(key));
+    const p = fn().finally(() => {
+        if (inflight.get(key) === p) inflight.delete(key);
+    });
     inflight.set(key, p);
     return p;
 }
@@ -60,6 +67,7 @@ export async function readRange(spreadsheetId, range) {
     const hit = fresh(key);
     if (hit !== undefined) return hit;
 
+    const generation = generations.get(spreadsheetId) || 0;
     return dedupe(key, async () => {
         try {
             const res = await SHEETS().values.get({
@@ -68,8 +76,12 @@ export async function readRange(spreadsheetId, range) {
                 valueRenderOption: 'UNFORMATTED_VALUE'
             });
             const data = res.result.values || [];
-            cache.set(key, { data, time: Date.now() });
-            cacheSet(offlineKey, data); // fire-and-forget offline copy
+            if ((generations.get(spreadsheetId) || 0) === generation) {
+                cache.set(key, { data, time: Date.now() });
+                if (!offlineKeys.has(spreadsheetId)) offlineKeys.set(spreadsheetId, new Set());
+                offlineKeys.get(spreadsheetId).add(offlineKey);
+                void cacheSet(offlineKey, data);
+            }
             return data;
         } catch (err) {
             const fallback = await cacheGet(offlineKey);
@@ -90,6 +102,7 @@ export async function batchRead(spreadsheetId, ranges) {
     const hit = fresh(key);
     if (hit !== undefined) return hit;
 
+    const generation = generations.get(spreadsheetId) || 0;
     return dedupe(key, async () => {
         try {
             const res = await SHEETS().values.batchGet({
@@ -98,8 +111,12 @@ export async function batchRead(spreadsheetId, ranges) {
                 valueRenderOption: 'UNFORMATTED_VALUE'
             });
             const data = res.result.valueRanges;
-            cache.set(key, { data, time: Date.now() });
-            cacheSet(offlineKey, data); // fire-and-forget offline copy
+            if ((generations.get(spreadsheetId) || 0) === generation) {
+                cache.set(key, { data, time: Date.now() });
+                if (!offlineKeys.has(spreadsheetId)) offlineKeys.set(spreadsheetId, new Set());
+                offlineKeys.get(spreadsheetId).add(offlineKey);
+                void cacheSet(offlineKey, data);
+            }
             return data;
         } catch (err) {
             const fallback = await cacheGet(offlineKey);
@@ -184,9 +201,12 @@ export async function getSpreadsheet(spreadsheetId) {
     const hit = fresh(key);
     if (hit !== undefined) return hit;
 
+    const generation = generations.get(spreadsheetId) || 0;
     return dedupe(key, async () => {
         const res = await SHEETS().get({ spreadsheetId });
-        cache.set(key, { data: res.result, time: Date.now() });
+        if ((generations.get(spreadsheetId) || 0) === generation) {
+            cache.set(key, { data: res.result, time: Date.now() });
+        }
         return res.result;
     });
 }
@@ -214,8 +234,9 @@ export async function addSheet(spreadsheetId, title) {
  * @param {string} title 
  */
 export async function findSpreadsheet(title) {
+    const safeTitle = title.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
     const res = await window.gapi.client.drive.files.list({
-        q: `name = '${title}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+        q: `name = '${safeTitle}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
         fields: 'files(id, name)',
         pageSize: 1
     });

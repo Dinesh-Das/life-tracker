@@ -59,7 +59,7 @@ export function monthTabsForYear(titles = [], year, legacyYear = null) {
  * any non-empty cell counts toward the possible total.
  *
  * @param {number} year
- * @param {Array<{month: string, rows: Array<Array>}>} monthGrids B6:AF21 rows per month
+ * @param {Array<{month: string, rows: Array<Array>}>} monthGrids open-ended B6:AF rows per month
  * @returns {{year:number, totalCompleted:number, completionPct:number,
  *            activeMonths:number, bestMonth:{name:string,pct:number},
  *            monthlyPcts:Array<{name:string,pct:number}>}}

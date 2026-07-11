@@ -13,6 +13,7 @@ import { useAppContext } from '../context/AppContext'
 import { Trophy, Flame, Zap, HeartPulse, ActivitySquare, CalendarHeart, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react'
 import { CheckCircle2 } from 'lucide-react'
 import { format } from 'date-fns'
+import { useSearchParams } from 'react-router-dom'
 
 import { useCycleContext } from '../context/CycleContext'
 import SmartInsights from '../components/charts/SmartInsights'
@@ -24,7 +25,16 @@ import { sleepHabitInsights } from '../lib/sleepCorrelations'
 
 function Dashboard() {
     const { spreadsheetId, userGender } = useAuth();
-    const { currentYear, setYear, hideFemaleData } = useAppContext();
+    const { hideFemaleData } = useAppContext();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const realYear = new Date().getFullYear();
+    const requestedYear = Number.parseInt(searchParams.get('year'), 10);
+    const currentYear = Number.isInteger(requestedYear) ? Math.min(realYear, Math.max(2000, requestedYear)) : realYear;
+    const setYear = (year) => setSearchParams(previous => {
+        const next = new URLSearchParams(previous);
+        next.set('year', String(Math.min(realYear, Math.max(2000, year))));
+        return next;
+    });
     const { stats, yearlyTrend, habits, streaks, loading: dashLoading } = useDashboard(spreadsheetId, currentYear);
     const { heatmapData, loading: heatLoading } = useYearlyHistory(spreadsheetId, currentYear);
     const { balance, insights: reflectionInsights, loading: refLoading } = useReflectionInsights(spreadsheetId);
@@ -32,7 +42,7 @@ function Dashboard() {
     const cycleData = useCycleContext();
 
     const sleepInsights = useMemo(() => sleepHabitInsights(sleepRows, heatmapData), [sleepRows, heatmapData]);
-    const isLatestYear = currentYear >= new Date().getFullYear();
+    const isLatestYear = currentYear >= realYear;
     const loading = dashLoading || heatLoading;
 
 

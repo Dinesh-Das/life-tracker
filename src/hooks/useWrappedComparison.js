@@ -29,7 +29,7 @@ export function useWrappedComparison(spreadsheetId) {
                 const perYear = await Promise.all(years.map(async (year) => {
                     const tabs = monthTabsForYear(titles, year, legacyYear);
                     if (tabs.length === 0) return computeYearSummary(year, []);
-                    const res = await batchRead(spreadsheetId, tabs.map(t => `'${t.title}'!B6:AF21`));
+                    const res = await batchRead(spreadsheetId, tabs.map(t => `'${t.title}'!B6:AF`));
                     const grids = tabs.map((t, i) => ({ month: t.month, rows: res?.[i]?.values || [] }));
                     return computeYearSummary(year, grids);
                 }));

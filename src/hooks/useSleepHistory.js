@@ -13,7 +13,7 @@ export function useSleepHistory(spreadsheetId, limit = 30) {
             if (!spreadsheetId) return;
             try {
                 await ensureSleepSheet(spreadsheetId);
-                const rows = await readRange(spreadsheetId, 'SleepLogs!A2:F500');
+                const rows = await readRange(spreadsheetId, 'SleepLogs!A2:F');
                 const parsed = rows
                     .filter(r => r[0])
                     .map(r => {

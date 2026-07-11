@@ -5,6 +5,7 @@ import { useAppContext } from '../context/AppContext'
 import { MONTHS } from '../lib/constants'
 import { getWeeksInMonth } from '../lib/dateUtils'
 import { format } from 'date-fns'
+import { useNavigate } from 'react-router-dom'
 
 // Habit Components
 import MonthHeader from '../components/ui/MonthHeader'
@@ -23,13 +24,14 @@ import { useTasks } from '../hooks/useTasks'
 import LoadingSkeleton from '../components/ui/LoadingSkeleton'
 
 function Planner() {
+    const navigate = useNavigate();
     const { spreadsheetId } = useAuth();
     const { currentMonth, currentYear, currentMonthIndex, setMonth, gender, currentDate } = useAppContext();
 
     // -- HABITS STATE --
     const {
         habits, checks, mentalState, loading: habitsLoading, saving: habitsSaving,
-        daysInMonth, toggleCheck, updateMentalState, addHabit, deleteHabit, updateHabit
+        daysInMonth, toggleCheck, updateMentalState, deleteHabit, updateHabit
     } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
 
     const { habitStreaks } = useStreaks(habits, checks);
@@ -152,7 +154,8 @@ function Planner() {
                         month={currentMonth}
                         habits={visibleHabits}
                         checks={checks}
-                        onAddHabit={() => addHabit({ name: 'New Habit', emoji: '✨', goal: 30, category: 'Mind' })}
+                        daysInMonth={daysInMonth}
+                        onAddHabit={() => navigate('/settings')}
                     />
 
                     <div className="overflow-x-auto pb-4 scrollbar-thin" style={{ borderRadius: 'var(--radius-lg)', marginTop: '12px' }}>
@@ -163,6 +166,8 @@ function Planner() {
                             streaks={habitStreaks}
                             mentalState={mentalState}
                             daysInMonth={daysInMonth}
+                            currentYear={currentYear}
+                            currentMonthIndex={currentMonthIndex}
                             onToggle={toggleCheck}
                             onDelete={deleteHabit}
                             onUpdate={updateHabit}

@@ -18,7 +18,7 @@ export function useFocusSessions(spreadsheetId) {
         if (!spreadsheetId) return;
         setLoading(true);
         try {
-            const rows = await readRange(spreadsheetId, 'FocusLogs!A2:D1000');
+            const rows = await readRange(spreadsheetId, 'FocusLogs!A2:D');
             setSessions((rows || [])
                 .filter(r => r && r[0])
                 .map(r => ({

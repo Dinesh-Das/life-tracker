@@ -9,14 +9,16 @@ import Modal from '../components/ui/Modal'
 import EmojiPicker from '../components/ui/EmojiPicker'
 import { CATEGORIES } from '../lib/constants'
 import toast from 'react-hot-toast'
+import { validateHabit } from '../lib/habitSchema'
 
 function Settings() {
     const { spreadsheetId, user, userGender, updateUserGender } = useAuth();
     const { hideFemaleData, toggleHideFemaleData } = useAppContext();
-    const { habits, loading, saving, saveHabits } = useSettings(spreadsheetId);
+    const { habits, loading, saving, status, error, saveHabits, refresh } = useSettings(spreadsheetId);
 
     const [localGender, setLocalGender] = useState(userGender || 'male');
     const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
+    const [habitModalMode, setHabitModalMode] = useState('create');
     const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
     const [currentHabit, setCurrentHabit] = useState({ name: '', emoji: '✨', goal: 30, category: 'Health' });
 
@@ -33,29 +35,37 @@ function Settings() {
     };
 
     const handleDeleteHabit = (id) => {
-        if (confirm('Are you sure you want to delete this habit?')) {
+        if (confirm('Archive this habit? Its history will be preserved.')) {
             saveHabits(habits.filter(h => h.id !== id));
         }
     };
 
     const openHabitModal = (habit = null) => {
         if (habit) {
+            setHabitModalMode('edit');
             setCurrentHabit(habit);
         } else {
-            setCurrentHabit({ name: '', emoji: '✨', goal: 30, category: 'Health', id: Date.now().toString() });
+            setHabitModalMode('create');
+            setCurrentHabit({ name: '', emoji: '✨', goal: 30, category: 'Health', id: crypto.randomUUID() });
         }
         setIsHabitModalOpen(true);
     };
 
-    const handleSaveHabit = (e) => {
+    const handleSaveHabit = async (e) => {
         e.preventDefault();
-        const exists = habits.find(h => h.id === currentHabit.id);
-        if (exists) {
-            saveHabits(habits.map(h => h.id === currentHabit.id ? currentHabit : h));
-        } else {
-            saveHabits([...habits, currentHabit]);
+        const validation = validateHabit(currentHabit);
+        if (!validation.valid) {
+            toast.error(validation.message);
+            return;
         }
-        setIsHabitModalOpen(false);
+        const exists = habits.find(h => h.id === currentHabit.id);
+        let saved;
+        if (exists) {
+            saved = await saveHabits(habits.map(h => h.id === currentHabit.id ? validation.value : h));
+        } else {
+            saved = await saveHabits([...habits, validation.value]);
+        }
+        if (saved) setIsHabitModalOpen(false);
     };
 
     const copySheetId = () => {
@@ -71,6 +81,21 @@ function Settings() {
                 <Header title="Settings" />
                 <div className="px-4 py-6 sm:px-10">
                     <LoadingSkeleton type="page" />
+                </div>
+            </div>
+        );
+    }
+
+    if (status === 'error') {
+        return (
+            <div className="flex-1 flex flex-col">
+                <Header title="Settings" />
+                <div className="px-4 py-6 sm:px-10" role="alert">
+                    <div className="glass-card" style={{ padding: '24px' }}>
+                        <h2 style={{ color: 'var(--text-heading)', marginBottom: '8px' }}>Settings could not be loaded</h2>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>{error?.message || 'Please check your connection and try again.'}</p>
+                        <button className="glass-button" onClick={refresh} style={{ padding: '10px 18px', borderRadius: '9999px' }}>Retry</button>
+                    </div>
                 </div>
             </div>
         );
@@ -166,10 +191,9 @@ function Settings() {
                                 <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(45,79,65,0.5)', color: '#a9cfbc', flexShrink: 0 }}>
                                     <Shield size={18} />
                                 </div>
-                                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'var(--text-heading)' }}>Habits ({habits.length}/15)</h3>
+                                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'var(--text-heading)' }}>Habits ({habits.length})</h3>
                             </div>
-                            {habits.length < 15 && (
-                                <button
+                            <button
                                     id="add-habit-btn"
                                     onClick={() => openHabitModal()}
                                     style={{
@@ -186,8 +210,7 @@ function Settings() {
                                 >
                                     <Plus size={14} />
                                     <span>Add Habit</span>
-                                </button>
-                            )}
+                            </button>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -213,6 +236,7 @@ function Settings() {
                                     <div style={{ display: 'flex', gap: '4px' }}>
                                         <button
                                             onClick={() => openHabitModal(habit)}
+                                            aria-label={`Edit ${habit.name}`}
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '6px', borderRadius: '6px', display: 'flex', transition: 'background 0.2s' }}
                                             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(100,140,220,0.3)'; e.currentTarget.style.color = '#a0b8f0'; }}
                                             onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-muted)'; }}
@@ -221,6 +245,7 @@ function Settings() {
                                         </button>
                                         <button
                                             onClick={() => handleDeleteHabit(habit.id)}
+                                            aria-label={`Archive ${habit.name}`}
                                             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '6px', borderRadius: '6px', display: 'flex', transition: 'background 0.2s' }}
                                             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(180,60,60,0.3)'; e.currentTarget.style.color = '#f0a0a0'; }}
                                             onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-muted)'; }}
@@ -266,7 +291,7 @@ function Settings() {
             <Modal
                 isOpen={isHabitModalOpen}
                 onClose={() => setIsHabitModalOpen(false)}
-                title={currentHabit.id ? 'Edit Habit' : 'New Habit'}
+                title={habitModalMode === 'edit' ? 'Edit Habit' : 'New Habit'}
             >
                 <form onSubmit={handleSaveHabit} className="space-y-5">
                     <div className="flex gap-4">
@@ -278,8 +303,9 @@ function Settings() {
                             {currentHabit.emoji}
                         </button>
                         <div className="flex-1 space-y-1">
-                            <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Habit Name</label>
+                            <label htmlFor="habit-name" className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Habit Name</label>
                             <input
+                                id="habit-name"
                                 type="text"
                                 required
                                 value={currentHabit.name}
@@ -292,8 +318,9 @@ function Settings() {
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Category</label>
+                            <label htmlFor="habit-category" className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Category</label>
                             <select
+                                id="habit-category"
                                 value={currentHabit.category}
                                 onChange={e => setCurrentHabit({ ...currentHabit, category: e.target.value })}
                                 className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-200"
@@ -302,9 +329,12 @@ function Settings() {
                             </select>
                         </div>
                         <div className="space-y-1">
-                            <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Monthly Goal</label>
+                            <label htmlFor="habit-goal" className="text-[10px] font-bold uppercase text-gray-400 tracking-widest pl-1">Monthly Goal</label>
                             <input
+                                id="habit-goal"
                                 type="number"
+                                min="1"
+                                max="31"
                                 value={currentHabit.goal}
                                 onChange={e => setCurrentHabit({ ...currentHabit, goal: parseInt(e.target.value) })}
                                 className="w-full bg-gray-50 border-none rounded-xl p-3 text-sm font-medium outline-none focus:ring-2 focus:ring-emerald-200"

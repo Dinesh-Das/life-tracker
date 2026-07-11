@@ -31,7 +31,10 @@ const EMPTY_WINS = { Physical: '', Mental: '', Social: '', Financial: '', Spirit
 
 function DailyCheckin() {
     const { spreadsheetId } = useAuth();
-    const { currentMonth, currentYear, currentMonthIndex, gender, prevMonth, nextMonth, setMonth } = useAppContext();
+    const {
+        currentDate, currentMonth, currentYear, currentMonthIndex, gender,
+        prevMonth, nextMonth, selectDate, goToToday,
+    } = useAppContext();
 
     const {
         habits,
@@ -49,17 +52,8 @@ function DailyCheckin() {
     const isCurrentMonth = today.getMonth() === currentMonthIndex && today.getFullYear() === currentYear;
     const isFutureMonth = new Date(currentYear, currentMonthIndex, 1) > today;
 
-    // Selected day — defaults to today. Past days can be picked to backfill
-    // entries that were missed (habits, mental state, and daily wins).
-    const [selectedDay, setSelectedDay] = useState(isCurrentMonth ? todayDay : 1);
-
-    // When the month changes, snap the selection to a sensible day
-    useEffect(() => {
-        setSelectedDay(isCurrentMonth ? todayDay : (isFutureMonth ? 1 : daysInMonth));
-    }, [currentMonthIndex, currentYear]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    const activeDay = selectedDay;
-    const selectedDate = new Date(currentYear, currentMonthIndex, activeDay);
+    const selectedDate = currentDate;
+    const activeDay = selectedDate.getDate();
     const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
     const isBackfilling = !isCurrentMonth || activeDay !== todayDay;
 
@@ -171,10 +165,7 @@ function DailyCheckin() {
         }
     };
     
-    const jumpToToday = () => {
-        if (!isCurrentMonth) setMonth(today.getMonth());
-        setSelectedDay(todayDay);
-    };
+    const jumpToToday = goToToday;
 
     if (loading) {
         return (
@@ -227,7 +218,7 @@ function DailyCheckin() {
                             return (
                                 <button
                                     key={d}
-                                    onClick={() => !isFuture && setSelectedDay(d)}
+                                    onClick={() => !isFuture && selectDate(new Date(currentYear, currentMonthIndex, d))}
                                     disabled={isFuture}
                                     aria-label={`Select day ${d}`}
                                     aria-pressed={isSelected}
@@ -429,9 +420,7 @@ function DailyCheckin() {
                                             disabled={!doneToday}
                                             title={doneToday ? 'Repair yesterday' : 'Complete this habit today first'}
                                             onClick={async () => {
-                                                const idx = habits.findIndex(x => x.id === h.id);
-                                                if (idx === -1) return;
-                                                const ok = await repairYesterday(idx, todayDay - 1);
+                                                const ok = await repairYesterday(h.id, todayDay - 1);
                                                 if (ok) {
                                                     setRepaired(prev => ({ ...prev, [h.id]: true }));
                                                     const missedDateStr = format(new Date(currentYear, currentMonthIndex, todayDay - 1), 'yyyy-MM-dd');

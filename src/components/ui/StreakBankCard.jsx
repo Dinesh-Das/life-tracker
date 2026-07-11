@@ -9,7 +9,11 @@ import { FREEZE_EARN_INTERVAL } from '../../lib/streakLogic';
  * freeze / repair activity (device-local ledger).
  */
 export default function StreakBankCard({ tokens = 0, used = 0, bestStreak = 0, daysToNextToken = FREEZE_EARN_INTERVAL, cap = 3 }) {
-    const history = useMemo(() => loadFreezeLedger().slice(0, 4), [tokens, used]);
+    const history = useMemo(() => {
+        void tokens;
+        void used;
+        return loadFreezeLedger().slice(0, 4);
+    }, [tokens, used]);
     const earned = Math.floor((bestStreak || 0) / FREEZE_EARN_INTERVAL);
     const bankFull = tokens >= cap;
     const progressPct = Math.max(0, Math.min(100, Math.round(((FREEZE_EARN_INTERVAL - daysToNextToken) / FREEZE_EARN_INTERVAL) * 100)));

@@ -20,8 +20,8 @@ export function useReflectionInsights(spreadsheetId) {
                     ensureJournalSheet(spreadsheetId),
                 ]);
                 const [winsRows, journalRows] = await Promise.all([
-                    readRange(spreadsheetId, 'DailyWins!A2:F500'),
-                    readRange(spreadsheetId, 'JournalLogs!A2:D500'),
+                    readRange(spreadsheetId, 'DailyWins!A2:F'),
+                    readRange(spreadsheetId, 'JournalLogs!A2:D'),
                 ]);
                 const todayStr = format(new Date(), 'yyyy-MM-dd');
                 const bal = computeWinBalance(winsRows);

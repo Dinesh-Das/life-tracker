@@ -26,7 +26,7 @@ export function useCycle(spreadsheetId) {
             // A(0): date, B(1): cycleDay, C(2): phase, D(3): flowIntensity
             // E(4): mood, F(5): energy, G(6): symptoms, H(7): notes
             // I(8): periodStart, J(9): periodEnd, K(10): sleep, L(11): cramps
-            const response = await readRange(spreadsheetId, 'Female!A2:L200');
+            const response = await readRange(spreadsheetId, 'Female!A2:L');
             const rows = response || [];
 
             const formattedHistory = rows

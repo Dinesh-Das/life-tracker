@@ -14,7 +14,8 @@ function download(filename, content, mime) {
 }
 
 function escapeCsvCell(c) {
-    const s = c === null || c === undefined ? '' : String(c);
+    let s = c === null || c === undefined ? '' : String(c);
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
@@ -25,7 +26,7 @@ function escapeCsvCell(c) {
 export async function exportAllData(spreadsheetId, fmt = 'json') {
     const spreadsheet = await getSpreadsheet(spreadsheetId);
     const titles = spreadsheet.sheets.map(s => s.properties.title);
-    const ranges = titles.map(t => `'${t}'!A1:AZ500`);
+    const ranges = titles.map(t => `'${t.replaceAll("'", "''")}'!A:AZ`);
     const results = await batchRead(spreadsheetId, ranges);
 
     const data = {};

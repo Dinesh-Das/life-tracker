@@ -15,6 +15,7 @@ function NudgeCard({ habits, checks, mentalState, daysInMonth, year, monthIndex 
     const upToDay = isCurrentMonth ? Math.min(today.getDate(), daysInMonth) : daysInMonth;
 
     const nudges = useMemo(() => {
+        void dismissedTick;
         const moodInsights = habitMoodCorrelations(habits, checks, mentalState, daysInMonth);
         const nextDayInsights = habitNextDayMoodCorrelations(habits, checks, mentalState, daysInMonth);
         const weekday = weekdayCompletion(habits, checks, upToDay, year, monthIndex);

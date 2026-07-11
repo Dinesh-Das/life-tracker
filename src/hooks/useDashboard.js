@@ -1,14 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { batchRead, readRange, getSpreadsheet } from '../lib/sheetsApi';
-import { MONTHS, DEFAULT_HABITS } from '../lib/constants';
+import { MONTHS } from '../lib/constants';
+import { loadAllHabits } from '../lib/habitRepository';
+import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel } from '../lib/sheetLayout';
+import { format } from 'date-fns';
+
+function activeOn(habit, dateKey) {
+    return (!habit.activeFrom || habit.activeFrom <= dateKey) &&
+        (!habit.archivedAt || habit.archivedAt.slice(0, 10) > dateKey);
+}
 
 export function useDashboard(spreadsheetId, year) {
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [stats, setStats] = useState({
         totalCompleted: 0,
         bestMonth: { name: '–', pct: 0 },
         bestStreak: 0,
-        activeMonths: 0
+        activeMonths: 0,
     });
     const [yearlyTrend, setYearlyTrend] = useState([]);
     const [habits, setHabits] = useState([]);
@@ -17,158 +26,105 @@ export function useDashboard(spreadsheetId, year) {
     const fetchDashboardData = useCallback(async () => {
         if (!spreadsheetId || !year) return;
         setLoading(true);
+        setError(null);
         try {
-            // 1. Load all Habit settings (A-J = 10 cols, up to 50 habits)
-            const habitRows = await readRange(spreadsheetId, 'Settings!A2:J50');
-            const loadedHabits = habitRows
-                .filter(r => r[1])
-                .map(r => ({
-                    id: r[0],
-                    name: r[1],
-                    emoji: r[2],
-                    goal: parseInt(r[3]) || 30,
-                    category: r[4] || 'General',
-                    femaleOnly: r[5] === 'TRUE',
-                    color: r[9] || '',
-                }));
-            setHabits(loadedHabits);
+            const [definitions, spreadsheet] = await Promise.all([
+                loadAllHabits(spreadsheetId),
+                getSpreadsheet(spreadsheetId),
+            ]);
+            const byId = new Map(definitions.map(habit => [habit.id, habit]));
+            const byLabel = new Map();
+            definitions.forEach(habit => {
+                const label = normalizeHabitLabel(habitLabel(habit));
+                const values = byLabel.get(label) || [];
+                values.push(habit);
+                byLabel.set(label, values);
+            });
 
-            // Fetch existing sheets to avoid requesting non-existent tabs
-            const spreadsheet = await getSpreadsheet(spreadsheetId);
-            const existingTitles = spreadsheet.sheets.map(s => s.properties.title);
-
-            // 2. Load all month data for the given year.
-            // Support both new "Month YYYY" format and legacy "Month" format.
-            const monthMappings = MONTHS.map(m => {
-                const yearPrefix = `${m} ${year}`;
-                if (existingTitles.includes(yearPrefix)) return { month: m, title: yearPrefix };
-                if (existingTitles.includes(m)) return { month: m, title: m };
+            const titles = spreadsheet.sheets.map(sheet => sheet.properties.title);
+            const monthMappings = MONTHS.map(month => {
+                const titled = `${month} ${year}`;
+                if (titles.includes(titled)) return { month, title: titled };
+                if (titles.includes(month) && year === new Date().getFullYear()) return { month, title: month };
                 return null;
             }).filter(Boolean);
+            const ranges = monthMappings.map(month => `'${month.title}'!A6:AG`);
+            const monthData = ranges.length ? await batchRead(spreadsheetId, ranges) : [];
 
-            const ranges = monthMappings.map(m => `'${m.title}'!B6:AF21`);
-            
-            // Also fetch habit names from the first available tab
-            const habitNamesRange = monthMappings.length > 0 ? [`'${monthMappings[0].title}'!A6:A21`] : [];
-            
-            let monthDataRanges = [];
-            let habitNamesRows = [];
-            
-            if (ranges.length > 0) {
-                const [monthRes, namesRes] = await Promise.all([
-                    batchRead(spreadsheetId, ranges),
-                    habitNamesRange.length > 0 ? batchRead(spreadsheetId, habitNamesRange) : Promise.resolve([{ values: [] }])
-                ]);
-                monthDataRanges = monthRes;
-                habitNamesRows = namesRes[0].values || [];
-            }
+            const habitStats = new Map(definitions.map(habit => [habit.id, { ...habit, done: 0, total: 0, pct: 0 }]));
+            const trend = MONTHS.map(name => ({ name, pct: 0 }));
+            let totalCompleted = 0;
+            let activeMonths = 0;
+            let bestMonth = { name: '–', pct: 0 };
+            const now = new Date();
 
-            // Extract habit names
-            const habitList = habitNamesRows.map(row => row[0]).filter(Boolean).map(name => ({
-                name,
-                done: 0,
-                total: 0,
-                pct: 0,
-                category: 'Other' // Default, will refine if possible
-            }));
-
-            let totalDone = 0;
-            let activeCount = 0;
-            let bestM = { name: '–', pct: 0 };
-            
-            // Initialize trend with 0 for all months to keep the chart full
-            const trend = MONTHS.map(m => ({ name: m, pct: 0 }));
-
-            monthDataRanges.forEach((range, idx) => {
-                const monthName = monthMappings[idx].month;
-                const trendIdx = MONTHS.indexOf(monthName);
-                const rows = range.values || [];
+            monthData.forEach((range, index) => {
+                const mapping = monthMappings[index];
+                const monthIndex = MONTHS.indexOf(mapping.month);
+                const days = new Date(year, monthIndex + 1, 0).getDate();
+                const isCurrent = year === now.getFullYear() && monthIndex === now.getMonth();
+                const isFuture = new Date(year, monthIndex, 1) > now;
+                const upToDay = isFuture ? 0 : (isCurrent ? now.getDate() : days);
                 let monthDone = 0;
-                let monthTotal = 0;
+                let monthPossible = 0;
 
-                rows.forEach((row, rowIdx) => {
-                    const checks = row.filter(c => c === true || c === 'TRUE' || c === '✓' || c === 'checked').length;
-                    const totalCells = row.filter(c => c !== '' && c !== null && c !== undefined).length;
-                    
-                    monthDone += checks;
-                    monthTotal += totalCells;
-
-                    // Accumulate per-habit stats if habit exists
-                    if (habitList[rowIdx]) {
-                        habitList[rowIdx].done += checks;
-                        habitList[rowIdx].total += totalCells;
+                (range.values || []).forEach(row => {
+                    let habit = byId.get(String(row?.[MONTH_HABIT_ID_INDEX] || ''));
+                    if (!habit) {
+                        const matches = byLabel.get(normalizeHabitLabel(row?.[0])) || [];
+                        if (matches.length === 1) habit = matches[0];
                     }
-                });
-
-                const monthPct = monthTotal > 0 ? Math.round((monthDone / monthTotal) * 100) : 0;
-                if (monthPct > 0) activeCount++;
-                if (monthPct > bestM.pct) bestM = { name: monthName, pct: monthPct };
-
-                totalDone += monthDone;
-                if (trendIdx !== -1) {
-                    trend[trendIdx].pct = monthPct;
-                }
-            });
-
-            // Finalize habits list with percentages
-            habitList.forEach(h => {
-                h.pct = h.total > 0 ? Math.round((h.done / h.total) * 100) : 0;
-                // Prefer real category and id from Settings, matched by name
-                const settingsHabit = loadedHabits.find(lh =>
-                    lh.name === h.name || h.name.includes(lh.name) || lh.name.includes(h.name)
-                );
-                if (settingsHabit) {
-                    h.id = settingsHabit.id;
-                    h.category = settingsHabit.category;
-                    h.emoji = settingsHabit.emoji;
-                } else {
-                    const def = DEFAULT_HABITS.find(dh => h.name.includes(dh.name));
-                    if (def) h.category = def.category;
-                }
-            });
-            setHabits(habitList);
-
-            // 3. Load streaks from Streaks tab
-            let bestStreakVal = 0;
-            try {
-                const streakRows = await readRange(spreadsheetId, 'Streaks!A2:E50');
-                const streakMap = {};
-                streakRows.forEach(row => {
-                    if (row[0]) {
-                        streakMap[row[0]] = {
-                            current: parseInt(row[1]) || 0,
-                            best: parseInt(row[2]) || 0,
-                            lastDone: row[3] || '',
-                            total: parseInt(row[4]) || 0,
-                        };
-                        if ((parseInt(row[2]) || 0) > bestStreakVal) {
-                            bestStreakVal = parseInt(row[2]) || 0;
+                    if (!habit) return;
+                    const aggregate = habitStats.get(habit.id);
+                    for (let day = 1; day <= upToDay; day++) {
+                        const dateKey = format(new Date(year, monthIndex, day), 'yyyy-MM-dd');
+                        if (!activeOn(habit, dateKey)) continue;
+                        monthPossible++;
+                        aggregate.total++;
+                        if (decodeCheck(row[day]) === true) {
+                            monthDone++;
+                            aggregate.done++;
                         }
                     }
                 });
-                setStreaks(streakMap);
-            } catch {
-                // Streaks tab might not have data yet — that's fine
-            }
 
-            setStats({
-                totalCompleted: totalDone,
-                bestMonth: bestM,
-                bestStreak: bestStreakVal,
-                activeMonths: activeCount
+                const pct = monthPossible ? Math.round((monthDone / monthPossible) * 100) : 0;
+                trend[monthIndex].pct = pct;
+                if (monthPossible) activeMonths++;
+                if (pct > bestMonth.pct) bestMonth = { name: mapping.month, pct };
+                totalCompleted += monthDone;
             });
-            setYearlyTrend(trend);
 
-        } catch (error) {
-            console.error('Dashboard Fetch Error:', error);
+            const visibleHabits = [...habitStats.values()]
+                .filter(habit => habit.total > 0 || !habit.archivedAt)
+                .map(habit => ({ ...habit, pct: habit.total ? Math.round((habit.done / habit.total) * 100) : 0 }));
+
+            const streakRows = await readRange(spreadsheetId, 'Streaks!A2:E').catch(() => []);
+            const streakMap = {};
+            let bestStreak = 0;
+            streakRows.forEach(row => {
+                if (!row[0] || row[0] === '_skipTokens') return;
+                streakMap[row[0]] = {
+                    current: Number.parseInt(row[1], 10) || 0,
+                    best: Number.parseInt(row[2], 10) || 0,
+                    lastDone: row[3] || '',
+                    total: Number.parseInt(row[4], 10) || 0,
+                };
+                bestStreak = Math.max(bestStreak, streakMap[row[0]].best);
+            });
+
+            setHabits(visibleHabits);
+            setStreaks(streakMap);
+            setStats({ totalCompleted, bestMonth, bestStreak, activeMonths });
+            setYearlyTrend(trend);
+        } catch (loadError) {
+            console.error('Dashboard Fetch Error:', loadError);
+            setError(loadError);
         } finally {
             setLoading(false);
         }
     }, [spreadsheetId, year]);
 
-    useEffect(() => {
-        fetchDashboardData();
-    }, [fetchDashboardData]);
-
-    return { stats, yearlyTrend, habits, streaks, loading };
+    useEffect(() => { fetchDashboardData(); }, [fetchDashboardData]);
+    return { stats, yearlyTrend, habits, streaks, loading, error, retry: fetchDashboardData };
 }
