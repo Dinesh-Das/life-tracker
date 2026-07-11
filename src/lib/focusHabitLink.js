@@ -4,7 +4,7 @@ import { loadActiveHabits } from './habitRepository';
 import { ensureMonthTab } from './sheetScaffold';
 import {
     MONTH_HABIT_ID_INDEX, MONTH_HABIT_START_ROW, dayColumn,
-    decodeCheck, habitLabel, monthHabitRange, normalizeHabitLabel,
+    decodeCheck, legacyLabelMatchesHabit, monthHabitRange,
 } from './sheetLayout';
 import { recomputeStreaksForHabit } from './streakRecompute';
 
@@ -25,8 +25,7 @@ export async function autoCheckLinkedHabits(spreadsheetId) {
     });
     linked.forEach(habit => {
         if (byId.has(habit.id)) return;
-        const wanted = normalizeHabitLabel(habitLabel(habit));
-        const index = rows.findIndex(row => normalizeHabitLabel(row?.[0]) === wanted);
+        const index = rows.findIndex(row => legacyLabelMatchesHabit(row?.[0], habit));
         if (index !== -1) byId.set(habit.id, MONTH_HABIT_START_ROW + index);
     });
 

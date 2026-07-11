@@ -3,7 +3,7 @@ import { computeStreaks } from './streakLogic';
 import { format, getDaysInMonth } from 'date-fns';
 import { MONTHS } from './constants';
 import { loadAllHabits } from './habitRepository';
-import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel } from './sheetLayout';
+import { MONTH_HABIT_ID_INDEX, decodeCheck, legacyLabelMatchesHabit } from './sheetLayout';
 
 const MONTH_TAB_RE = new RegExp(`^(${MONTHS.join('|')}) (\\d{4})$`);
 
@@ -31,14 +31,13 @@ export async function recomputeStreaksForHabit(spreadsheetId, habitId) {
 
     const ranges = monthTabs.map(tab => `'${tab.title}'!A6:AG`);
     const valueRanges = await batchRead(spreadsheetId, ranges);
-    const wantedLabel = normalizeHabitLabel(habitLabel(habit));
     const doneDates = [];
     const skippedDates = [];
 
     monthTabs.forEach((tab, index) => {
         const rows = valueRanges?.[index]?.values || [];
         const row = rows.find(candidate => String(candidate?.[MONTH_HABIT_ID_INDEX] || '') === habitId)
-            || rows.find(candidate => normalizeHabitLabel(candidate?.[0]) === wantedLabel);
+            || rows.find(candidate => legacyLabelMatchesHabit(candidate?.[0], habit));
         if (!row) return;
 
         const monthDate = new Date(tab.year, tab.monthIndex, 1);

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { batchRead, getSpreadsheet } from '../lib/sheetsApi';
 import { MONTHS } from '../lib/constants';
 import { loadAllHabits } from '../lib/habitRepository';
-import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel } from '../lib/sheetLayout';
+import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel, normalizeHabitName } from '../lib/sheetLayout';
 import { format } from 'date-fns';
 
 function activeOn(habit, dateKey) {
@@ -28,11 +28,16 @@ export function useYearlyHistory(spreadsheetId, year) {
                 ]);
                 const byId = new Map(habits.map(habit => [habit.id, habit]));
                 const byLabel = new Map();
+                const byName = new Map();
                 habits.forEach(habit => {
                     const label = normalizeHabitLabel(habitLabel(habit));
                     const values = byLabel.get(label) || [];
                     values.push(habit);
                     byLabel.set(label, values);
+                    const name = normalizeHabitName(habit.name);
+                    const nameValues = byName.get(name) || [];
+                    nameValues.push(habit);
+                    byName.set(name, nameValues);
                 });
                 const titles = metadata.sheets.map(sheet => sheet.properties.title);
                 const mappings = MONTHS.map(month => {
@@ -58,7 +63,8 @@ export function useYearlyHistory(spreadsheetId, year) {
                     (response.values || []).forEach(row => {
                         let habit = byId.get(String(row?.[MONTH_HABIT_ID_INDEX] || ''));
                         if (!habit) {
-                            const matches = byLabel.get(normalizeHabitLabel(row?.[0])) || [];
+                            const exact = byLabel.get(normalizeHabitLabel(row?.[0])) || [];
+                            const matches = exact.length ? exact : (byName.get(normalizeHabitName(row?.[0], { legacyLabel: true })) || []);
                             if (matches.length === 1) habit = matches[0];
                         }
                         if (!habit) return;

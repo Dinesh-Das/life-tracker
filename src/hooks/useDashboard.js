@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { batchRead, readRange, getSpreadsheet } from '../lib/sheetsApi';
 import { MONTHS } from '../lib/constants';
 import { loadAllHabits } from '../lib/habitRepository';
-import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel } from '../lib/sheetLayout';
+import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel, normalizeHabitName } from '../lib/sheetLayout';
 import { format } from 'date-fns';
 
 function activeOn(habit, dateKey) {
@@ -34,11 +34,16 @@ export function useDashboard(spreadsheetId, year) {
             ]);
             const byId = new Map(definitions.map(habit => [habit.id, habit]));
             const byLabel = new Map();
+            const byName = new Map();
             definitions.forEach(habit => {
                 const label = normalizeHabitLabel(habitLabel(habit));
                 const values = byLabel.get(label) || [];
                 values.push(habit);
                 byLabel.set(label, values);
+                const name = normalizeHabitName(habit.name);
+                const nameValues = byName.get(name) || [];
+                nameValues.push(habit);
+                byName.set(name, nameValues);
             });
 
             const titles = spreadsheet.sheets.map(sheet => sheet.properties.title);
@@ -71,7 +76,8 @@ export function useDashboard(spreadsheetId, year) {
                 (range.values || []).forEach(row => {
                     let habit = byId.get(String(row?.[MONTH_HABIT_ID_INDEX] || ''));
                     if (!habit) {
-                        const matches = byLabel.get(normalizeHabitLabel(row?.[0])) || [];
+                        const exact = byLabel.get(normalizeHabitLabel(row?.[0])) || [];
+                        const matches = exact.length ? exact : (byName.get(normalizeHabitName(row?.[0], { legacyLabel: true })) || []);
                         if (matches.length === 1) habit = matches[0];
                     }
                     if (!habit) return;

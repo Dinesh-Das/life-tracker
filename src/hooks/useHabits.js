@@ -10,7 +10,7 @@ import { ensureDailyStateSheet, ensureMonthTab } from '../lib/sheetScaffold';
 import {
     DAILY_STATE_TAB, MONTH_HABIT_ID_INDEX, MONTH_HABIT_START_ROW,
     dayColumn, decodeCheck, encodeCheck, habitLabel, monthHabitRange,
-    normalizeHabitLabel,
+    normalizeHabitLabel, normalizeHabitName,
 } from '../lib/sheetLayout';
 import toast from 'react-hot-toast';
 
@@ -43,14 +43,14 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             const monthStartKey = localDateKey(new Date(currentYear, currentMonthIndex, 1));
             const monthEndKey = localDateKey(new Date(currentYear, currentMonthIndex + 1, 0));
             const allHabits = await loadAllHabits(spreadsheetId);
-            const loadedHabits = allHabits.filter(habit =>
+            const activeHabits = allHabits.filter(habit =>
                 (!habit.activeFrom || habit.activeFrom <= monthEndKey) &&
                 (!habit.archivedAt || habit.archivedAt.slice(0, 10) > monthStartKey)
             );
             const tabName = `${currentMonth} ${currentYear}`;
 
             await Promise.all([
-                ensureMonthTab(spreadsheetId, currentMonth, currentYear, loadedHabits),
+                ensureMonthTab(spreadsheetId, currentMonth, currentYear, activeHabits),
                 ensureDailyStateSheet(spreadsheetId),
             ]);
 
@@ -60,13 +60,22 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
                 readRange(spreadsheetId, `'${tabName}'!B22:AF22`).catch(() => []),
             ]);
 
-            const habitsById = new Map(loadedHabits.map(habit => [habit.id, habit]));
+            // Match against every definition. Migrated legacy habits often have an
+            // ActiveFrom equal to the migration date even though older month rows
+            // already contain history; the existing row is authoritative evidence.
+            const habitsById = new Map(allHabits.map(habit => [habit.id, habit]));
             const idsByLabel = new Map();
-            loadedHabits.forEach(habit => {
+            const idsByName = new Map();
+            allHabits.forEach(habit => {
                 const key = normalizeHabitLabel(habitLabel(habit));
                 const ids = idsByLabel.get(key) || [];
                 ids.push(habit.id);
                 idsByLabel.set(key, ids);
+
+                const nameKey = normalizeHabitName(habit.name);
+                const nameIds = idsByName.get(nameKey) || [];
+                nameIds.push(habit.id);
+                idsByName.set(nameKey, nameIds);
             });
 
             const resolvedRows = new Map();
@@ -75,7 +84,9 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
                 const sheetRow = MONTH_HABIT_START_ROW + index;
                 let habitId = String(row?.[MONTH_HABIT_ID_INDEX] || '');
                 if (!habitsById.has(habitId)) {
-                    const matches = idsByLabel.get(normalizeHabitLabel(row?.[0])) || [];
+                    const exactMatches = idsByLabel.get(normalizeHabitLabel(row?.[0])) || [];
+                    const nameMatches = idsByName.get(normalizeHabitName(row?.[0], { legacyLabel: true })) || [];
+                    const matches = exactMatches.length ? exactMatches : nameMatches;
                     habitId = matches.length === 1 ? matches[0] : '';
                     if (habitId) {
                         idMigrations.push({
@@ -91,7 +102,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
 
             if (idMigrations.length) await batchWrite(spreadsheetId, idMigrations);
 
-            const missing = loadedHabits.filter(habit => !resolvedRows.has(habit.id));
+            const missing = activeHabits.filter(habit => !resolvedRows.has(habit.id));
             if (missing.length) {
                 const firstRow = MONTH_HABIT_START_ROW + (monthRows?.length || 0);
                 const values = missing.map(habit => [habitLabel(habit), ...Array(31).fill(''), habit.id]);
@@ -100,6 +111,9 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
                     resolvedRows.set(habit.id, { sheetRow: firstRow + index, row: values[index] });
                 });
             }
+
+            const activeIds = new Set(activeHabits.map(habit => habit.id));
+            const loadedHabits = allHabits.filter(habit => resolvedRows.has(habit.id) || activeIds.has(habit.id));
 
             const nextChecks = {};
             loadedHabits.forEach(habit => {

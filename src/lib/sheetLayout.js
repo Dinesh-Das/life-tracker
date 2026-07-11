@@ -17,10 +17,31 @@ export function habitLabel(habit) {
 
 export function normalizeHabitLabel(label) {
     return String(label || '')
+        .normalize('NFKC')
         .replace(/\uFE0F/g, '')
         .replace(/\s+/g, ' ')
         .trim()
         .toLocaleLowerCase();
+}
+
+/**
+ * Legacy month rows stored a display label (emoji + name), not an ID.
+ * Emoji presentation varies between Sheets, browsers, and operating systems,
+ * so migration must compare the human-readable name independently.
+ */
+export function normalizeHabitName(value, { legacyLabel = false } = {}) {
+    let normalized = String(value || '')
+        .normalize('NFKC')
+        .replace(/[\uFE0E\uFE0F]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (legacyLabel) normalized = normalized.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    return normalized.toLocaleLowerCase();
+}
+
+export function legacyLabelMatchesHabit(label, habit) {
+    return normalizeHabitLabel(label) === normalizeHabitLabel(habitLabel(habit)) ||
+        normalizeHabitName(label, { legacyLabel: true }) === normalizeHabitName(habit?.name);
 }
 
 export function decodeCheck(value) {
