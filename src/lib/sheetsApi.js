@@ -1,4 +1,4 @@
-import { cacheDelete, cacheGet, cacheSet } from './localCache';
+import { cacheDelete, cacheDeletePrefix, cacheGet, cacheSet } from './localCache';
 
 const SHEETS = () => window.gapi.client.sheets.spreadsheets;
 
@@ -24,6 +24,32 @@ const generations = new Map(); // spreadsheetId -> invalidation generation
 const offlineKeys = new Map(); // spreadsheetId -> persisted cache keys used this session
 const READ_TTL = 60_000;
 
+/**
+ * Google Sheets does not accept an A1 range with a starting row and an
+ * unbounded ending column (for example `DailyWins!A2:F` or `Month!A6:AG`).
+ * Read the valid whole-column range and remove the leading header rows in
+ * memory so callers still receive precisely the rows they asked for.
+ */
+function normalizeReadRange(range) {
+    const match = /^(.*!)([A-Z]+)(\d+):([A-Z]+)$/i.exec(range);
+    if (!match) return { apiRange: range, skipRows: 0 };
+    return {
+        apiRange: `${match[1]}${match[2]}:${match[4]}`,
+        skipRows: Number(match[3]) - 1,
+    };
+}
+
+function trimLeadingRows(values, skipRows) {
+    return skipRows > 0 ? (values || []).slice(skipRows) : (values || []);
+}
+
+function canUseOfflineFallback(error) {
+    const status = error?.status ?? error?.result?.error?.code;
+    // A missing status is usually a network failure. Never hide permanent
+    // request/auth errors (400/401/403/404) behind stale local data.
+    return status === undefined || status === 0 || status === 408 || status === 429 || status >= 500;
+}
+
 function fresh(key) {
     const hit = cache.get(key);
     return hit && Date.now() - hit.time < READ_TTL ? hit.data : undefined;
@@ -42,6 +68,16 @@ function invalidateSpreadsheet(spreadsheetId) {
     }
     for (const key of offlineKeys.get(spreadsheetId) || []) void cacheDelete(key);
     offlineKeys.delete(spreadsheetId);
+}
+
+/** Clear this spreadsheet's in-memory and persisted API read cache. */
+export async function clearSpreadsheetCache(spreadsheetId) {
+    if (!spreadsheetId) return;
+    invalidateSpreadsheet(spreadsheetId);
+    await Promise.all([
+        cacheDeletePrefix(`read:${spreadsheetId}-`),
+        cacheDeletePrefix(`batch:${spreadsheetId}-`),
+    ]);
 }
 
 /** Share one promise for concurrent identical requests. */
@@ -67,15 +103,16 @@ export async function readRange(spreadsheetId, range) {
     const hit = fresh(key);
     if (hit !== undefined) return hit;
 
+    const { apiRange, skipRows } = normalizeReadRange(range);
     const generation = generations.get(spreadsheetId) || 0;
     return dedupe(key, async () => {
         try {
             const res = await SHEETS().values.get({
                 spreadsheetId,
-                range,
+                range: apiRange,
                 valueRenderOption: 'UNFORMATTED_VALUE'
             });
-            const data = res.result.values || [];
+            const data = trimLeadingRows(res.result.values, skipRows);
             if ((generations.get(spreadsheetId) || 0) === generation) {
                 cache.set(key, { data, time: Date.now() });
                 if (!offlineKeys.has(spreadsheetId)) offlineKeys.set(spreadsheetId, new Set());
@@ -84,8 +121,10 @@ export async function readRange(spreadsheetId, range) {
             }
             return data;
         } catch (err) {
-            const fallback = await cacheGet(offlineKey);
-            if (fallback !== undefined) return fallback;
+            if (canUseOfflineFallback(err)) {
+                const fallback = await cacheGet(offlineKey);
+                if (fallback !== undefined) return fallback;
+            }
             throw err;
         }
     });
@@ -102,15 +141,19 @@ export async function batchRead(spreadsheetId, ranges) {
     const hit = fresh(key);
     if (hit !== undefined) return hit;
 
+    const normalizedRanges = ranges.map(normalizeReadRange);
     const generation = generations.get(spreadsheetId) || 0;
     return dedupe(key, async () => {
         try {
             const res = await SHEETS().values.batchGet({
                 spreadsheetId,
-                ranges,
+                ranges: normalizedRanges.map(item => item.apiRange),
                 valueRenderOption: 'UNFORMATTED_VALUE'
             });
-            const data = res.result.valueRanges;
+            const data = (res.result.valueRanges || []).map((valueRange, index) => ({
+                ...valueRange,
+                values: trimLeadingRows(valueRange.values, normalizedRanges[index]?.skipRows || 0),
+            }));
             if ((generations.get(spreadsheetId) || 0) === generation) {
                 cache.set(key, { data, time: Date.now() });
                 if (!offlineKeys.has(spreadsheetId)) offlineKeys.set(spreadsheetId, new Set());
@@ -119,8 +162,10 @@ export async function batchRead(spreadsheetId, ranges) {
             }
             return data;
         } catch (err) {
-            const fallback = await cacheGet(offlineKey);
-            if (fallback !== undefined) return fallback;
+            if (canUseOfflineFallback(err)) {
+                const fallback = await cacheGet(offlineKey);
+                if (fallback !== undefined) return fallback;
+            }
             throw err;
         }
     });

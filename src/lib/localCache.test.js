@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { cacheGet, cacheSet, cacheDelete, __resetForTests } from './localCache';
+import { cacheGet, cacheSet, cacheDelete, cacheDeletePrefix, __resetForTests } from './localCache';
 
 // jsdom has no IndexedDB, so these tests exercise the in-memory fallback path —
 // the same code path used by browsers with IndexedDB disabled (private mode).
@@ -32,5 +32,15 @@ describe('localCache', () => {
         expect(await cacheGet('zero')).toBe(0);
         await cacheSet('empty', []);
         expect(await cacheGet('empty')).toEqual([]);
+    });
+
+    it('deletes only entries with the requested prefix', async () => {
+        await cacheSet('read:sheet-a-one', 1);
+        await cacheSet('read:sheet-a-two', 2);
+        await cacheSet('read:sheet-b-one', 3);
+        await cacheDeletePrefix('read:sheet-a-');
+        expect(await cacheGet('read:sheet-a-one')).toBeUndefined();
+        expect(await cacheGet('read:sheet-a-two')).toBeUndefined();
+        expect(await cacheGet('read:sheet-b-one')).toBe(3);
     });
 });

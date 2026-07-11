@@ -31,7 +31,8 @@ function Planner() {
     // -- HABITS STATE --
     const {
         habits, checks, mentalState, loading: habitsLoading, saving: habitsSaving,
-        daysInMonth, toggleCheck, updateMentalState, deleteHabit, updateHabit
+        daysInMonth, toggleCheck, updateMentalState, deleteHabit, updateHabit,
+        error: habitsError, reload: reloadHabits
     } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
 
     const { habitStreaks } = useStreaks(habits, checks);
@@ -88,6 +89,21 @@ function Planner() {
 
 
     const isLoading = habitsLoading || tasksLoading;
+
+    if (habitsError) {
+        return (
+            <div className="flex-1 flex flex-col">
+                <Header title="Planner" subtitle={`${currentMonth} ${currentYear}`} saving={habitsSaving} />
+                <div className="px-4 py-6 sm:px-10" role="alert">
+                    <div className="glass-card" style={{ padding: '24px' }}>
+                        <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-heading)', marginBottom: '8px' }}>Planner habits could not be loaded</h2>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>{habitsError.message || 'Check your connection and retry.'}</p>
+                        <button className="glass-button" onClick={reloadHabits} style={{ padding: '10px 18px', borderRadius: '9999px' }}>Retry habits</button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (

@@ -1,5 +1,5 @@
 import Header from '../components/layout/Header'
-import { Plus, Trash2, Edit2, User, Shield, ExternalLink, Copy } from 'lucide-react'
+import { Plus, Trash2, Edit2, User, Shield, ExternalLink, Copy, RefreshCw } from 'lucide-react'
 import { useSettings } from '../hooks/useSettings'
 import { useAppContext } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
@@ -10,6 +10,7 @@ import EmojiPicker from '../components/ui/EmojiPicker'
 import { CATEGORIES } from '../lib/constants'
 import toast from 'react-hot-toast'
 import { validateHabit } from '../lib/habitSchema'
+import { clearSpreadsheetCache } from '../lib/sheetsApi'
 
 function Settings() {
     const { spreadsheetId, user, userGender, updateUserGender } = useAuth();
@@ -75,6 +76,16 @@ function Settings() {
         }
     };
 
+    const hardRefresh = async () => {
+        try {
+            await clearSpreadsheetCache(spreadsheetId);
+            toast.success('Local sheet cache cleared. Reloading…');
+            window.setTimeout(() => window.location.reload(), 250);
+        } catch {
+            toast.error('Could not clear the local cache.');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex-1 flex flex-col">
@@ -94,7 +105,10 @@ function Settings() {
                     <div className="glass-card" style={{ padding: '24px' }}>
                         <h2 style={{ color: 'var(--text-heading)', marginBottom: '8px' }}>Settings could not be loaded</h2>
                         <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>{error?.message || 'Please check your connection and try again.'}</p>
-                        <button className="glass-button" onClick={refresh} style={{ padding: '10px 18px', borderRadius: '9999px' }}>Retry</button>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <button className="glass-button" onClick={refresh} style={{ padding: '10px 18px', borderRadius: '9999px' }}>Retry</button>
+                            <button className="glass-button" onClick={hardRefresh} style={{ padding: '10px 18px', borderRadius: '9999px' }}>Clear cache & reload</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -191,7 +205,10 @@ function Settings() {
                                 <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(45,79,65,0.5)', color: '#a9cfbc', flexShrink: 0 }}>
                                     <Shield size={18} />
                                 </div>
-                                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'var(--text-heading)' }}>Habits ({habits.length})</h3>
+                                <div>
+                                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'var(--text-heading)' }}>Habits ({habits.length})</h3>
+                                    <p style={{ marginTop: '2px', fontFamily: 'var(--font-body)', fontSize: '11px', color: 'var(--text-muted)' }}>No habit limit</p>
+                                </div>
                             </div>
                             <button
                                     id="add-habit-btn"
@@ -261,7 +278,18 @@ function Settings() {
                     {/* Connected Sheet */}
                     {spreadsheetId && (
                         <section className="glass-card animate-fade-up stagger-2" style={{ padding: '24px 28px' }}>
-                            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'var(--text-heading)', marginBottom: '14px' }}>Connected Sheet</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '14px' }}>
+                                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'var(--text-heading)' }}>Connected Sheet</h3>
+                                <button
+                                    type="button"
+                                    onClick={hardRefresh}
+                                    className="glass-button"
+                                    title="Clear local cached sheet data and reload"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 12px', borderRadius: '9999px' }}
+                                >
+                                    <RefreshCw size={14} /> Hard refresh
+                                </button>
+                            </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.3)' }}>
                                 <code style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spreadsheetId}</code>
                                 <button onClick={copySheetId} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '6px', borderRadius: '6px', display: 'flex' }} title="Copy ID"

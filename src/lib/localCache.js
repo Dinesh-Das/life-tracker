@@ -81,3 +81,28 @@ export function __resetForTests() {
     dbPromise = null;
     memory.clear();
 }
+
+/** Remove every persisted cache entry whose key begins with a prefix. */
+export async function cacheDeletePrefix(prefix) {
+    const db = await openDb();
+    if (!db) {
+        for (const key of memory.keys()) if (String(key).startsWith(prefix)) memory.delete(key);
+        return;
+    }
+    return new Promise((resolve) => {
+        try {
+            const tx = db.transaction(STORE, 'readwrite');
+            const request = tx.objectStore(STORE).openCursor();
+            request.onsuccess = () => {
+                const cursor = request.result;
+                if (!cursor) return;
+                if (String(cursor.key).startsWith(prefix)) cursor.delete();
+                cursor.continue();
+            };
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => resolve();
+        } catch {
+            resolve();
+        }
+    });
+}

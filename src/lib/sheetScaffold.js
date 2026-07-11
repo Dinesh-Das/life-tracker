@@ -87,11 +87,11 @@ export async function scaffoldSheet(userName) {
             });
 
             const monthData = [
-                [`🌟 ${month} ${currentYear} Tracking`, ...Array(31).fill('')],
-                Array(32).fill(''),
-                ['Date', ...numHeaders],
-                ['Day', ...dayHeaders],
-                Array(32).fill('')
+                [`🌟 ${month} ${currentYear} Tracking`, ...Array(32).fill('')],
+                Array(33).fill(''),
+                ['Date', ...numHeaders, ''],
+                ['Day', ...dayHeaders, ''],
+                Array(33).fill('')
             ];
 
             normalizedHabits.forEach((h) => {
@@ -100,9 +100,9 @@ export async function scaffoldSheet(userName) {
             });
 
             while (monthData.length < 21) {
-                monthData.push(Array(32).fill(''));
+                monthData.push(Array(33).fill(''));
             }
-            monthData.push(['🧠 Mental State (1-10)', ...Array(31).fill('')]);
+            monthData.push(['🧠 Mental State (1-10)', ...Array(32).fill('')]);
 
             // Use "Month YYYY" naming to match how the app reads tabs throughout
             spreadsheetRanges.push({
@@ -234,11 +234,11 @@ export async function ensureMonthTab(spreadsheetId, month, year, suppliedHabits 
             });
 
             const monthData = [
-                [`🌟 ${month} ${year} Tracking`, ...Array(31).fill('')],
-                Array(32).fill(''),
-                ['Date', ...numHeaders],
-                ['Day', ...dayHeaders],
-                Array(32).fill('')
+                [`🌟 ${month} ${year} Tracking`, ...Array(32).fill('')],
+                Array(33).fill(''),
+                ['Date', ...numHeaders, ''],
+                ['Day', ...dayHeaders, ''],
+                Array(33).fill('')
             ];
 
             const activeHabits = suppliedHabits || await loadActiveHabits(
@@ -251,9 +251,9 @@ export async function ensureMonthTab(spreadsheetId, month, year, suppliedHabits 
             });
 
             while (monthData.length < 21) {
-                monthData.push(Array(32).fill(''));
+                monthData.push(Array(33).fill(''));
             }
-            monthData.push(['🧠 Mental State (1-10)', ...Array(31).fill('')]);
+            monthData.push(['🧠 Mental State (1-10)', ...Array(32).fill('')]);
 
             await batchWrite(spreadsheetId, [{
                 range: `'${tabName}'!A1:AG${Math.max(25, monthData.length)}`,

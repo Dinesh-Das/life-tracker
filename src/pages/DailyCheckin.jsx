@@ -45,6 +45,8 @@ function DailyCheckin() {
         daysInMonth,
         toggleCheck,
         updateMentalState,
+        error: habitsError,
+        reload: reloadHabits,
     } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
 
     const today = new Date();
@@ -166,6 +168,21 @@ function DailyCheckin() {
     };
     
     const jumpToToday = goToToday;
+
+    if (habitsError) {
+        return (
+            <div className="flex-1 flex flex-col">
+                <Header title="Daily Check-in" subtitle={format(selectedDate, 'EEEE, MMMM d')} />
+                <div className="px-4 py-6 sm:px-10" role="alert">
+                    <div className="glass-card" style={{ padding: '24px' }}>
+                        <h2 style={{ fontFamily: 'var(--font-display)', color: 'var(--text-heading)', marginBottom: '8px' }}>Habits could not be loaded</h2>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>{habitsError.message || 'Check your connection and retry.'}</p>
+                        <button className="glass-button" onClick={reloadHabits} style={{ padding: '10px 18px', borderRadius: '9999px' }}>Retry habits</button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
