@@ -175,6 +175,18 @@ img, svg, canvas { max-width: 100%; }
   --disabled-bg:     rgba(120,120,120,0.25);
   --disabled-ink:    rgba(61,90,74,0.35);
 
+  /* Form controls — shared tokens keep entered values readable. */
+  --field-bg:             rgba(255,255,255,0.78);
+  --field-bg-hover:       rgba(255,255,255,0.90);
+  --field-text:           #172b21;
+  --field-placeholder:    #587064;
+  --field-border:         rgba(45,79,65,0.30);
+  --field-border-focus:   #2d6a50;
+  --field-focus-ring:     rgba(45,106,80,0.20);
+  --field-disabled-bg:    rgba(230,237,233,0.72);
+  --field-disabled-text:  #6f8178;
+  --field-invalid:        #a33f3f;
+
   /* Legacy aliases — keep backward compat */
   --green:         #2d4f41;
   --green-light:   #a9cfbc;
@@ -226,6 +238,16 @@ img, svg, canvas { max-width: 100%; }
   --control-border:  rgba(255,255,255,0.12);
   --disabled-bg:     rgba(255,255,255,0.08);
   --disabled-ink:    rgba(147,171,156,0.45);
+  --field-bg:             rgba(7,18,12,0.84);
+  --field-bg-hover:       rgba(15,31,21,0.94);
+  --field-text:           #e5f1e9;
+  --field-placeholder:    #94aa9c;
+  --field-border:         rgba(169,207,188,0.34);
+  --field-border-focus:   #9ed2b7;
+  --field-focus-ring:     rgba(158,210,183,0.22);
+  --field-disabled-bg:    rgba(255,255,255,0.055);
+  --field-disabled-text:  #71877a;
+  --field-invalid:        #ffb4ab;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -246,6 +268,110 @@ body {
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
+}
+
+/* Unified themed form controls. `!important` is intentional here: older
+   screens contain inline backgrounds and Tailwind gray utilities that become
+   illegible when the theme changes. Layout properties remain component-owned. */
+html { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
+
+:where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="color"]),
+  textarea,
+  select
+) {
+  background: var(--field-bg) !important;
+  color: var(--field-text) !important;
+  -webkit-text-fill-color: var(--field-text) !important;
+  caret-color: var(--field-border-focus);
+  border: 1px solid var(--field-border) !important;
+  box-shadow: 0 1px 2px rgba(10,22,15,0.06), inset 0 1px 0 rgba(255,255,255,0.08);
+  font-family: var(--font-body);
+  opacity: 1;
+  transition: background-color .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+:where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="color"]),
+  textarea,
+  select
+):hover:not(:disabled):not([readonly]) {
+  background: var(--field-bg-hover) !important;
+}
+
+:where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="color"]),
+  textarea,
+  select
+):focus,
+:where(
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="color"]),
+  textarea,
+  select
+):focus-visible {
+  outline: none !important;
+  border-color: var(--field-border-focus) !important;
+  box-shadow: 0 0 0 3px var(--field-focus-ring) !important;
+}
+
+:where(input, textarea)::placeholder {
+  color: var(--field-placeholder) !important;
+  -webkit-text-fill-color: var(--field-placeholder) !important;
+  opacity: 1;
+}
+
+:where(input, textarea):disabled,
+select:disabled {
+  background: var(--field-disabled-bg) !important;
+  color: var(--field-disabled-text) !important;
+  -webkit-text-fill-color: var(--field-disabled-text) !important;
+  border-color: var(--field-border) !important;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+:where(input, textarea)[readonly] {
+  background: var(--field-disabled-bg) !important;
+  color: var(--field-disabled-text) !important;
+  -webkit-text-fill-color: var(--field-disabled-text) !important;
+}
+
+:where(input, textarea, select)[aria-invalid="true"],
+:where(input, textarea, select):user-invalid {
+  border-color: var(--field-invalid) !important;
+}
+
+select option,
+select optgroup {
+  background-color: var(--card-solid-bg);
+  color: var(--field-text);
+}
+
+input[type="checkbox"], input[type="radio"], input[type="range"] {
+  accent-color: var(--accent-strong);
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: .78;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--field-text) !important;
+  caret-color: var(--field-text);
+  box-shadow: 0 0 0 1000px var(--field-bg) inset !important;
+  border: 1px solid var(--field-border-focus) !important;
+}
+
+::selection {
+  background: var(--primary-container);
+  color: var(--on-surface);
 }
 
 /* App shell layout — dvh avoids the mobile browser toolbar 100vh bug */
