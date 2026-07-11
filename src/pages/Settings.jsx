@@ -1,5 +1,5 @@
 import Header from '../components/layout/Header'
-import { Plus, Trash2, Edit2, User, Shield, ExternalLink, Copy, RefreshCw, Search } from 'lucide-react'
+import { Plus, Trash2, Edit2, User, Shield, ExternalLink, Copy, RefreshCw, Search, ArchiveRestore } from 'lucide-react'
 import { useSettings } from '../hooks/useSettings'
 import { useAppContext } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
@@ -15,7 +15,7 @@ import { clearSpreadsheetCache } from '../lib/sheetsApi'
 function Settings() {
     const { spreadsheetId, user, userGender, updateUserGender } = useAuth();
     const { hideFemaleData, toggleHideFemaleData } = useAppContext();
-    const { habits, loading, saving, status, error, saveHabits, refresh } = useSettings(spreadsheetId);
+    const { habits, archivedHabits, loading, saving, status, error, saveHabits, refresh } = useSettings(spreadsheetId);
 
     const [localGender, setLocalGender] = useState(userGender || 'male');
     const [isHabitModalOpen, setIsHabitModalOpen] = useState(false);
@@ -84,6 +84,13 @@ function Settings() {
             navigator.clipboard.writeText(spreadsheetId);
             toast.success('Sheet ID copied!');
         }
+    };
+
+    const handleRestoreHabit = async (habit) => {
+        await saveHabits([
+            ...habits,
+            { ...habit, archivedAt: '', order: habits.length + 1 },
+        ]);
     };
 
     const hardRefresh = async () => {
@@ -306,6 +313,37 @@ function Settings() {
                             )}
                         </div>
                     </section>
+
+                    {archivedHabits.length > 0 && (
+                        <section className="glass-card animate-fade-up stagger-2" style={{ padding: '24px 28px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                                <div style={{ padding: '8px', borderRadius: '10px', background: 'rgba(100,110,120,0.35)', color: 'var(--text-muted)', flexShrink: 0 }}>
+                                    <ArchiveRestore size={18} />
+                                </div>
+                                <div>
+                                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'var(--text-heading)' }}>Archived Habits ({archivedHabits.length})</h3>
+                                    <p style={{ marginTop: '2px', fontFamily: 'var(--font-body)', fontSize: '11px', color: 'var(--text-muted)' }}>Restore a habit with its original ID and history.</p>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {archivedHabits.map(habit => (
+                                    <div key={habit.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.22)', contentVisibility: 'auto', containIntrinsicSize: '56px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                                            <span style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.35)', borderRadius: '8px', fontSize: '18px', flexShrink: 0 }}>{habit.emoji}</span>
+                                            <div style={{ minWidth: 0 }}>
+                                                <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 700, color: 'var(--text-heading)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{habit.name}</h4>
+                                                <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: 'var(--text-muted)' }}>{habit.category} • History preserved</span>
+                                            </div>
+                                        </div>
+                                        <button type="button" className="system-action-button" disabled={saving} onClick={() => handleRestoreHabit(habit)} aria-label={`Restore ${habit.name}`} style={{ minHeight: '34px', padding: '7px 12px', flexShrink: 0 }}>
+                                            <ArchiveRestore size={14} /> Restore
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    )}
 
                     {/* Connected Sheet */}
                     {spreadsheetId && (
