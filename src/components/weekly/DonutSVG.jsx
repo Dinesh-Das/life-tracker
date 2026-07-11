@@ -26,7 +26,7 @@ function DonutSVG({ pct, size = 72 }) {
                 />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-                <span className={`text-lg font-black ${pct === 100 ? 'text-emerald-600' : 'text-gray-800'} font-sans`}>
+                <span className={`text-lg font-black ${pct === 100 ? 'text-emerald-600' : 'theme-heading'} font-sans`}>
                     {pct}<span className="text-[10px] ml-0.5">%</span>
                 </span>
             </div>

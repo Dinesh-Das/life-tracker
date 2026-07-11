@@ -19,10 +19,10 @@ function MonthHeader({
     const progressPct = totalSlots > 0 ? Math.round((completedCount / totalSlots) * 100) : 0;
 
     return (
-        <div className="bg-white p-6 border-b border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="theme-panel-solid p-6 border shadow-sm rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="flex flex-col">
-                <h2 className="text-4xl font-serif font-black text-gray-800">{month}</h2>
-                <div className="flex items-center gap-4 mt-2 text-xs font-bold text-gray-400 uppercase tracking-tighter">
+                <h2 className="theme-heading text-4xl font-serif font-black">{month}</h2>
+                <div className="theme-muted flex items-center gap-4 mt-2 text-xs font-bold uppercase tracking-tighter">
                     <div className="flex items-center gap-1">
                         <span className="text-primary-light">●</span> {totalHabits} Habits
                     </div>
@@ -34,20 +34,20 @@ function MonthHeader({
 
             <div className="flex-1 max-w-lg">
                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-black text-gray-400 uppercase">Monthly Progress</span>
-                    <span className="text-xl font-serif font-black text-primary">{progressPct}%</span>
+                    <span className="theme-muted text-[10px] font-black uppercase">Monthly Progress</span>
+                    <span className="text-xl font-serif font-black" style={{ color: 'var(--positive)' }}>{progressPct}%</span>
                 </div>
-                <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden shadow-inner flex items-center p-[2px]">
+                <div className="theme-progress-track w-full h-3 rounded-full overflow-hidden shadow-inner flex items-center p-[2px]">
                     <div
-                        className="h-full bg-primary rounded-full transition-all duration-1000 ease-out shadow-lg"
-                        style={{ width: `${progressPct}%` }}
+                        className="h-full rounded-full transition-all duration-1000 ease-out shadow-lg"
+                        style={{ width: `${progressPct}%`, background: 'var(--positive)' }}
                     />
                 </div>
             </div>
 
             <button
                 onClick={onAddHabit}
-                className="bg-primary hover:bg-primary-dark text-white px-8 py-3 rounded-full font-black text-sm uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95"
+                className="system-action-button px-8 py-3 rounded-full font-black text-sm uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95"
             >
                 Manage Habits
             </button>

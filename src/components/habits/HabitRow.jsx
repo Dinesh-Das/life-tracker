@@ -20,13 +20,13 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
 
     return (
         <tr
-            className="group transition-colors hover:bg-background-subtle border-b border-gray-100"
+            className="theme-row group transition-colors border-b"
             style={{ contentVisibility: 'auto', containIntrinsicSize: '48px' }}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
         >
             {/* Sticky Habit Name Column */}
-            <td className="sticky left-0 z-10 bg-white min-w-[160px] md:min-w-[200px] p-0 border-r border-gray-200 shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+            <td className="theme-table sticky left-0 z-10 min-w-[160px] md:min-w-[200px] p-0 border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
                 <div className="flex items-center px-3 py-3 h-full gap-2 group/name max-w-[160px] md:max-w-[200px]">
                     <span className="text-base md:text-lg cursor-pointer hover:scale-125 transition-transform shrink-0" title="Click to change emoji">
                         {habit.emoji}
@@ -43,7 +43,7 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
                         />
                     ) : (
                         <span
-                            className="flex-1 text-[11px] md:text-sm font-bold text-gray-700 cursor-text hover:text-primary transition-colors leading-tight line-clamp-2 whitespace-normal"
+                            className="theme-heading flex-1 text-[11px] md:text-sm font-bold cursor-text hover:text-primary transition-colors leading-tight line-clamp-2 whitespace-normal"
                             onClick={() => setIsEditing(true)}
                         >
                             {habit.name}
@@ -77,13 +77,13 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
             })}
 
             {/* Analysis Panel */}
-            <td className="border-l-2 border-gray-200 min-w-[110px] px-3 py-2 text-center bg-white/50">
+            <td className="theme-panel-subtle border-l-2 min-w-[110px] px-3 py-2 text-center">
                 <div className="flex flex-col items-center">
-                    <div className="text-[10px] font-bold text-gray-500 mb-1">
+                    <div className="theme-muted text-[10px] font-bold mb-1">
                         {habit.goal} → <span className="text-primary">{actual}</span>
                     </div>
                     {streak && <div className="mb-1"><StreakBadge count={streak.current} size="sm" /></div>}
-                    <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden mb-1">
+                    <div className="theme-progress-track w-full h-1.5 rounded-full overflow-hidden mb-1">
                         <div
                             className="h-full bg-primary transition-all duration-500"
                             style={{ width: `${Math.min(100, progressPct)}%` }}

@@ -1,6 +1,6 @@
 /* LifeTracker service worker — app shell + runtime caching.
    Bump CACHE_VERSION to invalidate old caches on deploy. */
-const CACHE_VERSION = 'lifetracker-v2';
+const CACHE_VERSION = 'lifetracker-v3';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/logo.png'];
 
 self.addEventListener('install', (event) => {

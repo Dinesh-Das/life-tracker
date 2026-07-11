@@ -40,12 +40,12 @@ function HabitGrid({
 
     return (
         <div>
-        <div className="overflow-auto bg-white rounded-xl shadow-sm border border-gray-200" style={{ maxHeight: '75vh' }}>
+        <div className="theme-table overflow-auto rounded-xl shadow-sm border" style={{ maxHeight: '75vh' }}>
             <table className="w-full border-collapse">
-                <thead className="sticky top-0 z-40 bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                <thead className="theme-table-header sticky top-0 z-40 text-[10px] font-bold uppercase tracking-wider">
                     {/* Row 1 — Week group headers */}
                     <tr>
-                        <th className="sticky left-0 z-30 bg-gray-50 min-w-[160px] md:min-w-[200px] border-r border-gray-200 p-2 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">My Habits</th>
+                        <th className="theme-table-header sticky left-0 z-30 min-w-[160px] md:min-w-[200px] border-r p-2 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">My Habits</th>
                         <th colSpan={7} className="border-r border-gray-200 p-1 text-center">Week 1</th>
                         <th colSpan={7} className="border-r border-gray-200 p-1 text-center">Week 2</th>
                         <th colSpan={7} className="border-r border-gray-200 p-1 text-center">Week 3</th>
@@ -55,7 +55,7 @@ function HabitGrid({
 
                     {/* Row 2 — Day abbreviations + numbers */}
                     <tr className="border-b border-gray-200">
-                        <th className="sticky left-0 z-20 bg-gray-50 border-r border-gray-200"></th>
+                        <th className="theme-table-header sticky left-0 z-20 border-r"></th>
                         {days.map(day => {
                             const isNewWeek = (day - 1) % 7 === 0 && day !== 1;
                             return (
@@ -65,7 +65,7 @@ function HabitGrid({
                                 >
                                     <div className="flex flex-col text-[8px] md:text-[9px] leading-tight">
                                         <span className="opacity-60">{['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'][new Date(currentYear, currentMonthIndex, day).getDay()]}</span>
-                                        <span className="text-gray-900 font-black">{day}</span>
+                                        <span className="theme-heading font-black">{day}</span>
                                     </div>
                                 </th>
                             );
@@ -75,7 +75,7 @@ function HabitGrid({
                 </thead>
 
                 {/* Habit Rows */}
-                <tbody className="bg-white">
+                <tbody className="theme-table">
                     {visibleHabits.map(habit => (
                         <HabitRow
                             key={habit.id}
@@ -162,7 +162,7 @@ function HabitGrid({
                                         type="number"
                                         min="1" max="10"
                                         placeholder="–"
-                                        className="w-5 bg-transparent border-none text-center text-amber-950 font-black outline-none appearance-none"
+                                        className="table-mental-input w-5 text-center font-black appearance-none"
                                         value={mentalState[day] || ''}
                                         onChange={(e) => onMentalStateChange(day, e.target.value)}
                                         aria-label={`Mental state for day ${day}`}

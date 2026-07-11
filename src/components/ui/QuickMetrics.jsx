@@ -3,7 +3,7 @@ import { formatLiters, roundLiters } from '../../lib/waterUnits';
 
 const btnStyle = {
     width: '30px', height: '30px', borderRadius: '8px',
-    border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.4)',
+    border: '1px solid var(--table-border)', background: 'var(--neutral-control-bg)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     cursor: 'pointer', color: 'var(--text-heading)',
 };
@@ -20,7 +20,7 @@ function QuickMetrics({ metrics }) {
     return (
         <div className="glass-card" style={{ padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(255,255,255,0.45)', color: 'var(--text-heading)', flexShrink: 0 }}>
+                <div className="theme-icon-tile" style={{ padding: '6px', borderRadius: '8px', color: 'var(--text-heading)', flexShrink: 0 }}>
                     <Droplets size={16} />
                 </div>
                 <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 700, color: 'var(--text-heading)', flex: 1 }}>Quick Metrics</h4>
@@ -51,8 +51,7 @@ function QuickMetrics({ metrics }) {
                     aria-label="Weight"
                     style={{
                         width: '100px', padding: '8px 10px', borderRadius: '8px',
-                        border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.35)',
-                        fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-body)', outline: 'none',
+                        fontFamily: 'var(--font-body)', fontSize: '13px',
                     }}
                 />
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: 'var(--text-muted)' }}>kg</span>

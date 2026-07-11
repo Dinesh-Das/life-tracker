@@ -21,12 +21,9 @@ function DayColumn({ dayName, date, tasks, onToggle, onDelete, onUpdate, onAddTa
     };
 
     return (
-        <div className="flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-w-0 w-full">
+        <div className="theme-panel-solid flex flex-col rounded-2xl shadow-sm border overflow-hidden min-w-0 w-full">
             {/* Header */}
-            <div className={`
-        p-4 text-center text-white transition-colors duration-500
-        ${pct === 100 ? 'bg-emerald-500' : 'bg-primary'}
-      `}>
+            <div className="p-4 text-center transition-colors duration-500" style={{ background: pct === 100 ? 'var(--positive)' : 'var(--primary-container)', color: '#e5f1e9' }}>
                 <h3 className="text-lg font-serif font-black flex items-center justify-center gap-2">
                     {dayName} {pct === 100 && '💀'}
                 </h3>
@@ -34,12 +31,12 @@ function DayColumn({ dayName, date, tasks, onToggle, onDelete, onUpdate, onAddTa
             </div>
 
             {/* Progress Donut */}
-            <div className="py-6 flex justify-center bg-gray-50/50">
+            <div className="theme-panel-subtle py-6 flex justify-center">
                 <DonutSVG pct={pct} />
             </div>
 
             {/* Tasks Subheader */}
-            <div className="bg-primary-dark text-white text-[10px] font-black uppercase tracking-tighter py-1 px-4 text-center">
+            <div className="text-[10px] font-black uppercase tracking-tighter py-1 px-4 text-center" style={{ background: 'var(--surface-container-high)', color: 'var(--on-surface)' }}>
                 Tasks
             </div>
 
@@ -70,7 +67,7 @@ function DayColumn({ dayName, date, tasks, onToggle, onDelete, onUpdate, onAddTa
                 ) : (
                     <button
                         onClick={() => setIsAdding(true)}
-                        className="w-full flex items-center justify-center gap-2 p-4 text-gray-400 hover:text-primary hover:bg-primary/5 transition-all group"
+                        className="theme-neutral-button w-full flex items-center justify-center gap-2 p-4 transition-all group"
                     >
                         <div className="border border-dashed border-gray-300 rounded-full p-1 group-hover:border-primary">
                             <Plus size={14} />
@@ -81,12 +78,12 @@ function DayColumn({ dayName, date, tasks, onToggle, onDelete, onUpdate, onAddTa
             </div>
 
             {/* Footer */}
-            <div className="mt-auto border-t border-gray-100 divide-y divide-gray-50">
-                <div className="px-4 py-2 flex justify-between items-center text-[10px] font-black uppercase bg-emerald-50 text-emerald-700">
+            <div className="theme-divider mt-auto border-t divide-y">
+                <div className="px-4 py-2 flex justify-between items-center text-[10px] font-black uppercase" style={{ background: 'var(--positive-bg)', color: 'var(--positive)' }}>
                     <span>✓ Completed</span>
                     <span>{completed}</span>
                 </div>
-                <div className="px-4 py-2 flex justify-between items-center text-[10px] font-black uppercase bg-red-50 text-red-600">
+                <div className="px-4 py-2 flex justify-between items-center text-[10px] font-black uppercase" style={{ background: 'rgba(176,93,93,.12)', color: 'var(--negative)' }}>
                     <span>✗ Not Done</span>
                     <span>{total - completed}</span>
                 </div>

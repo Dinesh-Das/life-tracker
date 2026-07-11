@@ -13,7 +13,7 @@ function TaskItem({ task, onToggle, onDelete, onUpdate }) {
     };
 
     return (
-        <div className="group flex items-center gap-3 p-3 bg-white border-b border-gray-50 hover:bg-gray-50 transition-colors">
+        <div className="theme-row group flex items-center gap-3 p-3 border-b transition-colors">
             <button
                 onClick={() => onToggle(task.id)}
                 className={`
@@ -38,7 +38,7 @@ function TaskItem({ task, onToggle, onDelete, onUpdate }) {
             ) : (
                 <span
                     onDoubleClick={() => setIsEditing(true)}
-                    className={`flex-1 text-sm font-medium transition-all ${task.done ? 'line-through text-gray-300' : 'text-gray-700'}`}
+                    className={`flex-1 text-sm font-medium transition-all ${task.done ? 'line-through theme-muted' : 'theme-heading'}`}
                 >
                     {task.text}
                 </span>

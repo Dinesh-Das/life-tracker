@@ -189,7 +189,7 @@ function Settings() {
                         </div>
 
                         {/* User card */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.35)', marginBottom: '20px' }}>
+                        <div className="theme-panel-muted" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px', borderRadius: 'var(--radius-md)', marginBottom: '20px' }}>
                             <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(45,79,65,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
                                 {user?.getImageUrl?.() ? (
                                     <img src={user.getImageUrl()} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -295,11 +295,11 @@ function Settings() {
                             <label style={{ position: 'relative' }}>
                                 <span className="sr-only">Search habits</span>
                                 <Search size={15} aria-hidden="true" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                <input value={habitQuery} onChange={event => setHabitQuery(event.target.value)} placeholder="Search habits" style={{ width: '100%', minHeight: '40px', padding: '9px 12px 9px 36px', borderRadius: 'var(--radius-md)', border: '1px solid var(--divider)', background: 'rgba(255,255,255,0.35)', color: 'var(--text-heading)' }} />
+                                <input value={habitQuery} onChange={event => setHabitQuery(event.target.value)} placeholder="Search habits" style={{ width: '100%', minHeight: '40px', padding: '9px 12px 9px 36px', borderRadius: 'var(--radius-md)' }} />
                             </label>
                             <label>
                                 <span className="sr-only">Filter habits by category</span>
-                                <select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)} style={{ width: '100%', minHeight: '40px', padding: '9px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--divider)', background: 'var(--card-solid-bg)', color: 'var(--text-heading)' }}>
+                                <select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)} style={{ width: '100%', minHeight: '40px', padding: '9px 12px', borderRadius: 'var(--radius-md)' }}>
                                     <option value="All">All categories</option>
                                     {CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
                                 </select>
@@ -307,12 +307,12 @@ function Settings() {
                         </div>
 
                         <div className="mobile-stack" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                            <button type="button" className="glass-button" onClick={() => setSelectedHabitIds(selectedHabitIds.length === filteredHabits.length ? [] : filteredHabits.map(habit => habit.id))}>
+                            <button type="button" className="theme-neutral-button" style={{ padding: '8px 12px' }} onClick={() => setSelectedHabitIds(selectedHabitIds.length === filteredHabits.length ? [] : filteredHabits.map(habit => habit.id))}>
                                 {selectedHabitIds.length === filteredHabits.length && filteredHabits.length ? 'Clear selection' : 'Select visible'}
                             </button>
                             {selectedHabitIds.length > 0 && <>
                                 <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{selectedHabitIds.length} selected</span>
-                                <select value={bulkCategory} onChange={event => setBulkCategory(event.target.value)} style={{ minHeight: 36, borderRadius: 9, border: '1px solid var(--divider)', background: 'var(--card-solid-bg)', color: 'var(--text-heading)', padding: '6px 9px' }}>{CATEGORIES.map(category => <option key={category}>{category}</option>)}</select>
+                                <select value={bulkCategory} onChange={event => setBulkCategory(event.target.value)} style={{ minHeight: 36, borderRadius: 9, padding: '6px 9px' }}>{CATEGORIES.map(category => <option key={category}>{category}</option>)}</select>
                                 <button type="button" className="system-action-button" disabled={saving} onClick={applyBulkCategory}>Apply category</button>
                                 <button type="button" className="system-action-button" disabled={saving} onClick={bulkArchive}>Archive selected</button>
                             </>}
@@ -320,20 +320,17 @@ function Settings() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {filteredHabits.map((habit, idx) => (
-                                <div key={habit.id} className="habit-setting-row" style={{
+                                <div key={habit.id} className="habit-setting-row theme-row" style={{
                                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                     padding: '10px 14px',
                                     borderRadius: 'var(--radius-sm)',
-                                    background: 'rgba(255,255,255,0.3)',
                                     transition: 'background 0.2s', contentVisibility: 'auto', containIntrinsicSize: '56px',
                                 }}
-                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.45)'}
-                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                                         <input type="checkbox" checked={selectedHabitIds.includes(habit.id)} onChange={event => setSelectedHabitIds(ids => event.target.checked ? [...ids, habit.id] : ids.filter(id => id !== habit.id))} aria-label={`Select ${habit.name}`} />
                                         <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', width: '18px', textAlign: 'right' }}>{idx + 1}</span>
-                                        <span style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.5)', borderRadius: '8px', fontSize: '18px' }}>{habit.emoji}</span>
+                                        <span className="theme-icon-tile" style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', fontSize: '18px' }}>{habit.emoji}</span>
                                         <div>
                                             <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 700, color: 'var(--text-heading)' }}>{habit.name}</h4>
                                             <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{habit.category} • {habit.goal} days/mo</span>
@@ -384,9 +381,9 @@ function Settings() {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {archivedHabits.map(habit => (
-                                    <div key={habit.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 14px', borderRadius: 'var(--radius-sm)', background: 'rgba(255,255,255,0.22)', contentVisibility: 'auto', containIntrinsicSize: '56px' }}>
+                                    <div key={habit.id} className="theme-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '10px 14px', borderRadius: 'var(--radius-sm)', contentVisibility: 'auto', containIntrinsicSize: '56px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                                            <span style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.35)', borderRadius: '8px', fontSize: '18px', flexShrink: 0 }}>{habit.emoji}</span>
+                                            <span className="theme-icon-tile" style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', fontSize: '18px', flexShrink: 0 }}>{habit.emoji}</span>
                                             <div style={{ minWidth: 0 }}>
                                                 <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 700, color: 'var(--text-heading)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{habit.name}</h4>
                                                 <span style={{ fontFamily: 'var(--font-body)', fontSize: '10px', color: 'var(--text-muted)' }}>{habit.category} • History preserved</span>
@@ -416,7 +413,7 @@ function Settings() {
                                     <RefreshCw size={14} /> Hard refresh
                                 </button>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: 'var(--radius-md)', background: 'rgba(255,255,255,0.3)' }}>
+                            <div className="theme-panel-muted" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: 'var(--radius-md)' }}>
                                 <code style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spreadsheetId}</code>
                                 <button onClick={copySheetId} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '6px', borderRadius: '6px', display: 'flex' }} title="Copy ID"
                                     type="button" aria-label="Copy connected spreadsheet ID"
@@ -461,7 +458,7 @@ function Settings() {
                             type="button"
                             onClick={() => setIsEmojiPickerOpen(true)}
                             aria-label="Choose habit emoji"
-                            className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-2xl hover:bg-gray-100 transition-all shrink-0"
+                            className="theme-icon-tile w-14 h-14 border rounded-xl flex items-center justify-center text-2xl transition-all shrink-0"
                         >
                             {currentHabit.emoji}
                         </button>

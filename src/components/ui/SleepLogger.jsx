@@ -2,8 +2,7 @@ import { Moon } from 'lucide-react';
 
 const inputStyle = {
     width: '100%', padding: '8px 10px', marginTop: '4px',
-    borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)',
-    background: 'rgba(255,255,255,0.35)',
+    borderRadius: '8px',
     fontFamily: 'var(--font-body)', fontSize: '13px',
     color: 'var(--text-body)', outline: 'none',
 };
@@ -20,7 +19,7 @@ function SleepLogger({ sleep }) {
     return (
         <div className="glass-card" style={{ padding: '16px 18px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                <div style={{ padding: '6px', borderRadius: '8px', background: 'rgba(255,255,255,0.45)', color: 'var(--text-heading)', flexShrink: 0 }}>
+                <div className="theme-icon-tile" style={{ padding: '6px', borderRadius: '8px', color: 'var(--text-heading)', flexShrink: 0 }}>
                     <Moon size={16} />
                 </div>
                 <h4 style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 700, color: 'var(--text-heading)', flex: 1 }}>Sleep</h4>

@@ -48,6 +48,9 @@ img, svg, canvas { max-width: 100%; }
 .tool-copy { color: var(--text-muted); font-size: 12px; line-height: 1.55; margin-bottom: 12px; }
 .tool-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .tool-actions > * { max-width: 100%; min-width: 0; }
+.analytics-range-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.analytics-range-controls select,
+.analytics-range-controls input { min-height: 42px; padding: 9px 12px; border-radius: var(--radius-md); min-width: 150px; }
 .tool-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 10px; margin-bottom: 12px; }
 .tool-fields label { color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; }
 .tool-fields input, .tool-fields select { display: block; width: 100%; margin-top: 5px; padding: 8px 10px; border: 1px solid var(--control-border); border-radius: 9px; background: var(--surface-inner); color: var(--text-heading); }
@@ -186,6 +189,17 @@ img, svg, canvas { max-width: 100%; }
   --field-disabled-bg:    rgba(230,237,233,0.72);
   --field-disabled-text:  #6f8178;
   --field-invalid:        #a33f3f;
+  --panel-solid:          rgba(255,255,255,0.88);
+  --panel-muted:          rgba(255,255,255,0.48);
+  --panel-subtle:         rgba(255,255,255,0.30);
+  --row-bg:               rgba(255,255,255,0.46);
+  --row-hover:            rgba(255,255,255,0.66);
+  --icon-tile-bg:         rgba(255,255,255,0.58);
+  --neutral-control-bg:   rgba(255,255,255,0.55);
+  --neutral-control-hover:rgba(255,255,255,0.76);
+  --table-bg:             #f8fbf9;
+  --table-header-bg:      #edf4f0;
+  --table-border:         rgba(45,79,65,0.14);
 
   /* Legacy aliases — keep backward compat */
   --green:         #2d4f41;
@@ -248,6 +262,17 @@ img, svg, canvas { max-width: 100%; }
   --field-disabled-bg:    rgba(255,255,255,0.055);
   --field-disabled-text:  #71877a;
   --field-invalid:        #ffb4ab;
+  --panel-solid:          #16231b;
+  --panel-muted:          rgba(255,255,255,0.075);
+  --panel-subtle:         rgba(255,255,255,0.045);
+  --row-bg:               rgba(255,255,255,0.075);
+  --row-hover:            rgba(255,255,255,0.12);
+  --icon-tile-bg:         rgba(255,255,255,0.11);
+  --neutral-control-bg:   rgba(255,255,255,0.09);
+  --neutral-control-hover:rgba(255,255,255,0.14);
+  --table-bg:             #111e16;
+  --table-header-bg:      #19281f;
+  --table-border:         rgba(255,255,255,0.10);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -373,6 +398,64 @@ select:-webkit-autofill {
   background: var(--primary-container);
   color: var(--on-surface);
 }
+
+/* Semantic surfaces used by both themes. */
+.theme-panel-solid { background: var(--panel-solid) !important; color: var(--text-body); border-color: var(--table-border) !important; }
+.theme-panel-muted { background: var(--panel-muted) !important; color: var(--text-body); border-color: var(--table-border) !important; }
+.theme-panel-subtle { background: var(--panel-subtle) !important; color: var(--text-body); border-color: var(--table-border) !important; }
+.theme-row { background: var(--row-bg) !important; color: var(--text-body); border-color: var(--table-border) !important; }
+.theme-row:hover { background: var(--row-hover) !important; }
+.theme-icon-tile { background: var(--icon-tile-bg) !important; }
+.theme-neutral-button {
+  background: var(--neutral-control-bg) !important;
+  color: var(--text-body) !important;
+  border: 1px solid var(--table-border) !important;
+  border-radius: var(--radius-md);
+}
+.theme-neutral-button:hover { background: var(--neutral-control-hover) !important; color: var(--text-heading) !important; }
+.theme-table { background: var(--table-bg) !important; color: var(--text-body); border-color: var(--table-border) !important; }
+.theme-table-header { background: var(--table-header-bg) !important; color: var(--text-muted) !important; border-color: var(--table-border) !important; }
+.theme-heading { color: var(--text-heading) !important; }
+.theme-body { color: var(--text-body) !important; }
+.theme-muted { color: var(--text-muted) !important; }
+.theme-divider { border-color: var(--table-border) !important; }
+.theme-progress-track { background: var(--panel-subtle) !important; }
+.table-mental-input {
+  background: transparent !important; border: 0 !important; box-shadow: none !important;
+  color: var(--warning-ink) !important; -webkit-text-fill-color: var(--warning-ink) !important;
+  padding: 0 !important;
+}
+.table-mental-input:focus { background: var(--field-bg) !important; box-shadow: 0 0 0 2px var(--field-focus-ring) !important; }
+
+/* Compatibility for older Tailwind-only components. These mappings are
+   intentionally scoped to dark mode; light mode keeps their semantic colors. */
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-white\/50,
+[data-theme="dark"] .bg-white\/60,
+[data-theme="dark"] .bg-white\/70 { background-color: var(--panel-solid) !important; }
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] .bg-gray-50\/30,
+[data-theme="dark"] .bg-gray-50\/50,
+[data-theme="dark"] .bg-gray-100 { background-color: var(--panel-muted) !important; }
+[data-theme="dark"] .hover\:bg-gray-50:hover,
+[data-theme="dark"] .hover\:bg-gray-100:hover { background-color: var(--row-hover) !important; }
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800,
+[data-theme="dark"] .text-gray-700 { color: var(--text-heading) !important; }
+[data-theme="dark"] .text-gray-600,
+[data-theme="dark"] .text-gray-500 { color: var(--text-body) !important; }
+[data-theme="dark"] .text-gray-400,
+[data-theme="dark"] .text-gray-300 { color: var(--text-muted) !important; }
+[data-theme="dark"] .border-gray-50,
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-300 { border-color: var(--table-border) !important; }
+[data-theme="dark"] .bg-green-50\/50,
+[data-theme="dark"] .bg-lime-50\/30,
+[data-theme="dark"] .bg-amber-50\/50 { background-color: rgba(125,201,164,0.08) !important; }
+[data-theme="dark"] .bg-red-50\/30 { background-color: rgba(232,146,124,0.08) !important; }
+[data-theme="dark"] .bg-emerald-50 { background-color: rgba(125,201,164,0.13) !important; }
+[data-theme="dark"] .bg-red-50 { background-color: rgba(232,146,124,0.12) !important; }
 
 /* App shell layout — dvh avoids the mobile browser toolbar 100vh bug */
 .app-shell {
@@ -617,6 +700,7 @@ select:-webkit-autofill {
 
 .glass-button {
   background: rgba(255,255,255,0.20);
+  color: var(--text-body);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,0.25);
@@ -664,6 +748,7 @@ select:-webkit-autofill {
 [data-theme="dark"] .glass-button {
   background: rgba(255,255,255,0.08);
   border-color: rgba(255,255,255,0.12);
+  color: var(--text-body);
 }
 [data-theme="dark"] .glass-button:hover {
   background: rgba(255,255,255,0.14);

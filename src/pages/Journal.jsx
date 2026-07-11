@@ -187,9 +187,8 @@ function JournalSection({ title, subtitle, icon: Icon, iconColor, value, onChang
     return (
         <div className="glass-card" style={{ padding: '22px 24px' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: '14px' }}>
-                <div style={{
+                <div className="theme-icon-tile" style={{
                     width: '40px', height: '40px', borderRadius: '10px',
-                    background: 'rgba(255,255,255,0.45)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                     color: iconColor || 'var(--text-heading)',
                 }}>
@@ -201,6 +200,7 @@ function JournalSection({ title, subtitle, icon: Icon, iconColor, value, onChang
                 </div>
             </div>
             <textarea
+                className="journal-textarea"
                 maxLength={5000}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
@@ -209,20 +209,13 @@ function JournalSection({ title, subtitle, icon: Icon, iconColor, value, onChang
                     width: '100%',
                     padding: '14px 16px',
                     borderRadius: '10px',
-                    border: '1px solid rgba(255,255,255,0.4)',
-                    background: 'rgba(255,255,255,0.45)',
                     backdropFilter: 'blur(8px)',
                     fontFamily: 'var(--font-body)',
                     fontSize: '14px',
-                    color: 'var(--text-body)',
                     lineHeight: 1.6,
                     resize: 'none',
-                    outline: 'none',
                     height: isLarge ? '140px' : '90px',
-                    transition: 'border-color 0.2s',
                 }}
-                onFocus={e => e.target.style.borderColor = 'rgba(255,255,255,0.7)'}
-                onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.4)'}
             />
         </div>
     );

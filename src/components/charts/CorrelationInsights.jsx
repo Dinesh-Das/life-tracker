@@ -43,10 +43,10 @@ function CorrelationInsights({ habits, checks, mentalState, daysInMonth, year, m
                 {moodInsights.map((ins) => (
                     <div
                         key={ins.habitId}
+                        className="theme-row"
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px',
                             padding: '10px 14px', borderRadius: 'var(--radius-md)',
-                            background: 'rgba(255,255,255,0.35)',
                         }}
                     >
                         {ins.delta >= 0
@@ -63,10 +63,10 @@ function CorrelationInsights({ habits, checks, mentalState, daysInMonth, year, m
                 {nextDayInsights.map((ins) => (
                     <div
                         key={`next-${ins.habitId}`}
+                        className="theme-row"
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px',
                             padding: '10px 14px', borderRadius: 'var(--radius-md)',
-                            background: 'rgba(255,255,255,0.35)',
                         }}
                     >
                         <Sparkles size={16} style={{ color: '#8060c0', flexShrink: 0 }} />
@@ -79,10 +79,10 @@ function CorrelationInsights({ habits, checks, mentalState, daysInMonth, year, m
 
                 {hasWeekdayInsight && (
                     <div
+                        className="theme-row"
                         style={{
                             display: 'flex', alignItems: 'center', gap: '10px',
                             padding: '10px 14px', borderRadius: 'var(--radius-md)',
-                            background: 'rgba(255,255,255,0.35)',
                         }}
                     >
                         <CalendarDays size={16} style={{ color: '#4a7a62', flexShrink: 0 }} />

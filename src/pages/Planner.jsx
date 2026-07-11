@@ -124,7 +124,7 @@ function Planner() {
                 backdropFilter: 'blur(8px)',
                 WebkitBackdropFilter: 'blur(8px)',
                 borderBottom: '1px solid rgba(255,255,255,0.18)',
-                background: 'rgba(255,255,255,0.15)',
+                background: 'var(--panel-subtle)',
                 position: 'sticky', top: 0, zIndex: 40,
             }}>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px' }}>Select Month</p>
@@ -147,7 +147,7 @@ function Planner() {
                                 transition: 'all 0.2s',
                                 ...(idx === currentMonthIndex
                                     ? { background: 'rgba(45,79,65,0.75)', color: '#a9cfbc', boxShadow: '0 2px 12px rgba(45,79,65,0.25)' }
-                                    : { background: 'rgba(255,255,255,0.35)', color: 'var(--text-muted)' }
+                                    : { background: 'var(--neutral-control-bg)', color: 'var(--text-muted)', border: '1px solid var(--table-border)' }
                                 ),
                             }}
                         >
@@ -212,7 +212,7 @@ function Planner() {
                 </div>
 
                 {/* Divider */}
-                <div style={{ height: '1px', background: 'rgba(255,255,255,0.25)', margin: '8px 0 32px' }} />
+                <div style={{ height: '1px', background: 'var(--table-border)', margin: '8px 0 32px' }} />
 
                 {/* TASKS SECTION */}
                 <div>
@@ -239,7 +239,7 @@ function Planner() {
                                     textAlign: 'center',
                                     ...(currentWeekIdx === idx
                                         ? { background: 'rgba(45,79,65,0.75)', color: '#a9cfbc', boxShadow: '0 2px 12px rgba(45,79,65,0.25)' }
-                                        : { background: 'rgba(255,255,255,0.35)', color: 'var(--text-muted)' }
+                                        : { background: 'var(--neutral-control-bg)', color: 'var(--text-muted)', border: '1px solid var(--table-border)' }
                                     ),
                                 }}
                             >
