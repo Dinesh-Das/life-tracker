@@ -4,7 +4,7 @@ import { resilientBatchWrite } from '../lib/syncQueue';
 import { getDaysInMonth, format } from 'date-fns';
 import { recomputeStreaksForHabit } from '../lib/streakRecompute';
 import {
-    archiveHabitRecord, createHabit, loadAllHabits, updateHabitRecord,
+    archiveHabitRecord, createHabit, loadAllHabits, migrateHabitIdsAcrossMonths, updateHabitRecord,
 } from '../lib/habitRepository';
 import { ensureDailyStateSheet, ensureMonthTab } from '../lib/sheetScaffold';
 import {
@@ -43,6 +43,13 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             const monthStartKey = localDateKey(new Date(currentYear, currentMonthIndex, 1));
             const monthEndKey = localDateKey(new Date(currentYear, currentMonthIndex + 1, 0));
             const allHabits = await loadAllHabits(spreadsheetId);
+            try {
+                await migrateHabitIdsAcrossMonths(spreadsheetId, allHabits);
+            } catch (migrationError) {
+                // Current-month name migration below remains a safe fallback;
+                // retry the complete spreadsheet migration on the next load.
+                console.error('Habit ID migration incomplete', migrationError);
+            }
             const activeHabits = allHabits.filter(habit =>
                 (!habit.activeFrom || habit.activeFrom <= monthEndKey) &&
                 (!habit.archivedAt || habit.archivedAt.slice(0, 10) > monthStartKey)
@@ -189,6 +196,11 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             toast.error('Habit data is not loaded. Retry before editing.');
             return;
         }
+        const row = rowByHabitId.current.get(habitId);
+        if (!row) {
+            toast.error('Habit history row is unavailable. Reload and try again.');
+            return;
+        }
         const currentValue = checksRef.current[habitId]?.[day] || false;
         const nextValue = currentValue === true ? false : true;
         const previousChecks = checksRef.current;
@@ -198,12 +210,6 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
         };
         checksRef.current = optimistic;
         setChecks(optimistic);
-
-        const row = rowByHabitId.current.get(habitId);
-        if (!row) {
-            toast.error('Habit history row is unavailable. Reload and try again.');
-            return;
-        }
 
         const tabName = `${currentMonth} ${currentYear}`;
         const date = new Date(currentYear, currentMonthIndex, day);

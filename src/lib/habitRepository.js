@@ -1,10 +1,13 @@
-import { addSheet, appendRows, batchWrite, getSpreadsheet, readRange } from './sheetsApi';
+import { addSheet, appendRows, batchRead, batchWrite, getSpreadsheet, readRange } from './sheetsApi';
 import { DEFAULT_HABITS } from './constants';
 import {
     HABITS_TAB, HABIT_HEADERS, normalizeHabit, parseHabitRow, serializeHabit,
 } from './habitSchema';
+import { MONTH_HABIT_ID_INDEX, MONTH_HABIT_START_ROW, legacyLabelMatchesHabit } from './sheetLayout';
 
 const ensurePromises = new Map();
+const monthMigrationPromises = new Map();
+const MONTH_TAB_PATTERN = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)(?: \d{4})?$/;
 
 async function legacyHabits(spreadsheetId) {
     const rows = await readRange(spreadsheetId, 'Settings!A2:K');
@@ -62,6 +65,49 @@ export async function loadAllHabits(spreadsheetId) {
         .sort((a, b) => a.order - b.order);
 }
 
+/**
+ * Upgrade every existing month tab from display-label rows to stable IDs.
+ * Only column AG is written; all historical checkmarks and notes remain intact.
+ * The operation is idempotent and shared across concurrent page loads.
+ */
+export async function migrateHabitIdsAcrossMonths(spreadsheetId, habits = null) {
+    if (!spreadsheetId) return { migrated: 0, tabs: 0 };
+    if (monthMigrationPromises.has(spreadsheetId)) return monthMigrationPromises.get(spreadsheetId);
+
+    const promise = (async () => {
+        const definitions = habits || await loadAllHabits(spreadsheetId);
+        const byId = new Map(definitions.map(habit => [habit.id, habit]));
+        const metadata = await getSpreadsheet(spreadsheetId);
+        const tabs = (metadata.sheets || [])
+            .map(sheet => sheet.properties?.title)
+            .filter(title => MONTH_TAB_PATTERN.test(title));
+        if (!tabs.length) return { migrated: 0, tabs: 0 };
+
+        const responses = await batchRead(spreadsheetId, tabs.map(tab => `'${tab.replaceAll("'", "''")}'!A6:AG`));
+        const writes = [];
+        responses.forEach((response, tabIndex) => {
+            const tab = tabs[tabIndex];
+            (response?.values || []).forEach((row, rowIndex) => {
+                const currentId = String(row?.[MONTH_HABIT_ID_INDEX] || '');
+                if (currentId && byId.has(currentId)) return;
+                const matches = definitions.filter(habit => legacyLabelMatchesHabit(row?.[0], habit));
+                if (matches.length !== 1) return;
+                writes.push({
+                    range: `'${tab.replaceAll("'", "''")}'!AG${MONTH_HABIT_START_ROW + rowIndex}`,
+                    values: [[matches[0].id]],
+                });
+            });
+        });
+        if (writes.length) await batchWrite(spreadsheetId, writes);
+        return { migrated: writes.length, tabs: tabs.length };
+    })().catch(error => {
+        monthMigrationPromises.delete(spreadsheetId);
+        throw error;
+    });
+    monthMigrationPromises.set(spreadsheetId, promise);
+    return promise;
+}
+
 export async function loadActiveHabits(spreadsheetId, date = new Date()) {
     const dateKey = typeof date === 'string'
         ? date.slice(0, 10)
@@ -82,6 +128,9 @@ export async function createHabit(spreadsheetId, input, order) {
         createdAt: input.createdAt || new Date().toISOString(),
     }, order - 1);
     await appendRows(spreadsheetId, `${HABITS_TAB}!A:N`, [serializeHabit(habit, order - 1)]);
+    // A new definition may correspond to a legacy name row in an older tab.
+    // Allow the next page load to rescan those tabs and attach this ID too.
+    monthMigrationPromises.delete(spreadsheetId);
     return habit;
 }
 
@@ -128,5 +177,6 @@ export async function replaceActiveHabits(spreadsheetId, nextHabits) {
 
     if (writes.length) await batchWrite(spreadsheetId, writes);
     if (creates.length) await appendRows(spreadsheetId, `${HABITS_TAB}!A:N`, creates);
+    monthMigrationPromises.delete(spreadsheetId);
     return loadAllHabits(spreadsheetId);
 }

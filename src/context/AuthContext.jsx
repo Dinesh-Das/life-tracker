@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 import toast from 'react-hot-toast';
 import { findSpreadsheet } from '../lib/sheetsApi';
 import { scaffoldSheet } from '../lib/sheetScaffold';
+import { loadAllHabits, migrateHabitIdsAcrossMonths } from '../lib/habitRepository';
 
 const AuthContext = createContext();
 
@@ -113,6 +114,11 @@ export function AuthProvider({ children }) {
 
                             if (existingSheet) {
                                 setSpreadsheetId(existingSheet.id);
+                                // Establish the spreadsheet-wide ID invariant before
+                                // any page starts reading historical month tabs.
+                                void loadAllHabits(existingSheet.id)
+                                    .then(definitions => migrateHabitIdsAcrossMonths(existingSheet.id, definitions))
+                                    .catch(error => console.error('Habit ID migration incomplete', error));
                                 import('../lib/syncQueue').then(({ initSyncQueue, flush }) => {
                                     initSyncQueue();
                                     void flush(existingSheet.id);
