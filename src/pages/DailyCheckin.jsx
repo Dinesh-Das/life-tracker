@@ -77,7 +77,8 @@ function DailyCheckin() {
 
     const {
         tokens: skipTokens, used: usedTokens, bestStreak: bankBestStreak,
-        daysToNextToken, cap: tokenCap, skipDay, repairYesterday,
+        daysToNextToken, cap: tokenCap, loading: skipTokensLoading,
+        skipping: freezeSaving, skipDay, repairYesterday,
     } = useSkipDay(spreadsheetId, currentMonth, currentYear);
     const sleep = useSleep(spreadsheetId, selectedDateStr);
     const metrics = useMetrics(spreadsheetId, selectedDateStr);
@@ -410,19 +411,22 @@ function DailyCheckin() {
                                             }
                                         }
                                     }}
-                                    disabled={skipTokens <= 0}
-                                    title={skipTokens > 0 ? 'Freeze this day — streaks stay safe' : 'Earn a token with a 14-day streak'}
+                                    disabled={skipTokensLoading || freezeSaving || skipTokens <= 0}
+                                    aria-busy={freezeSaving}
+                                    title={freezeSaving
+                                        ? 'Freezing this day…'
+                                        : (skipTokens > 0 ? 'Freeze this day — streaks stay safe' : 'Earn a token with a 7-day streak')}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: '6px',
-                                        background: skipTokens > 0 ? 'var(--info-bg)' : 'var(--disabled-bg)',
-                                        color: skipTokens > 0 ? '#eaf4ff' : 'var(--text-muted)',
+                                        background: skipTokens > 0 && !freezeSaving ? 'var(--info-bg)' : 'var(--disabled-bg)',
+                                        color: skipTokens > 0 && !freezeSaving ? '#eaf4ff' : 'var(--text-muted)',
                                         padding: '6px 14px', borderRadius: '9999px', border: 'none',
                                         fontSize: '11px', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
                                         fontFamily: 'var(--font-body)',
-                                        cursor: skipTokens > 0 ? 'pointer' : 'not-allowed',
+                                        cursor: skipTokens > 0 && !freezeSaving ? 'pointer' : 'not-allowed',
                                     }}
                                 >
-                                    <Snowflake size={12} /> Skip Day ({skipTokens})
+                                    <Snowflake size={12} /> {freezeSaving ? 'Freezing…' : `Skip Day (${skipTokens})`}
                                 </button>
                             )}
                             {pct === 100 && (

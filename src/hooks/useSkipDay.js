@@ -1,29 +1,47 @@
 import { useState, useEffect, useCallback } from 'react';
-import { appendRows, batchWrite, readRange } from '../lib/sheetsApi';
+import { batchWrite, readRange } from '../lib/sheetsApi';
 import { skipTokensAvailable, skipTokenProgress } from '../lib/streakLogic';
 import { recomputeStreaksForHabit } from '../lib/streakRecompute';
-import { MONTH_HABIT_ID_INDEX, MONTH_HABIT_START_ROW, dayColumn, monthHabitRange } from '../lib/sheetLayout';
+import {
+    decodeCheck, MONTH_HABIT_ID_INDEX, MONTH_HABIT_START_ROW, dayColumn, monthHabitRange,
+} from '../lib/sheetLayout';
 import toast from 'react-hot-toast';
 
 const TOKEN_ROW_ID = '_skipTokens';
+const freezesInFlight = new Set();
+
+function readTokenBank(rows = []) {
+    let best = 0;
+    let spent = 0;
+    const tokenRowIndexes = [];
+
+    rows.forEach((row, index) => {
+        if (row[0] === TOKEN_ROW_ID) {
+            tokenRowIndexes.push(index);
+            // Older rapid clicks could create duplicate counter rows. Treat the
+            // highest value as canonical instead of letting row order decide.
+            spent = Math.max(spent, Number.parseInt(row[1], 10) || 0);
+        } else if (row[0]) {
+            best = Math.max(best, Number.parseInt(row[2], 10) || 0);
+        }
+    });
+
+    return { best, spent, tokenRowIndexes };
+}
 
 export function useSkipDay(spreadsheetId, currentMonth, currentYear) {
     const [tokens, setTokens] = useState(0);
     const [bestStreak, setBestStreak] = useState(0);
     const [used, setUsed] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [skipping, setSkipping] = useState(false);
 
     const loadTokens = useCallback(async () => {
         if (!spreadsheetId) return;
         setLoading(true);
         try {
             const rows = await readRange(spreadsheetId, 'Streaks!A2:E');
-            let best = 0;
-            let spent = 0;
-            rows.forEach(row => {
-                if (row[0] === TOKEN_ROW_ID) spent = Number.parseInt(row[1], 10) || 0;
-                else if (row[0]) best = Math.max(best, Number.parseInt(row[2], 10) || 0);
-            });
+            const { best, spent } = readTokenBank(rows);
             setBestStreak(best);
             setUsed(spent);
             setTokens(skipTokensAvailable(best, spent));
@@ -40,46 +58,99 @@ export function useSkipDay(spreadsheetId, currentMonth, currentYear) {
         const tabName = `${currentMonth} ${currentYear}`;
         const rows = await readRange(spreadsheetId, monthHabitRange(tabName));
         const map = new Map();
+        const values = new Map();
         rows.forEach((row, index) => {
             const id = String(row?.[MONTH_HABIT_ID_INDEX] || '');
-            if (id) map.set(id, MONTH_HABIT_START_ROW + index);
+            if (id) {
+                map.set(id, MONTH_HABIT_START_ROW + index);
+                values.set(id, row);
+            }
         });
-        return { tabName, map };
+        return { tabName, map, values };
     }, [currentMonth, currentYear, spreadsheetId]);
 
     const skipDay = useCallback(async (day, habits, checks) => {
-        if (tokens <= 0) {
-            toast.error('No skip tokens available — earn one with a 7-day streak');
-            return false;
-        }
+        const freezeKey = `${spreadsheetId}:${currentYear}:${currentMonth}:${day}`;
+        if (freezesInFlight.has(freezeKey)) return false;
+        freezesInFlight.add(freezeKey);
+        setSkipping(true);
+
         try {
-            const { tabName, map } = await resolveRows();
+            if (tokens <= 0) {
+                toast.error('No skip tokens available — earn one with a 7-day streak');
+                return false;
+            }
+
+            const { tabName, map, values } = await resolveRows();
             const column = dayColumn(day);
-            const affected = habits.filter(habit => checks[habit.id]?.[day] !== true && map.has(habit.id));
+            const mappedHabits = habits.filter(habit => map.has(habit.id));
+
+            // Use the live sheet rows, not the potentially stale UI snapshot, to
+            // make a freeze idempotent before charging its token.
+            const alreadyFrozen = mappedHabits.some(habit => (
+                decodeCheck(values.get(habit.id)?.[day]) === 'skip'
+            ));
+            if (alreadyFrozen) {
+                toast.success('This day is already frozen — no token used');
+                return false;
+            }
+
+            const affected = mappedHabits.filter(habit => (
+                checks[habit.id]?.[day] !== true && decodeCheck(values.get(habit.id)?.[day]) !== true
+            ));
+            if (affected.length === 0) {
+                toast.success('All habits are already complete — no token used');
+                return false;
+            }
+
             const writes = affected.map(habit => ({
                 range: `'${tabName}'!${column}${map.get(habit.id)}`,
                 values: [['S']],
             }));
+
+            // Revalidate the live balance just before the write. UI state can be
+            // stale if another action completed while this screen was open.
             const rows = await readRange(spreadsheetId, 'Streaks!A2:E');
-            const tokenIndex = rows.findIndex(row => row[0] === TOKEN_ROW_ID);
-            const nextUsed = tokenIndex === -1 ? 1 : (Number.parseInt(rows[tokenIndex][1], 10) || 0) + 1;
-            if (tokenIndex === -1) {
-                await appendRows(spreadsheetId, 'Streaks!A:E', [[TOKEN_ROW_ID, nextUsed, '', '', '']]);
-            } else {
-                writes.push({ range: `Streaks!B${tokenIndex + 2}`, values: [[nextUsed]] });
+            const { best, spent, tokenRowIndexes } = readTokenBank(rows);
+            const available = skipTokensAvailable(best, spent);
+            setBestStreak(best);
+            setUsed(spent);
+            setTokens(available);
+            if (available <= 0) {
+                toast.error('No skip tokens available — earn one with a 7-day streak');
+                return false;
             }
-            if (writes.length) await batchWrite(spreadsheetId, writes);
+
+            const nextUsed = spent + 1;
+            if (tokenRowIndexes.length === 0) {
+                // Keep counter creation in the same batch as the day markers so
+                // one cannot save without the other.
+                writes.push({
+                    range: `Streaks!A${rows.length + 2}:E${rows.length + 2}`,
+                    values: [[TOKEN_ROW_ID, nextUsed, '', '', '']],
+                });
+            } else {
+                // Heal duplicate counter rows left by the old append race.
+                tokenRowIndexes.forEach(index => {
+                    writes.push({ range: `Streaks!B${index + 2}`, values: [[nextUsed]] });
+                });
+            }
+
+            await batchWrite(spreadsheetId, writes);
             await Promise.all(affected.map(habit => recomputeStreaksForHabit(spreadsheetId, habit.id)));
-            setTokens(value => Math.max(0, value - 1));
-            setUsed(value => value + 1);
+            setTokens(skipTokensAvailable(best, nextUsed));
+            setUsed(nextUsed);
             toast.success('Day frozen — your streaks are safe ❄️');
             return true;
         } catch (error) {
             console.error('Failed to skip day', error);
             toast.error('Failed to skip day');
             return false;
+        } finally {
+            freezesInFlight.delete(freezeKey);
+            setSkipping(false);
         }
-    }, [resolveRows, spreadsheetId, tokens]);
+    }, [currentMonth, currentYear, resolveRows, spreadsheetId, tokens]);
 
     const repairYesterday = useCallback(async (habitId, day) => {
         try {
@@ -107,6 +178,7 @@ export function useSkipDay(spreadsheetId, currentMonth, currentYear) {
         cap: 3,
         daysToNextToken: skipTokenProgress(bestStreak),
         loading,
+        skipping,
         skipDay,
         repairYesterday,
         reloadTokens: loadTokens,
