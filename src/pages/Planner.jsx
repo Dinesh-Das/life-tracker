@@ -9,13 +9,11 @@ import { useNavigate } from 'react-router-dom'
 
 // Habit Components
 import MonthHeader from '../components/ui/MonthHeader'
-import HabitGrid from '../components/habits/HabitGrid'
 import TrendAreaChart from '../components/charts/TrendAreaChart'
 import MoodLineChart from '../components/charts/MoodLineChart'
 import AnalysisPanel from '../components/habits/AnalysisPanel'
 import CorrelationInsights from '../components/charts/CorrelationInsights'
 import { useHabits } from '../hooks/useHabits'
-import { useStreaks } from '../hooks/useStreaks'
 
 // Task Components
 import DayColumn from '../components/weekly/DayColumn'
@@ -32,11 +30,9 @@ function Planner() {
     // -- HABITS STATE --
     const {
         habits, checks, mentalState, loading: habitsLoading, saving: habitsSaving,
-        daysInMonth, toggleCheck, updateMentalState, deleteHabit, updateHabit,
+        daysInMonth,
         error: habitsError, reload: reloadHabits
     } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
-
-    const { habitStreaks } = useStreaks(habits, checks);
 
     const visibleHabits = useMemo(() => {
         if (gender === 'female') return habits;
@@ -171,30 +167,7 @@ function Planner() {
                         onAddHabit={() => navigate('/settings')}
                     />
 
-                    <div className="hidden sm:block overflow-x-auto pb-4 scrollbar-thin" style={{ borderRadius: 'var(--radius-lg)', marginTop: '12px' }}>
-                        <HabitGrid
-                            currentMonth={currentMonth}
-                            habits={visibleHabits}
-                            checks={checks}
-                            streaks={habitStreaks}
-                            mentalState={mentalState}
-                            daysInMonth={daysInMonth}
-                            currentYear={currentYear}
-                            currentMonthIndex={currentMonthIndex}
-                            onToggle={toggleCheck}
-                            onDelete={deleteHabit}
-                            onUpdate={updateHabit}
-                            onMentalStateChange={updateMentalState}
-                        />
-                    </div>
-                    <div className="sm:hidden" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
-                        {visibleHabits.map(habit => <div key={habit.id} className="glass-card" style={{ padding: 12 }}>
-                            <strong style={{ display: 'flex', gap: 8, color: 'var(--text-heading)', marginBottom: 9 }}><span>{habit.emoji}</span>{habit.name}</strong>
-                            <div className="mobile-month-checks">{Array.from({ length: daysInMonth }, (_, index) => index + 1).map(day => <button key={day} onClick={() => toggleCheck(habit.id, day)} aria-label={`${habit.name}, day ${day}`} aria-pressed={checks[habit.id]?.[day] === true} className={checks[habit.id]?.[day] === true ? 'is-done' : ''}>{day}</button>)}</div>
-                        </div>)}
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ marginTop: '20px' }}>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ marginTop: '12px' }}>
                         <TrendAreaChart data={trendData} />
                         <MoodLineChart data={moodData} />
                     </div>

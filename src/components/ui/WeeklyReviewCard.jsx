@@ -19,6 +19,24 @@ const Stat = ({ label, children }) => (
     </div>
 );
 
+const WeeklyReviewSkeleton = () => (
+    <div
+        className="glass-card animate-pulse"
+        aria-hidden="true"
+        style={{ padding: '24px 28px', marginBottom: '28px' }}
+    >
+        <div
+            className="rounded-lg"
+            style={{ width: '190px', height: '24px', marginBottom: '16px', background: 'var(--surface-inner-strong)' }}
+        />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[0, 1, 2, 3].map(index => (
+                <div key={index} className="glass-card-inner" style={{ height: '61px' }} />
+            ))}
+        </div>
+    </div>
+);
+
 /**
  * "Your Last 7 Days" — completion, star habit, needs-attention habit,
  * mood trend vs the previous week, and earned streak badges.
@@ -51,14 +69,15 @@ function WeeklyReviewCard() {
         [visibleHabits, habitStreaks]
     );
 
-    if (loading || !review) return null;
+    if (loading) return <WeeklyReviewSkeleton />;
+    if (!review) return null;
 
     const moodDelta = review.moodAvg !== null && review.moodPrevAvg !== null
         ? Math.round((review.moodAvg - review.moodPrevAvg) * 10) / 10
         : null;
 
     return (
-        <div className="glass-card animate-fade-up" style={{ padding: '24px 28px', marginBottom: '28px' }}>
+        <div className="glass-card" style={{ padding: '24px 28px', marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
                 <CalendarCheck size={18} style={{ color: '#4a7a62' }} />
                 <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'var(--text-heading)' }}>
