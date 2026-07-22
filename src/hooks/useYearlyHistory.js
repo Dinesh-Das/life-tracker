@@ -10,6 +10,13 @@ function activeOn(habit, dateKey) {
         (!habit.archivedAt || habit.archivedAt.slice(0, 10) > dateKey);
 }
 
+// A recorded month cell is authoritative historical evidence. Migrated habits
+// can have an ActiveFrom date newer than checks that already existed in their
+// legacy month row, so those checks must not disappear from the heatmap.
+export function shouldIncludeHistoryCell(habit, dateKey, status) {
+    return activeOn(habit, dateKey) || status === true || status === 'skip';
+}
+
 export function useYearlyHistory(spreadsheetId, year) {
     const [heatmapData, setHeatmapData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -74,9 +81,10 @@ export function useYearlyHistory(spreadsheetId, year) {
                         for (let day = 1; day <= days; day++) {
                             const key = format(new Date(year, monthIndex, day), 'yyyy-MM-dd');
                             if (key > todayKey) continue;
-                            if (!activeOn(habit, key)) continue;
+                            const status = decodeCheck(row[day]);
+                            if (!shouldIncludeHistoryCell(habit, key, status)) continue;
                             map[key].total++;
-                            if (decodeCheck(row[day]) === true) map[key].completed++;
+                            if (status === true) map[key].completed++;
                         }
                     });
                 });
