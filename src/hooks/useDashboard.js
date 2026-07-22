@@ -8,6 +8,7 @@ import { isHabitScheduledForDate } from '../lib/habitSchedule';
 import { computeStreaks } from '../lib/streakLogic';
 import {
     aggregationDayLimit,
+    calendarConsistencyPct,
     mergeMonthHabitRows,
     monthHasRecordedActivity,
     monthTabSources,
@@ -99,6 +100,7 @@ export function useDashboard(spreadsheetId, year) {
                 const upToDay = aggregationDayLimit(year, monthIndex, now);
                 let monthDone = 0;
                 let monthPossible = 0;
+                const activeDays = new Set();
 
                 (mergedMonths.get(month) || []).forEach(({ habit, statuses }) => {
                     const aggregate = habitStats.get(habit.id);
@@ -123,6 +125,7 @@ export function useDashboard(spreadsheetId, year) {
                         aggregate.total++;
                         if (status === true) {
                             monthDone++;
+                            activeDays.add(day);
                             aggregate.done++;
                             completedDates.get(habit.id)?.add(dateKey);
                         }
@@ -132,7 +135,8 @@ export function useDashboard(spreadsheetId, year) {
                 const pct = monthPossible ? Math.round((monthDone / monthPossible) * 100) : 0;
                 trend[monthIndex].pct = pct;
                 if (monthHasRecordedActivity(monthDone)) activeMonths++;
-                if (pct > bestMonth.pct) bestMonth = { name: month, pct };
+                const calendarPct = calendarConsistencyPct(activeDays.size, upToDay);
+                if (calendarPct > bestMonth.pct) bestMonth = { name: month, pct: calendarPct };
                 totalCompleted += monthDone;
             });
 

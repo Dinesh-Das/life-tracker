@@ -53,6 +53,15 @@ export function aggregationDayLimit(year, monthIndex, now = new Date()) {
     return days;
 }
 
+/**
+ * Calendar consistency for a month: the share of eligible calendar days on
+ * which at least one habit was completed. This deliberately does not let a
+ * single completed habit on a single day turn into a 100% month.
+ */
+export function calendarConsistencyPct(activeDays, dayCount) {
+    return dayCount > 0 ? Math.round((activeDays / dayCount) * 100) : 0;
+}
+
 /** An active month means the user recorded at least one completion. */
 export function monthHasRecordedActivity(completed) {
     return completed > 0;

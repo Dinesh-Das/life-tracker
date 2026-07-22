@@ -12,7 +12,7 @@ export default function SmartInsights({ habits, stats, yearlyTrend }) {
                 type: 'success',
                 icon: CheckCircle2,
                 title: "Peak Performance",
-                text: `In ${stats.bestMonth.name}, you achieved a ${stats.bestMonth.pct}% completion rate. Aim to beat this record in the coming months!`
+                text: `In ${stats.bestMonth.name}, you logged activity on ${stats.bestMonth.pct}% of calendar days. Aim to beat this record in the coming months!`
             });
         }
 

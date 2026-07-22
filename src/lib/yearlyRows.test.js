@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     aggregationDayLimit,
+    calendarConsistencyPct,
     monthHasRecordedActivity,
     monthTabSources,
     mergeMonthHabitRows,
@@ -73,5 +74,11 @@ describe('year boundaries', () => {
     it('marks only months with recorded completions as active', () => {
         expect(monthHasRecordedActivity(1)).toBe(true);
         expect(monthHasRecordedActivity(0)).toBe(false);
+    });
+
+    it('bases calendar consistency on active days, not completed habit cells', () => {
+        expect(calendarConsistencyPct(1, 31)).toBe(3);
+        expect(calendarConsistencyPct(15, 30)).toBe(50);
+        expect(calendarConsistencyPct(0, 0)).toBe(0);
     });
 });
