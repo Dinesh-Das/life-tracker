@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { batchRead, getSpreadsheet } from '../lib/sheetsApi';
 import { MONTHS } from '../lib/constants';
 import { loadAllHabits } from '../lib/habitRepository';
-import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel, normalizeHabitName } from '../lib/sheetLayout';
+import { MONTH_HABIT_ID_INDEX, habitLabel, normalizeHabitLabel, normalizeHabitName } from '../lib/sheetLayout';
 import { format } from 'date-fns';
+import { mergeMonthHabitRows, monthTabSources } from '../lib/yearlyRows';
 
 function activeOn(habit, dateKey) {
     return (!habit.activeFrom || habit.activeFrom <= dateKey) &&
@@ -14,7 +15,8 @@ function activeOn(habit, dateKey) {
 // can have an ActiveFrom date newer than checks that already existed in their
 // legacy month row, so those checks must not disappear from the heatmap.
 export function shouldIncludeHistoryCell(habit, dateKey, status) {
-    return activeOn(habit, dateKey) || status === true || status === 'skip';
+    if (status === 'skip') return false;
+    return activeOn(habit, dateKey) || status === true;
 }
 
 export function useYearlyHistory(spreadsheetId, year) {
@@ -50,15 +52,20 @@ export function useYearlyHistory(spreadsheetId, year) {
                     byName.set(name, nameValues);
                 });
                 const titles = metadata.sheets.map(sheet => sheet.properties.title);
-                const mappings = MONTHS.map(month => {
-                    const titled = `${month} ${year}`;
-                    if (titles.includes(titled)) return { month, title: titled };
-                    if (titles.includes(month) && year === new Date().getFullYear()) return { month, title: month };
-                    return null;
-                }).filter(Boolean);
+                const mappings = monthTabSources(titles, year);
                 const responses = mappings.length
                     ? await batchRead(spreadsheetId, mappings.map(mapping => `'${mapping.title}'!A6:AG`))
                     : [];
+                const resolveHabit = (row) => {
+                    let habit = byId.get(String(row?.[MONTH_HABIT_ID_INDEX] || ''));
+                    if (!habit) {
+                        const exact = byLabel.get(normalizeHabitLabel(row?.[0])) || [];
+                        const matches = exact.length ? exact : (byName.get(normalizeHabitName(row?.[0], { legacyLabel: true })) || []);
+                        if (matches.length === 1) habit = matches[0];
+                    }
+                    return habit;
+                };
+                const monthRows = mergeMonthHabitRows(mappings, responses, resolveHabit);
                 const map = {};
                 const todayKey = format(new Date(), 'yyyy-MM-dd');
                 for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
@@ -67,21 +74,14 @@ export function useYearlyHistory(spreadsheetId, year) {
                         map[format(new Date(year, monthIndex, day), 'yyyy-MM-dd')] = { completed: 0, total: 0 };
                     }
                 }
-                responses.forEach((response, index) => {
-                    const monthIndex = MONTHS.indexOf(mappings[index].month);
+                monthRows.forEach((rows, month) => {
+                    const monthIndex = MONTHS.indexOf(month);
                     const days = new Date(year, monthIndex + 1, 0).getDate();
-                    (response.values || []).forEach(row => {
-                        let habit = byId.get(String(row?.[MONTH_HABIT_ID_INDEX] || ''));
-                        if (!habit) {
-                            const exact = byLabel.get(normalizeHabitLabel(row?.[0])) || [];
-                            const matches = exact.length ? exact : (byName.get(normalizeHabitName(row?.[0], { legacyLabel: true })) || []);
-                            if (matches.length === 1) habit = matches[0];
-                        }
-                        if (!habit) return;
+                    rows.forEach(({ habit, statuses }) => {
                         for (let day = 1; day <= days; day++) {
                             const key = format(new Date(year, monthIndex, day), 'yyyy-MM-dd');
                             if (key > todayKey) continue;
-                            const status = decodeCheck(row[day]);
+                            const status = statuses[day];
                             if (!shouldIncludeHistoryCell(habit, key, status)) continue;
                             map[key].total++;
                             if (status === true) map[key].completed++;

@@ -11,8 +11,8 @@ describe('shouldIncludeHistoryCell', () => {
         expect(shouldIncludeHistoryCell(migratedHabit, '2026-07-03', true)).toBe(true);
     });
 
-    it('keeps historical skip markers recorded before a migrated ActiveFrom date', () => {
-        expect(shouldIncludeHistoryCell(migratedHabit, '2026-07-03', 'skip')).toBe(true);
+    it('keeps skip markers neutral instead of lowering completion', () => {
+        expect(shouldIncludeHistoryCell(migratedHabit, '2026-07-03', 'skip')).toBe(false);
     });
 
     it('does not add empty days before the habit was active', () => {

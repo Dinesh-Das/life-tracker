@@ -2,14 +2,24 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { batchRead, getSpreadsheet } from '../lib/sheetsApi';
 import { MONTHS } from '../lib/constants';
 import { loadAllHabits } from '../lib/habitRepository';
-import { MONTH_HABIT_ID_INDEX, decodeCheck, habitLabel, normalizeHabitLabel, normalizeHabitName } from '../lib/sheetLayout';
+import { MONTH_HABIT_ID_INDEX, habitLabel, normalizeHabitLabel, normalizeHabitName } from '../lib/sheetLayout';
 import { format } from 'date-fns';
 import { isHabitScheduledForDate } from '../lib/habitSchedule';
+import { computeStreaks } from '../lib/streakLogic';
+import {
+    aggregationDayLimit,
+    mergeMonthHabitRows,
+    monthHasRecordedActivity,
+    monthTabSources,
+} from '../lib/yearlyRows';
+
+function lifecycleActiveOn(habit, dateKey) {
+    return (!habit.activeFrom || habit.activeFrom <= dateKey) &&
+        (!habit.archivedAt || habit.archivedAt.slice(0, 10) > dateKey);
+}
 
 function activeOn(habit, dateKey, globalPause) {
-    return (!habit.activeFrom || habit.activeFrom <= dateKey) &&
-        (!habit.archivedAt || habit.archivedAt.slice(0, 10) > dateKey) &&
-        isHabitScheduledForDate(habit, dateKey, globalPause);
+    return lifecycleActiveOn(habit, dateKey) && isHabitScheduledForDate(habit, dateKey, globalPause);
 }
 
 export function useDashboard(spreadsheetId, year) {
@@ -57,12 +67,7 @@ export function useDashboard(spreadsheetId, year) {
             });
 
             const titles = spreadsheet.sheets.map(sheet => sheet.properties.title);
-            const monthMappings = MONTHS.map(month => {
-                const titled = `${month} ${year}`;
-                if (titles.includes(titled)) return { month, title: titled };
-                if (titles.includes(month) && year === new Date().getFullYear()) return { month, title: month };
-                return null;
-            }).filter(Boolean);
+            const monthMappings = monthTabSources(titles, year);
             const ranges = monthMappings.map(month => `'${month.title}'!A6:AG`);
             const hasAppSettings = titles.includes('AppSettings');
             const responses = ranges.length || hasAppSettings ? await batchRead(spreadsheetId, [...ranges, ...(hasAppSettings ? ['AppSettings!A2:C'] : [])]) : [];
@@ -70,40 +75,53 @@ export function useDashboard(spreadsheetId, year) {
             const settingsRows = hasAppSettings ? (responses.at(-1)?.values || []) : [];
             const productSettings = Object.fromEntries(settingsRows.filter(row => row[0]).map(row => [String(row[0]), String(row[1] || '')]));
             const globalPause = { from: productSettings.pauseFrom || '', until: productSettings.pauseUntil || '' };
+            const resolveHabit = (row) => {
+                let habit = byId.get(String(row?.[MONTH_HABIT_ID_INDEX] || ''));
+                if (!habit) {
+                    const exact = byLabel.get(normalizeHabitLabel(row?.[0])) || [];
+                    const matches = exact.length ? exact : (byName.get(normalizeHabitName(row?.[0], { legacyLabel: true })) || []);
+                    if (matches.length === 1) habit = matches[0];
+                }
+                return habit;
+            };
+            const mergedMonths = mergeMonthHabitRows(monthMappings, monthData, resolveHabit);
 
             const habitStats = new Map(definitions.map(habit => [habit.id, { ...habit, done: 0, total: 0, pct: 0 }]));
             const completedDates = new Map(definitions.map(habit => [habit.id, new Set()]));
+            const skippedDates = new Map(definitions.map(habit => [habit.id, new Set()]));
             const trend = MONTHS.map(name => ({ name, pct: 0 }));
             let totalCompleted = 0;
             let activeMonths = 0;
             let bestMonth = { name: '–', pct: 0 };
             const now = new Date();
 
-            monthData.forEach((range, index) => {
-                const mapping = monthMappings[index];
-                const monthIndex = MONTHS.indexOf(mapping.month);
-                const days = new Date(year, monthIndex + 1, 0).getDate();
-                const isCurrent = year === now.getFullYear() && monthIndex === now.getMonth();
-                const isFuture = new Date(year, monthIndex, 1) > now;
-                const upToDay = isFuture ? 0 : (isCurrent ? now.getDate() : days);
+            MONTHS.forEach((month, monthIndex) => {
+                const upToDay = aggregationDayLimit(year, monthIndex, now);
                 let monthDone = 0;
                 let monthPossible = 0;
 
-                (range.values || []).forEach(row => {
-                    let habit = byId.get(String(row?.[MONTH_HABIT_ID_INDEX] || ''));
-                    if (!habit) {
-                        const exact = byLabel.get(normalizeHabitLabel(row?.[0])) || [];
-                        const matches = exact.length ? exact : (byName.get(normalizeHabitName(row?.[0], { legacyLabel: true })) || []);
-                        if (matches.length === 1) habit = matches[0];
-                    }
-                    if (!habit) return;
+                (mergedMonths.get(month) || []).forEach(({ habit, statuses }) => {
                     const aggregate = habitStats.get(habit.id);
                     for (let day = 1; day <= upToDay; day++) {
                         const dateKey = format(new Date(year, monthIndex, day), 'yyyy-MM-dd');
-                        if (!activeOn(habit, dateKey, globalPause)) continue;
+                        const status = statuses[day];
+                        if (status === 'skip') {
+                            skippedDates.get(habit.id)?.add(dateKey);
+                            continue;
+                        }
+                        const scheduled = activeOn(habit, dateKey, globalPause);
+                        if (!scheduled && lifecycleActiveOn(habit, dateKey)) {
+                            const scheduleOnlyHabit = { ...habit, activeFrom: '', archivedAt: '' };
+                            if (!isHabitScheduledForDate(scheduleOnlyHabit, dateKey, globalPause)) {
+                                skippedDates.get(habit.id)?.add(dateKey);
+                            }
+                        }
+                        // A real completion in a legacy/month row is authoritative
+                        // even when migrated ActiveFrom/ArchivedAt metadata is stale.
+                        if (!scheduled && status !== true) continue;
                         monthPossible++;
                         aggregate.total++;
-                        if (decodeCheck(row[day]) === true) {
+                        if (status === true) {
                             monthDone++;
                             aggregate.done++;
                             completedDates.get(habit.id)?.add(dateKey);
@@ -113,8 +131,8 @@ export function useDashboard(spreadsheetId, year) {
 
                 const pct = monthPossible ? Math.round((monthDone / monthPossible) * 100) : 0;
                 trend[monthIndex].pct = pct;
-                if (monthPossible) activeMonths++;
-                if (pct > bestMonth.pct) bestMonth = { name: mapping.month, pct };
+                if (monthHasRecordedActivity(monthDone)) activeMonths++;
+                if (pct > bestMonth.pct) bestMonth = { name: month, pct };
                 totalCompleted += monthDone;
             });
 
@@ -124,24 +142,22 @@ export function useDashboard(spreadsheetId, year) {
 
             const streakMap = {};
             let bestStreak = 0;
+            const yearEnd = year === now.getFullYear()
+                ? format(now, 'yyyy-MM-dd')
+                : `${year}-12-31`;
             completedDates.forEach((dates, habitId) => {
-                const sorted = [...dates].sort();
-                let run = 0;
-                let habitBest = 0;
-                let previousDay = null;
-                sorted.forEach(dateKey => {
-                    const dayNumber = Math.floor(Date.parse(`${dateKey}T00:00:00Z`) / 86_400_000);
-                    run = previousDay !== null && dayNumber === previousDay + 1 ? run + 1 : 1;
-                    previousDay = dayNumber;
-                    habitBest = Math.max(habitBest, run);
-                });
+                const recomputed = computeStreaks(
+                    [...dates],
+                    yearEnd,
+                    [...(skippedDates.get(habitId) || [])]
+                );
                 streakMap[habitId] = {
-                    current: habitBest,
-                    best: habitBest,
-                    lastDone: sorted.at(-1) || '',
-                    total: dates.size,
+                    current: recomputed.current,
+                    best: recomputed.best,
+                    lastDone: recomputed.lastDone,
+                    total: recomputed.total,
                 };
-                bestStreak = Math.max(bestStreak, habitBest);
+                bestStreak = Math.max(bestStreak, recomputed.best);
             });
 
             if (request !== generation.current) return;

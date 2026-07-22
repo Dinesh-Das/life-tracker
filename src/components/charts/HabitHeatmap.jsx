@@ -4,8 +4,8 @@ import { format, parseISO } from 'date-fns';
 function HabitHeatmap({ data, year }) {
     // data = Array of { date: 'YYYY-MM-DD', count: N, intensity: 0-5 }
 
-    const { paddedDays, weeks } = useMemo(() => {
-        if (!data || data.length === 0) return { paddedDays: [], weeks: 0 };
+    const { paddedDays, weeks, monthLabels } = useMemo(() => {
+        if (!data || data.length === 0) return { paddedDays: [], weeks: 0, monthLabels: new Map() };
 
         // Find what day of the week Jan 1st is (0 = Sunday, 1 = Monday ...)
         // Let's use 0 = Sunday
@@ -30,9 +30,17 @@ function HabitHeatmap({ data, year }) {
             combined.push(...endPads);
         }
 
+        const labels = new Map();
+        combined.forEach((day, index) => {
+            if (day.date?.endsWith('-01')) {
+                labels.set(Math.floor(index / 7), format(parseISO(day.date), 'MMM'));
+            }
+        });
+
         return {
             paddedDays: combined,
-            weeks: combined.length / 7
+            weeks: combined.length / 7,
+            monthLabels: labels,
         };
     }, [data, year]);
 
@@ -74,10 +82,10 @@ function HabitHeatmap({ data, year }) {
                     {/* Grid */}
                     {Array.from({ length: weeks }).map((_, wIdx) => (
                         <div key={`week-${wIdx}`} className="heatmap-week relative group">
-                            {/* Simple month label for the first week of a month */}
-                            {wIdx % 4 === 0 && wIdx < 50 && (
+                            {/* Label the actual week containing the first of each month. */}
+                            {monthLabels.has(wIdx) && (
                                 <div className="absolute -top-5 text-[9px] font-bold whitespace-nowrap" style={{ color: 'var(--text-muted)' }}>
-                                    {paddedDays[wIdx * 7]?.date ? format(parseISO(paddedDays[wIdx * 7].date), 'MMM') : ''}
+                                    {monthLabels.get(wIdx)}
                                 </div>
                             )}
 
