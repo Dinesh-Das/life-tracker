@@ -10,7 +10,7 @@ import {
     TrendingUp,
     ArrowRight
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import WeeklyReviewCard from '../components/ui/WeeklyReviewCard';
 
 const QUOTES = [

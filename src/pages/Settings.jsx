@@ -1,6 +1,6 @@
 import Header from '../components/layout/Header'
 import { Plus, Trash2, Edit2, User, Shield, ExternalLink, Copy, RefreshCw, Search, ArchiveRestore, ArrowUp, ArrowDown, Wrench } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { useSettings } from '../hooks/useSettings'
 import { useAppContext } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'

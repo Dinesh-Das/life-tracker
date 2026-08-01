@@ -5,14 +5,19 @@ import { MONTHS } from './constants';
 import { loadAllHabits } from './habitRepository';
 import { MONTH_HABIT_ID_INDEX, decodeCheck, legacyLabelMatchesHabit } from './sheetLayout';
 import { isHabitScheduledForDate } from './habitSchedule';
+import { inferLegacyMonthYears, legacyMonthTitles } from './yearlyRows';
 
 const MONTH_TAB_RE = new RegExp(`^(${MONTHS.join('|')}) (\\d{4})$`);
 
-function parseMonthTab(title) {
+function parseMonthTab(title, legacyYears = {}) {
     const match = String(title || '').match(MONTH_TAB_RE);
     if (match) return { title, monthIndex: MONTHS.indexOf(match[1]), year: Number(match[2]) };
     const legacyIndex = MONTHS.indexOf(String(title || ''));
-    if (legacyIndex !== -1) return { title, monthIndex: legacyIndex, year: new Date().getFullYear() };
+    if (legacyIndex !== -1) return {
+        title,
+        monthIndex: legacyIndex,
+        year: legacyYears[String(title)] || new Date().getFullYear(),
+    };
     return null;
 }
 
@@ -26,8 +31,14 @@ export async function recomputeStreaksForHabits(spreadsheetId, habitIds) {
     const requestedHabits = habits.filter(item => requestedIds.includes(item.id));
     if (!requestedHabits.length) return {};
 
-    const monthTabs = (metadata.sheets || [])
-        .map(sheet => parseMonthTab(sheet.properties?.title))
+    const titles = (metadata.sheets || []).map(sheet => sheet.properties?.title);
+    const bareTitles = legacyMonthTitles(titles);
+    const bareHeaders = bareTitles.length
+        ? await batchRead(spreadsheetId, bareTitles.map(title => `'${title}'!A1`))
+        : [];
+    const legacyYears = inferLegacyMonthYears(titles, bareHeaders);
+    const monthTabs = titles
+        .map(title => parseMonthTab(title, legacyYears))
         .filter(Boolean)
         .sort((a, b) => a.year - b.year || a.monthIndex - b.monthIndex);
     if (!monthTabs.length) return {};

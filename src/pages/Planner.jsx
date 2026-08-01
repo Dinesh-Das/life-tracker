@@ -5,7 +5,7 @@ import { useAppContext } from '../context/AppContext'
 import { MONTHS } from '../lib/constants'
 import { getWeeksInMonth } from '../lib/dateUtils'
 import { format } from 'date-fns'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 
 // Habit Components
 import MonthHeader from '../components/ui/MonthHeader'

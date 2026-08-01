@@ -4,7 +4,10 @@ import { MONTHS } from '../lib/constants';
 import { loadAllHabits } from '../lib/habitRepository';
 import { MONTH_HABIT_ID_INDEX, habitLabel, normalizeHabitLabel, normalizeHabitName } from '../lib/sheetLayout';
 import { format } from 'date-fns';
-import { mergeMonthHabitRows, monthTabSources } from '../lib/yearlyRows';
+import { isHabitScheduledForDate } from '../lib/habitSchedule';
+import {
+    inferLegacyMonthYears, legacyMonthTitles, mergeMonthHabitRows, monthTabSources,
+} from '../lib/yearlyRows';
 
 function activeOn(habit, dateKey) {
     return (!habit.activeFrom || habit.activeFrom <= dateKey) &&
@@ -14,9 +17,9 @@ function activeOn(habit, dateKey) {
 // A recorded month cell is authoritative historical evidence. Migrated habits
 // can have an ActiveFrom date newer than checks that already existed in their
 // legacy month row, so those checks must not disappear from the heatmap.
-export function shouldIncludeHistoryCell(habit, dateKey, status) {
+export function shouldIncludeHistoryCell(habit, dateKey, status, globalPause = null) {
     if (status === 'skip') return false;
-    return activeOn(habit, dateKey) || status === true;
+    return (activeOn(habit, dateKey) && isHabitScheduledForDate(habit, dateKey, globalPause)) || status === true;
 }
 
 export function useYearlyHistory(spreadsheetId, year) {
@@ -52,10 +55,23 @@ export function useYearlyHistory(spreadsheetId, year) {
                     byName.set(name, nameValues);
                 });
                 const titles = metadata.sheets.map(sheet => sheet.properties.title);
-                const mappings = monthTabSources(titles, year);
-                const responses = mappings.length
-                    ? await batchRead(spreadsheetId, mappings.map(mapping => `'${mapping.title}'!A6:AG`))
+                const bareTitles = legacyMonthTitles(titles);
+                const bareHeaders = bareTitles.length
+                    ? await batchRead(spreadsheetId, bareTitles.map(title => `'${title}'!A1`))
                     : [];
+                const legacyYears = inferLegacyMonthYears(titles, bareHeaders);
+                const mappings = monthTabSources(titles, year, legacyYears);
+                const hasAppSettings = titles.includes('AppSettings');
+                const responses = mappings.length || hasAppSettings
+                    ? await batchRead(spreadsheetId, [
+                        ...mappings.map(mapping => `'${mapping.title}'!A6:AG`),
+                        ...(hasAppSettings ? ['AppSettings!A2:C'] : []),
+                    ])
+                    : [];
+                const monthResponses = responses.slice(0, mappings.length);
+                const settingsRows = hasAppSettings ? (responses.at(-1)?.values || []) : [];
+                const productSettings = Object.fromEntries(settingsRows.filter(row => row[0]).map(row => [String(row[0]), String(row[1] || '')]));
+                const globalPause = { from: productSettings.pauseFrom || '', until: productSettings.pauseUntil || '' };
                 const resolveHabit = (row) => {
                     let habit = byId.get(String(row?.[MONTH_HABIT_ID_INDEX] || ''));
                     if (!habit) {
@@ -65,7 +81,7 @@ export function useYearlyHistory(spreadsheetId, year) {
                     }
                     return habit;
                 };
-                const monthRows = mergeMonthHabitRows(mappings, responses, resolveHabit);
+                const monthRows = mergeMonthHabitRows(mappings, monthResponses, resolveHabit);
                 const map = {};
                 const todayKey = format(new Date(), 'yyyy-MM-dd');
                 for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
@@ -82,7 +98,7 @@ export function useYearlyHistory(spreadsheetId, year) {
                             const key = format(new Date(year, monthIndex, day), 'yyyy-MM-dd');
                             if (key > todayKey) continue;
                             const status = statuses[day];
-                            if (!shouldIncludeHistoryCell(habit, key, status)) continue;
+                            if (!shouldIncludeHistoryCell(habit, key, status, globalPause)) continue;
                             map[key].total++;
                             if (status === true) map[key].completed++;
                         }

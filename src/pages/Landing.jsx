@@ -1,5 +1,5 @@
 import { ArrowRight, BarChart3, CheckSquare2, Database, LayoutDashboard, ShieldCheck, Sparkles } from 'lucide-react';
-import { Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router';
 import PublicShell from '../components/layout/PublicShell';
 import { useAuth } from '../context/AuthContext';
 

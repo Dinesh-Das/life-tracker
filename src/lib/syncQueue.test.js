@@ -3,11 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mocks = vi.hoisted(() => ({
     batchWrite: vi.fn(),
     appendRows: vi.fn(),
+    readDataRows: vi.fn(),
 }));
 
 vi.mock('./sheetsApi', () => ({
     batchWrite: mocks.batchWrite,
     appendRows: mocks.appendRows,
+    readDataRows: mocks.readDataRows,
 }));
 
 vi.mock('react-hot-toast', () => {
@@ -17,7 +19,10 @@ vi.mock('react-hot-toast', () => {
     return { default: fn };
 });
 
-import { enqueue, flush, pendingCount, removeQueuedRecompute, resilientBatchWrite, resilientAppendRows } from './syncQueue';
+import {
+    enqueue, flush, pendingCount, removeQueuedRecompute,
+    resilientAppendRows, resilientBatchWrite, resilientUpsertDateRow,
+} from './syncQueue';
 
 const setOnline = (val) =>
     Object.defineProperty(window.navigator, 'onLine', { value: val, configurable: true, writable: true });
@@ -27,6 +32,7 @@ beforeEach(() => {
     vi.clearAllMocks();
     setOnline(true);
     window.gapi = { client: { sheets: {} } };
+    mocks.readDataRows.mockResolvedValue([]);
 });
 
 describe('enqueue / pendingCount', () => {
@@ -92,6 +98,18 @@ describe('flush', () => {
         expect(mocks.batchWrite).not.toHaveBeenCalled();
         expect(pendingCount()).toBe(1);
     });
+
+    it('dead-letters a permanent failure and continues with later operations', async () => {
+        enqueue({ type: 'batchWrite', spreadsheetId: 'id', data: [{ range: 'Missing!A1', values: [['x']] }] });
+        enqueue({ type: 'batchWrite', spreadsheetId: 'id', data: [{ range: 'A1', values: [['ok']] }] });
+        mocks.batchWrite.mockRejectedValueOnce({ status: 400 }).mockResolvedValueOnce({});
+
+        await flush('id');
+
+        expect(mocks.batchWrite).toHaveBeenCalledTimes(2);
+        expect(pendingCount()).toBe(0);
+        expect(JSON.parse(localStorage.getItem('lt_sync_dead_letter_v1'))).toHaveLength(1);
+    });
 });
 
 describe('resilientBatchWrite', () => {
@@ -137,5 +155,30 @@ describe('resilientAppendRows', () => {
         await resilientAppendRows('id', 'DailyWins!A:F', [['2026-07-05', 'x']]);
         expect(pendingCount()).toBe(1);
         expect(mocks.appendRows).not.toHaveBeenCalled();
+    });
+});
+
+describe('resilientUpsertDateRow', () => {
+    it('coalesces repeated offline snapshots for the same workbook, range and date', async () => {
+        setOnline(false);
+        await resilientUpsertDateRow('id', 'DailyWins!A:F', ['2026-07-05', 'first']);
+        await resilientUpsertDateRow('id', 'DailyWins!A:F', ['2026-07-05', 'latest']);
+
+        const queue = JSON.parse(localStorage.getItem('lt_sync_queue_v1'));
+        expect(queue).toHaveLength(1);
+        expect(queue[0].row[1]).toBe('latest');
+    });
+
+    it('updates the latest existing date row instead of appending a duplicate', async () => {
+        mocks.readDataRows.mockResolvedValue([
+            ['2026-07-05', 'old'],
+            ['2026-07-05', 'newer'],
+        ]);
+        mocks.batchWrite.mockResolvedValue({});
+
+        await resilientUpsertDateRow('id', 'DailyWins!A:F', ['2026-07-05', 'latest']);
+
+        expect(mocks.appendRows).not.toHaveBeenCalled();
+        expect(mocks.batchWrite.mock.calls[0][1][0].range).toBe('DailyWins!A3:F3');
     });
 });

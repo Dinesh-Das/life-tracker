@@ -6,20 +6,27 @@ import { resilientAppendRows, resilientBatchWrite } from './syncQueue';
  * ([Date, HabitID, Note]), created on first use for existing sheets.
  */
 const TAB = 'HabitNotes';
-let ensured = false;
+const ensurePromises = new Map();
 
 export async function ensureHabitNotesSheet(spreadsheetId) {
-    if (ensured) return;
-    const meta = await getSpreadsheet(spreadsheetId);
-    const exists = (meta.sheets || []).some(s => s.properties?.title === TAB);
-    if (!exists) {
-        await addSheet(spreadsheetId, TAB);
-        await batchWrite(spreadsheetId, [{
-            range: `${TAB}!A1:C1`,
-            values: [['Date', 'HabitID', 'Note']]
-        }]);
-    }
-    ensured = true;
+    if (!spreadsheetId) return;
+    if (ensurePromises.has(spreadsheetId)) return ensurePromises.get(spreadsheetId);
+    const promise = (async () => {
+        const meta = await getSpreadsheet(spreadsheetId, { forceRefresh: true });
+        const exists = (meta.sheets || []).some(s => s.properties?.title === TAB);
+        if (!exists) {
+            await addSheet(spreadsheetId, TAB);
+            await batchWrite(spreadsheetId, [{
+                range: `${TAB}!A1:C1`,
+                values: [['Date', 'HabitID', 'Note']]
+            }]);
+        }
+    })().catch(error => {
+        ensurePromises.delete(spreadsheetId);
+        throw error;
+    });
+    ensurePromises.set(spreadsheetId, promise);
+    return promise;
 }
 
 /** All non-empty notes for one habit, oldest first. */

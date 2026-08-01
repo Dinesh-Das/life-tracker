@@ -38,25 +38,22 @@ describe('monthTabsForYear', () => {
 });
 
 describe('computeYearSummary', () => {
+    const habit = {
+        id: 'habit-1', activeFrom: '2026-01-01', archivedAt: '',
+        scheduleType: 'frequency', pausedFrom: '', pausedUntil: '',
+    };
     const grids = [
-        // Jan: 3 done of 6 filled → 50%
-        { month: 'Jan', rows: [['✓', 'FALSE', '✓'], ['✓', 'FALSE', 'FALSE']] },
-        // Feb: 3 done of 4 filled → 75%
-        { month: 'Feb', rows: [['✓', '✓'], ['✓', 'FALSE']] },
-        // Mar: empty month
-        { month: 'Mar', rows: [[]] },
+        { month: 'Jan', rows: [{ habit, statuses: { 1: true, 2: false, 3: false } }] },
     ];
 
     it('computes totals, best month, active months and monthly percentages', () => {
-        const s = computeYearSummary(2026, grids);
+        const s = computeYearSummary(2026, grids, { now: new Date(2026, 0, 3) });
         expect(s.year).toBe(2026);
-        expect(s.totalCompleted).toBe(6);
-        expect(s.completionPct).toBe(60); // 6 of 10 filled cells
-        expect(s.activeMonths).toBe(2);
-        expect(s.bestMonth).toEqual({ name: 'Feb', pct: 75 });
-        expect(s.monthlyPcts[0]).toEqual({ name: 'Jan', pct: 50 });
-        expect(s.monthlyPcts[1]).toEqual({ name: 'Feb', pct: 75 });
-        expect(s.monthlyPcts[2]).toEqual({ name: 'Mar', pct: 0 });
+        expect(s.totalCompleted).toBe(1);
+        expect(s.completionPct).toBe(33); // blank missed cells remain possible days
+        expect(s.activeMonths).toBe(1);
+        expect(s.bestMonth).toEqual({ name: 'Jan', pct: 33 });
+        expect(s.monthlyPcts[0]).toEqual({ name: 'Jan', pct: 33 });
         expect(s.monthlyPcts).toHaveLength(12);
     });
 

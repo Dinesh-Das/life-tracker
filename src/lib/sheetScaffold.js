@@ -25,13 +25,14 @@ export function buildMonthTabData(month, year, habits = []) {
 }
 
 export async function scaffoldSheet(userName) {
+    let spreadsheetId = null;
     try {
         const currentYear = new Date().getFullYear();
 
         // 1. Create the new Spreadsheet
         const title = `LifeTracker — ${userName}`;
         const newSheet = await createSpreadsheet(title);
-        const spreadsheetId = newSheet.spreadsheetId;
+        spreadsheetId = newSheet.spreadsheetId;
 
         // 2. Add all necessary tabs
         // JournalLogs MUST be in this list — it's written to in batchWrite below
@@ -155,6 +156,20 @@ export async function scaffoldSheet(userName) {
         return spreadsheetId;
     } catch (e) {
         console.error('Sheet scaffolding failed:', e);
+        // A partially-created workbook would be rediscovered by the legacy
+        // title lookup on the next sign-in and strand the app in a broken
+        // state. Move only the just-created file to Drive trash; it remains
+        // recoverable by the user.
+        if (spreadsheetId && window.gapi?.client?.drive?.files) {
+            try {
+                await window.gapi.client.drive.files.update({
+                    fileId: spreadsheetId,
+                    resource: { trashed: true },
+                });
+            } catch (cleanupError) {
+                console.error('Failed to trash partially-created workbook:', cleanupError);
+            }
+        }
         throw e;
     }
 }

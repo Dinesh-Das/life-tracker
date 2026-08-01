@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 export default function PublicShell({ children, actions = null, compact = false }) {
     return (

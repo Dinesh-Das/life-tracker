@@ -1,6 +1,6 @@
 /* LifeTracker service worker — app shell + runtime caching.
    Bump CACHE_VERSION to invalidate old caches on deploy. */
-const CACHE_VERSION = 'lifetracker-v3';
+const CACHE_VERSION = 'lifetracker-v4';
 const APP_SHELL = ['/', '/manifest.webmanifest', '/logo.png'];
 
 self.addEventListener('install', (event) => {
@@ -77,9 +77,16 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    const url = event.notification.data?.url || '/daily';
+    let target = new URL('/daily', self.location.origin);
+    try {
+        const requested = new URL(event.notification.data?.url || '/daily', self.location.origin);
+        if (requested.origin === self.location.origin) target = requested;
+    } catch { /* use safe default */ }
     event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windows => {
-        const existing = windows.find(client => new URL(client.url).pathname === url);
-        return existing ? existing.focus() : clients.openWindow(url);
+        const existing = windows.find(client => {
+            const clientUrl = new URL(client.url);
+            return clientUrl.pathname === target.pathname && clientUrl.search === target.search;
+        });
+        return existing ? existing.focus() : clients.openWindow(target.href);
     }));
 });

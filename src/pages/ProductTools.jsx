@@ -83,7 +83,7 @@ export default function ProductTools() {
                     }} />
                 </div>
                 {report && <div className="tool-report"><strong>{report.healthy ? 'Workbook healthy' : `${report.issues.length} issue(s) found`}</strong><span>{report.tabs} tabs · {report.habits} habits</span>{report.issues.map((issue, index) => <span key={index}>• {issue.type}: {issue.title || issue.count}</span>)}</div>}
-                {backupPreview && <div className="tool-report"><strong>Restore preview</strong><span>{Object.keys(backupPreview.sheets).length} tabs · created {backupPreview.createdAt ? new Date(backupPreview.createdAt).toLocaleString() : 'legacy export'}</span><button className={action} disabled={!!busy} onClick={() => { if (confirm('Replace current sheet values with this backup? Create a fresh backup first.')) run('restore', () => restoreBackup(spreadsheetId, backupPreview), 'Backup restored').then(() => setBackupPreview(null)); }}><ArchiveRestore size={15} /> Confirm restore</button></div>}
+                {backupPreview && <div className="tool-report"><strong>Restore preview</strong><span>{Object.keys(backupPreview.sheets).length} tabs · created {backupPreview.createdAt ? new Date(backupPreview.createdAt).toLocaleString() : 'legacy export'}</span><button className={action} disabled={!!busy} onClick={async () => { if (!confirm('Replace current sheet values with this backup? Create a fresh backup first.')) return; const restored = await run('restore', () => restoreBackup(spreadsheetId, backupPreview), 'Backup restored'); if (restored) setBackupPreview(null); }}><ArchiveRestore size={15} /> Confirm restore</button></div>}
             </section>
 
             <section className="glass-card" style={card}>

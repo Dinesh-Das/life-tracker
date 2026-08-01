@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Droplets, Gauge, PenLine, Plus, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { roundLiters } from '../../lib/waterUnits';
 
 export default function MobileQuickEntry({ habits, checks, activeDay, toggleCheck, metrics, mentalValue, setMentalValue }) {

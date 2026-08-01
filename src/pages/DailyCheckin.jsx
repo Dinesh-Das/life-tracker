@@ -5,7 +5,7 @@ import { useHabits } from '../hooks/useHabits'
 import { format } from 'date-fns'
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { CheckCircle2, Circle, Brain, Trophy, Zap, Heart, DollarSign, Star, ChevronLeft, ChevronRight, CalendarClock, Info, Snowflake, Bell, BellOff, BookOpen } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link } from 'react-router'
 import { useWins } from '../hooks/useWins';
 import { useStreaks } from '../hooks/useStreaks';
 import { useSkipDay } from '../hooks/useSkipDay';

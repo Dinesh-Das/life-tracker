@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink } from 'react-router'
 import { Calendar, CheckSquare, LayoutDashboard, Settings, Flower2, LogOut, PenLine, Timer, TrendingUp, Award, Moon, Sun, Wrench } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { useAppContext } from '../../context/AppContext'

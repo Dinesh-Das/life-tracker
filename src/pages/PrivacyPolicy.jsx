@@ -1,12 +1,12 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 function PrivacyPolicy() {
     return (
         <div style={{ minHeight: '100vh', background: 'var(--background)', color: 'var(--text-heading)', padding: '40px 24px', fontFamily: 'var(--font-body)' }}>
             <div style={{ maxWidth: '800px', margin: '0 auto', background: 'rgba(255,255,255,0.6)', padding: '40px', borderRadius: '24px', backdropFilter: 'blur(20px)' }}>
                 <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', marginBottom: '24px' }}>Privacy Policy for LifeTracker</h1>
-                <p style={{ marginBottom: '16px' }}>Last updated: {new Date().toLocaleDateString()}</p>
+                <p style={{ marginBottom: '16px' }}>Last updated: August 2, 2026</p>
                 
                 <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px' }}>1. Introduction</h2>
                 <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>Welcome to LifeTracker. This Privacy Policy explains how we collect, use, and protect your information when you use our application.</p>
@@ -25,8 +25,9 @@ function PrivacyPolicy() {
                 </p>
 
                 <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px' }}>4. Data Storage & Sharing</h2>
-                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>All your habit tracking data, journal entries, and personal statistics are stored directly in your own Google Sheet. LifeTracker does not store your personal data on external servers, nor do we sell or share your data with any third parties.</p>
-                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>To support faster loading and offline changes, the app may temporarily cache spreadsheet rows in your browser&apos;s IndexedDB and queue unsynced changes in localStorage. This browser-local data is not sent to a LifeTracker server and can be cleared using Hard refresh in Settings or by clearing site data.</p>
+                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>All habit tracking data, journal entries, and personal statistics are stored directly in your own Google Sheet. We do not sell that data or store it in a separate LifeTracker database.</p>
+                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>To support faster loading and offline changes, the app may temporarily cache spreadsheet rows in your browser&apos;s IndexedDB and queue unsynced changes in localStorage. Hard refresh clears the read cache; queued changes remain until synchronized. Clearing browser site data removes both.</p>
+                <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>If you explicitly enable background reminders, your browser sends a Web Push subscription endpoint and encryption keys to the configured same-origin notification service. Habit, journal, cycle, and spreadsheet contents are not included in that subscription.</p>
 
                 <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px' }}>5. Contact Us</h2>
                 <p style={{ marginBottom: '24px', lineHeight: 1.6 }}>If you have any questions about this Privacy Policy, please contact the developer.</p>

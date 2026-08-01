@@ -311,10 +311,58 @@ export async function findSpreadsheet(title) {
     const safeTitle = title.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
     const res = await window.gapi.client.drive.files.list({
         q: `name = '${safeTitle}' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
-        fields: 'files(id, name)',
-        pageSize: 1
+        fields: 'files(id, name, createdTime)',
+        orderBy: 'createdTime',
+        pageSize: 10
     });
     return res.result.files?.[0] || null;
+}
+
+const escapeDriveQueryValue = value => String(value || '')
+    .replaceAll('\\', '\\\\')
+    .replaceAll("'", "\\'");
+
+/**
+ * Resolve the workbook by a stable Google account identifier. The legacy
+ * title fallback migrates existing installations the first time they sign in
+ * after this marker was introduced.
+ */
+export async function findLifeTrackerSpreadsheet(accountId, legacyTitle) {
+    if (accountId) {
+        const safeAccountId = escapeDriveQueryValue(accountId);
+        const tagged = await window.gapi.client.drive.files.list({
+            q: `appProperties has { key='lifeTrackerAccount' and value='${safeAccountId}' } and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false`,
+            fields: 'files(id, name, createdTime)',
+            orderBy: 'createdTime',
+            pageSize: 10,
+        });
+        if (tagged.result.files?.length) return tagged.result.files[0];
+    }
+    if (!legacyTitle) return null;
+
+    const exactLegacyMatch = await findSpreadsheet(legacyTitle);
+    if (exactLegacyMatch) return exactLegacyMatch;
+
+    // Before stable account markers existed the profile name was embedded in
+    // the title. If that name changed, recover the oldest app-visible tracker
+    // workbook in this Google account instead of creating a duplicate.
+    const legacyCandidates = await window.gapi.client.drive.files.list({
+        q: "name contains 'LifeTracker' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",
+        fields: 'files(id, name, createdTime)',
+        orderBy: 'createdTime',
+        pageSize: 100,
+    });
+    return (legacyCandidates.result.files || []).find(file => /^LifeTracker\s*[—-]/i.test(file.name || '')) || null;
+}
+
+/** Attach the stable account marker used by findLifeTrackerSpreadsheet. */
+export async function tagLifeTrackerSpreadsheet(spreadsheetId, accountId) {
+    if (!spreadsheetId || !accountId) return;
+    await window.gapi.client.drive.files.update({
+        fileId: spreadsheetId,
+        resource: { appProperties: { lifeTrackerAccount: String(accountId) } },
+        fields: 'id, appProperties',
+    });
 }
 /**
  * Convert a 0-based column index to a Google Sheets column label (A, B, C... AA, AB...).

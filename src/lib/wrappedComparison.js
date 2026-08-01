@@ -1,4 +1,7 @@
 import { MONTHS } from './constants';
+import { format } from 'date-fns';
+import { isHabitScheduledForDate } from './habitSchedule';
+import { aggregationDayLimit } from './yearlyRows';
 
 /**
  * Multi-year Wrapped comparison — pure helpers that discover which years
@@ -8,9 +11,6 @@ import { MONTHS } from './constants';
  * Streaks are deliberately excluded: the Streaks tab is lifetime-scoped,
  * so a per-year comparison of it would be misleading.
  */
-
-const isDone = (v) => v === '✓' || v === true || v === 'TRUE' || v === 'checked';
-const isFilled = (v) => v !== '' && v !== null && v !== undefined;
 
 const YEAR_TAB_RE = /^([A-Za-z]+) (\d{4})$/;
 
@@ -31,7 +31,8 @@ export function yearsFromSheetTitles(titles = [], legacyYear = null) {
         if (m && MONTHS.includes(m[1])) {
             years.add(parseInt(m[2], 10));
         } else if (legacyYear !== null && MONTHS.includes(String(title))) {
-            years.add(legacyYear);
+            const resolvedYear = typeof legacyYear === 'object' ? legacyYear?.[String(title)] : legacyYear;
+            if (resolvedYear) years.add(resolvedYear);
         }
     });
     return [...years].sort((a, b) => b - a);
@@ -48,7 +49,8 @@ export function monthTabsForYear(titles = [], year, legacyYear = null) {
     return MONTHS.map((month) => {
         const titled = `${month} ${year}`;
         if (titles.includes(titled)) return { month, title: titled };
-        if (year === legacyYear && titles.includes(month)) return { month, title: month };
+        const resolvedYear = typeof legacyYear === 'object' ? legacyYear?.[month] : legacyYear;
+        if (year === resolvedYear && titles.includes(month)) return { month, title: month };
         return null;
     }).filter(Boolean);
 }
@@ -64,7 +66,7 @@ export function monthTabsForYear(titles = [], year, legacyYear = null) {
  *            activeMonths:number, bestMonth:{name:string,pct:number},
  *            monthlyPcts:Array<{name:string,pct:number}>}}
  */
-export function computeYearSummary(year, monthGrids = []) {
+export function computeYearSummary(year, monthGrids = [], { globalPause = null, now = new Date() } = {}) {
     let totalCompleted = 0;
     let totalPossible = 0;
     let activeMonths = 0;
@@ -74,11 +76,21 @@ export function computeYearSummary(year, monthGrids = []) {
     monthGrids.forEach(({ month, rows }) => {
         let done = 0;
         let possible = 0;
-        (rows || []).forEach((row) => {
-            (row || []).forEach((cell) => {
-                if (isDone(cell)) done++;
-                if (isFilled(cell)) possible++;
-            });
+        const monthIndex = MONTHS.indexOf(month);
+        const upToDay = aggregationDayLimit(year, monthIndex, now);
+        (rows || []).forEach(({ habit, statuses } = {}) => {
+            if (!habit) return;
+            for (let day = 1; day <= upToDay; day++) {
+                const status = statuses?.[day];
+                if (status === 'skip') continue;
+                const dateKey = format(new Date(year, monthIndex, day), 'yyyy-MM-dd');
+                const scheduled = isHabitScheduledForDate(habit, dateKey, globalPause);
+                // Preserve real legacy completions even if later lifecycle
+                // metadata says the habit was not scheduled on that date.
+                if (!scheduled && status !== true) continue;
+                possible++;
+                if (status === true) done++;
+            }
         });
         const pct = possible > 0 ? Math.round((done / possible) * 100) : 0;
         if (pct > 0) activeMonths++;

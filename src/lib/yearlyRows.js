@@ -1,6 +1,25 @@
 import { MONTHS } from './constants';
 import { decodeCheck } from './sheetLayout';
 
+export function legacyMonthTitles(titles = []) {
+    return MONTHS.filter(month => titles.includes(month));
+}
+
+/**
+ * Bare legacy tabs still contain their original year in A1 (for example
+ * "Jan 2025 Tracking"). Preserve that year instead of reassigning the tab to
+ * whatever year the browser happens to be running in.
+ */
+export function inferLegacyMonthYears(titles = [], headerResponses = [], fallbackYear = new Date().getFullYear()) {
+    const result = {};
+    legacyMonthTitles(titles).forEach((month, index) => {
+        const header = String(headerResponses[index]?.values?.[0]?.[0] || '');
+        const match = header.match(/\b(?:19|20)\d{2}\b/);
+        result[month] = match ? Number(match[0]) : fallbackYear;
+    });
+    return result;
+}
+
 /**
  * Return every month-tab source that belongs to a year. During migration a
  * current year can have both a legacy `Jul` tab and a `Jul 2026` tab; both are
@@ -11,7 +30,8 @@ export function monthTabSources(titles = [], year, legacyYear = new Date().getFu
         const sources = [];
         const titled = `${month} ${year}`;
         if (titles.includes(titled)) sources.push({ month, title: titled });
-        if (year === legacyYear && titles.includes(month)) sources.push({ month, title: month });
+        const monthLegacyYear = typeof legacyYear === 'object' ? legacyYear?.[month] : legacyYear;
+        if (year === monthLegacyYear && titles.includes(month)) sources.push({ month, title: month });
         return sources;
     });
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { readDataRows } from '../lib/sheetsApi';
 import { findLatestDateRowIndex } from '../lib/dateRows';
-import { resilientBatchWrite, resilientAppendRows } from '../lib/syncQueue';
+import { resilientBatchWrite, resilientUpsertDateRow } from '../lib/syncQueue';
 import { ensureSleepSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -40,7 +40,7 @@ export function useSleep(spreadsheetId, dateStr) {
                 values: [row],
             }]);
         } else {
-            const result = await resilientAppendRows(spreadsheetId, 'SleepLogs!A:F', [row]);
+            const result = await resilientUpsertDateRow(spreadsheetId, 'SleepLogs!A:F', row);
             const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
             if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
         }

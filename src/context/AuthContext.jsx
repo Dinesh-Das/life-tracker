@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { findSpreadsheet } from '../lib/sheetsApi';
+import { findLifeTrackerSpreadsheet, getSpreadsheet, tagLifeTrackerSpreadsheet } from '../lib/sheetsApi';
 import { scaffoldSheet } from '../lib/sheetScaffold';
 import { loadAllHabits, migrateHabitIdsAcrossMonths } from '../lib/habitRepository';
 
@@ -93,18 +93,32 @@ export function AuthProvider({ children }) {
                     ],
                 });
 
-                const cachedSession = readCachedSession();
+                let cachedSession = readCachedSession();
                 if (cachedSession) {
                     window.gapi.client.setToken({ access_token: cachedSession.accessToken });
-                    setToken(cachedSession.accessToken);
-                    setUser({
-                        getName: () => cachedSession.profile.name,
-                        getEmail: () => cachedSession.profile.email,
-                        getImageUrl: () => cachedSession.profile.picture,
-                        firstName: cachedSession.profile.given_name,
-                    });
-                    setSpreadsheetId(cachedSession.spreadsheetId);
-                    setUserGender(cachedSession.gender || 'needs_selection');
+                    try {
+                        // Do not admit a cached user until both the token and
+                        // workbook are still usable. Otherwise protected pages
+                        // can mount forever with a null/broken data source.
+                        await getSpreadsheet(cachedSession.spreadsheetId, { forceRefresh: true });
+                        setToken(cachedSession.accessToken);
+                        setUser({
+                            getName: () => cachedSession.profile.name,
+                            getEmail: () => cachedSession.profile.email,
+                            getImageUrl: () => cachedSession.profile.picture,
+                            firstName: cachedSession.profile.given_name,
+                        });
+                        setSpreadsheetId(cachedSession.spreadsheetId);
+                        setUserGender(cachedSession.gender || 'needs_selection');
+                        import('../lib/syncQueue').then(({ initSyncQueue, flush }) => {
+                            initSyncQueue(cachedSession.spreadsheetId);
+                            void flush(cachedSession.spreadsheetId);
+                        });
+                    } catch {
+                        sessionStorage.removeItem(SESSION_KEY);
+                        window.gapi.client.setToken(null);
+                        cachedSession = null;
+                    }
                 }
 
                 tokenClient.current = window.google.accounts.oauth2.initTokenClient({
@@ -113,11 +127,18 @@ export function AuthProvider({ children }) {
                     include_granted_scopes: false,
                     callback: async (response) => {
                         if (response.error) {
-                            if (silentAttempt.current) {
-                                // Silent re-auth failed (revoked/expired grant) — require a manual sign-in
-                                silentAttempt.current = false;
-                                localStorage.removeItem(SIGNED_IN_KEY);
-                            } else {
+                            const wasSilent = silentAttempt.current;
+                            silentAttempt.current = false;
+                            localStorage.removeItem(SIGNED_IN_KEY);
+                            sessionStorage.removeItem(SESSION_KEY);
+                            if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current);
+                            setUser(null);
+                            setToken(null);
+                            setSpreadsheetId(null);
+                            setUserGender(null);
+                            window.gapi.client.setToken(null);
+                            import('../lib/syncQueue').then(({ setActiveSpreadsheet }) => setActiveSpreadsheet(null));
+                            if (!wasSilent) {
                                 toast.error('Authentication failed. Please try again.');
                             }
                             setLoading(false);
@@ -128,6 +149,7 @@ export function AuthProvider({ children }) {
                         silentAttempt.current = false;
                         localStorage.setItem(SIGNED_IN_KEY, '1');
 
+                        window.gapi.client.setToken({ access_token: response.access_token });
                         setToken(response.access_token);
                         scheduleTokenRefresh(); // start the refresh countdown
                         try {
@@ -144,21 +166,22 @@ export function AuthProvider({ children }) {
                                 getImageUrl: () => profile.picture,
                                 firstName: profile.given_name,
                             };
-                            setUser(userData);
-
                             // Load or Scaffold Spreadsheet
                             const sheetTitle = `LifeTracker — ${profile.name}`;
-                            let existingSheet = await findSpreadsheet(sheetTitle);
+                            const accountId = profile.sub || profile.email;
+                            let existingSheet = await findLifeTrackerSpreadsheet(accountId, sheetTitle);
 
                             if (existingSheet) {
                                 setSpreadsheetId(existingSheet.id);
+                                void tagLifeTrackerSpreadsheet(existingSheet.id, accountId)
+                                    .catch(error => console.warn('Could not tag the LifeTracker workbook:', error));
                                 // Establish the spreadsheet-wide ID invariant before
                                 // any page starts reading historical month tabs.
                                 void loadAllHabits(existingSheet.id)
                                     .then(definitions => migrateHabitIdsAcrossMonths(existingSheet.id, definitions))
                                     .catch(error => console.error('Habit ID migration incomplete', error));
                                 import('../lib/syncQueue').then(({ initSyncQueue, flush }) => {
-                                    initSyncQueue();
+                                    initSyncQueue(existingSheet.id);
                                     void flush(existingSheet.id);
                                 });
                                 try {
@@ -184,18 +207,32 @@ export function AuthProvider({ children }) {
                             } else {
                                 toast('Setting up your LifeTracker for the first time...', { icon: '🏗️' });
                                 const newId = await scaffoldSheet(profile.name);
+                                void tagLifeTrackerSpreadsheet(newId, accountId)
+                                    .catch(error => console.warn('Could not tag the new LifeTracker workbook:', error));
                                 setSpreadsheetId(newId);
                                 cacheSession({ accessToken: response.access_token, expiresIn: response.expires_in, profile, spreadsheetId: newId, gender: 'needs_selection' });
                                 import('../lib/syncQueue').then(({ initSyncQueue, flush }) => {
-                                    initSyncQueue();
+                                    initSyncQueue(newId);
                                     void flush(newId);
                                 });
                                 setUserGender('needs_selection');
                                 toast.success('Your LifeTracker is ready!');
                             }
+                            // Authentication becomes visible to protected routes
+                            // only after a usable workbook has been established.
+                            setUser(userData);
 
                         } catch (err) {
                             console.error('Login flow error:', err);
+                            setUser(null);
+                            setToken(null);
+                            setSpreadsheetId(null);
+                            setUserGender(null);
+                            localStorage.removeItem(SIGNED_IN_KEY);
+                            sessionStorage.removeItem(SESSION_KEY);
+                            if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current);
+                            window.gapi.client.setToken(null);
+                            import('../lib/syncQueue').then(({ setActiveSpreadsheet }) => setActiveSpreadsheet(null));
                             toast.error('Failed to initialize your data. Please try again.');
                         } finally {
                             setLoading(false);
@@ -249,15 +286,16 @@ export function AuthProvider({ children }) {
         if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current);
         localStorage.removeItem(SIGNED_IN_KEY);
         sessionStorage.removeItem(SESSION_KEY);
-        if (token) {
-            window.google.accounts.oauth2.revoke(token, () => {
-                setUser(null);
-                setToken(null);
-                setSpreadsheetId(null);
-                setUserGender(null);
-                toast.success('Logged out successfully');
-            });
+        import('../lib/syncQueue').then(({ setActiveSpreadsheet }) => setActiveSpreadsheet(null));
+        setUser(null);
+        setToken(null);
+        setSpreadsheetId(null);
+        setUserGender(null);
+        window.gapi?.client?.setToken(null);
+        if (token && window.google?.accounts?.oauth2) {
+            window.google.accounts.oauth2.revoke(token, () => {});
         }
+        toast.success('Logged out successfully');
     };
 
     const updateUserGender = async (gender) => {

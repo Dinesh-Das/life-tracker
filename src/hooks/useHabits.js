@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { appendRows, readDataRows, readRange } from '../lib/sheetsApi';
-import { resilientBatchWrite } from '../lib/syncQueue';
+import { resilientBatchWrite, resilientUpsertDateRow } from '../lib/syncQueue';
 import { getDaysInMonth, format } from 'date-fns';
 import { scheduleStreakRecompute } from '../lib/streakRecompute';
 import {
@@ -271,15 +271,15 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
                         values: [[rawValue === '' ? '' : value, new Date().toISOString()]],
                     }]);
                 } else {
-                    const result = await appendRows(spreadsheetId, `${DAILY_STATE_TAB}!A:C`, [[
+                    const result = await resilientUpsertDateRow(spreadsheetId, `${DAILY_STATE_TAB}!A:C`, [
                         date, rawValue === '' ? '' : value, new Date().toISOString(),
-                    ]]);
+                    ]);
                     const updatedRange = result?.result?.updates?.updatedRange || '';
                     const match = updatedRange.match(/!(?:A)?(\d+)/);
                     if (match) dailyStateRowByDate.current.set(date, Number(match[1]));
                 }
             });
-        } catch (saveError) {
+        } catch (_saveError) {
             setMentalState(state => ({ ...state, [day]: previous }));
             toast.error('Failed to save mental state');
         }
@@ -303,7 +303,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             setHabits(items => [...items, habit]);
             toast.success(`Habit "${habit.name}" added!`);
             return true;
-        } catch (saveError) {
+        } catch (_saveError) {
             toast.error('Failed to save new habit');
             await loadMonthData();
             return false;
@@ -318,7 +318,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             setHabits(items => items.filter(item => item.id !== id));
             toast.success('Habit archived');
             return true;
-        } catch (saveError) {
+        } catch (_saveError) {
             toast.error('Failed to archive habit');
             return false;
         }
@@ -340,7 +340,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
                 }]);
             }
             return true;
-        } catch (saveError) {
+        } catch (_saveError) {
             setHabits(items => items.map(item => item.id === id ? current : item));
             toast.error('Failed to update habit');
             return false;

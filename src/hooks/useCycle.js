@@ -4,6 +4,28 @@ import { format, differenceInDays, addDays, parseISO, isAfter, isBefore } from '
 import toast from 'react-hot-toast';
 import { getCyclePhase, getDayInCycle, calculateOvulationAndFertility } from '../lib/cycleUtils';
 
+export function periodLengthsFromHistory(history = []) {
+    const starts = history.filter(entry => entry.periodStart);
+    const lengths = [];
+    starts.forEach((start, index) => {
+        const nextStart = starts[index + 1]?.date || null;
+        const entries = history.filter(entry =>
+            entry.date >= start.date && (!nextStart || entry.date < nextStart)
+        );
+        const explicitEnd = entries.find(entry => entry.periodEnd);
+        // Only infer a missing end once a newer period proves the previous one
+        // has finished. An ongoing latest period must not skew the average.
+        const inferredEnd = nextStart
+            ? [...entries].reverse().find(entry => entry.flow && entry.flow !== 'none')
+            : null;
+        const end = explicitEnd || inferredEnd;
+        if (!end) return;
+        const length = differenceInDays(parseISO(end.date), parseISO(start.date)) + 1;
+        if (length > 0 && length <= 20) lengths.push(length);
+    });
+    return lengths;
+}
+
 export function useCycle(spreadsheetId) {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -40,8 +62,8 @@ export function useCycle(spreadsheetId) {
             const rows = response || [];
 
             const formattedHistory = rows
-                .filter(row => row[0]) // has a date
                 .map((row, idx) => {
+                    if (!row[0]) return null;
                     // Extract clean date from potential "2026-03-08 (Sun)" format
                     const rawDate = row[0];
                     const cleanDate = rawDate.split(' ')[0];
@@ -63,10 +85,11 @@ export function useCycle(spreadsheetId) {
                         sleep: row[10] || null,                      // K = sleep
                         cramps: row[11] ? row[11].toLowerCase() : 'none', // L = cramps (new)
                     };
-                });
+                })
+                .filter(Boolean);
 
             // Sort history by date to ensure proper timeline
-            formattedHistory.sort((a, b) => new Date(a.date) - new Date(b.date));
+            formattedHistory.sort((a, b) => parseISO(a.date) - parseISO(b.date));
             setHistory(formattedHistory);
 
             // --- Compute Metrics ---
@@ -139,27 +162,7 @@ export function useCycle(spreadsheetId) {
             }
 
             // 6. Calculate Average Period Duration
-            let periodLengths = [];
-            let currentStartIdx = -1;
-
-            formattedHistory.forEach((h, i) => {
-                if (h.periodStart) {
-                    if (currentStartIdx !== -1) {
-                        // Previous period didn't have an explicit end, detect from flow
-                        let endIdx = i - 1;
-                        while (endIdx > currentStartIdx && formattedHistory[endIdx].flow === 'none') endIdx--;
-                        periodLengths.push((endIdx - currentStartIdx) + 1);
-                    }
-                    currentStartIdx = i;
-                } else if (h.periodEnd && currentStartIdx !== -1) {
-                    periodLengths.push((i - currentStartIdx) + 1);
-                    currentStartIdx = -1;
-                }
-            });
-
-            if (currentStartIdx !== -1 && formattedHistory[formattedHistory.length - 1].periodEnd) {
-                periodLengths.push((formattedHistory.length - 1 - currentStartIdx) + 1);
-            }
+            const periodLengths = periodLengthsFromHistory(formattedHistory);
 
             if (periodLengths.length > 0) {
                 const avgLength = Math.round(periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length);
@@ -182,7 +185,9 @@ export function useCycle(spreadsheetId) {
         if (!spreadsheetId) return;
         setSaving(true);
         try {
-            const logDate = data.date ? new Date(data.date) : new Date();
+            const logDate = data.date
+                ? (data.date instanceof Date ? data.date : parseISO(String(data.date).slice(0, 10)))
+                : new Date();
             const dateStr = format(logDate, 'yyyy-MM-dd');
             const dayOfWeek = format(logDate, 'E');
             const readableDate = `${dateStr} (${dayOfWeek})`;
@@ -193,7 +198,7 @@ export function useCycle(spreadsheetId) {
             // Calculate cycle day
             let cycleDay = 1;
             if (!isPeriodStart) {
-                const pastStarts = history.filter(h => h.periodStart && new Date(h.date) <= logDate);
+                const pastStarts = history.filter(h => h.periodStart && parseISO(h.date) <= logDate);
                 if (pastStarts.length > 0) {
                     const lastStart = pastStarts[pastStarts.length - 1];
                     cycleDay = differenceInDays(logDate, parseISO(lastStart.date)) + 1;

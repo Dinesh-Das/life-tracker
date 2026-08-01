@@ -1,5 +1,5 @@
 import { BarChart3, CalendarDays, CheckCircle2, CheckSquare2, ShieldCheck } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import PublicShell from '../components/layout/PublicShell';
 import { useAuth } from '../context/AuthContext';
 

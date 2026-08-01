@@ -19,7 +19,7 @@ export default defineConfig({
   // Production build config
   build: {
     // Minify and tree-shake
-    minify: 'esbuild',
+    minify: 'oxc',
     // Raise chunk warning limit slightly (recharts is large)
     chunkSizeWarningLimit: 750,
     rollupOptions: {
@@ -30,11 +30,13 @@ export default defineConfig({
       },
       output: {
         // Manual code splitting to keep initial bundle small
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'charts': ['recharts'],
-          'date-utils': ['date-fns'],
-          'icons': ['lucide-react'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (/node_modules[\\/]react(?:-dom|-router|-router-dom)?[\\/]/.test(id)) return 'react-vendor'
+          if (id.includes('node_modules/recharts')) return 'charts'
+          if (id.includes('node_modules/date-fns')) return 'date-utils'
+          if (id.includes('node_modules/lucide-react')) return 'icons'
+          return undefined
         }
       }
     }

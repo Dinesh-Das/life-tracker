@@ -9,6 +9,8 @@ import { computeStreaks } from '../lib/streakLogic';
 import {
     aggregationDayLimit,
     calendarConsistencyPct,
+    inferLegacyMonthYears,
+    legacyMonthTitles,
     mergeMonthHabitRows,
     monthHasRecordedActivity,
     monthTabSources,
@@ -68,7 +70,12 @@ export function useDashboard(spreadsheetId, year) {
             });
 
             const titles = spreadsheet.sheets.map(sheet => sheet.properties.title);
-            const monthMappings = monthTabSources(titles, year);
+            const bareTitles = legacyMonthTitles(titles);
+            const bareHeaders = bareTitles.length
+                ? await batchRead(spreadsheetId, bareTitles.map(title => `'${title}'!A1`))
+                : [];
+            const legacyYears = inferLegacyMonthYears(titles, bareHeaders);
+            const monthMappings = monthTabSources(titles, year, legacyYears);
             const ranges = monthMappings.map(month => `'${month.title}'!A6:AG`);
             const hasAppSettings = titles.includes('AppSettings');
             const responses = ranges.length || hasAppSettings ? await batchRead(spreadsheetId, [...ranges, ...(hasAppSettings ? ['AppSettings!A2:C'] : [])]) : [];

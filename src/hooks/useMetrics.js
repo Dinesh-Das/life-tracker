@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { readDataRows } from '../lib/sheetsApi';
 import { findLatestDateRowIndex } from '../lib/dateRows';
-import { resilientBatchWrite, resilientAppendRows } from '../lib/syncQueue';
+import { resilientBatchWrite, resilientUpsertDateRow } from '../lib/syncQueue';
 import { ensureMetricsSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -28,7 +28,7 @@ export function useMetrics(spreadsheetId, dateStr) {
                 values: [row],
             }]);
         } else {
-            const result = await resilientAppendRows(spreadsheetId, 'MetricsLogs!A:C', [row]);
+            const result = await resilientUpsertDateRow(spreadsheetId, 'MetricsLogs!A:C', row);
             const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
             if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
         }

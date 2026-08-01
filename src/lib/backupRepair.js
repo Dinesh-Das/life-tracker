@@ -15,6 +15,38 @@ const REQUIRED = {
     FocusLogs: ['Date', 'Start Time', 'Minutes', 'Mode'],
 };
 
+const MAX_RESTORE_COLUMNS = 52; // A:AZ — the same range used by exports
+const MAX_RESTORE_CELLS = 500_000;
+const INVALID_SHEET_TITLE_CHARS = ['\\', '/', '?', '*', '[', ']', ':'];
+
+function validateBackupSheets(sheets) {
+    if (!sheets || typeof sheets !== 'object' || Array.isArray(sheets)) {
+        throw new Error('Not a LifeTracker backup');
+    }
+    let cells = 0;
+    Object.entries(sheets).forEach(([title, rows]) => {
+        if (!title || title.length > 100 || INVALID_SHEET_TITLE_CHARS.some(char => title.includes(char))) {
+            throw new Error(`Invalid sheet title in backup: ${title || '(empty)'}`);
+        }
+        if (!Array.isArray(rows) || rows.some(row => !Array.isArray(row))) {
+            throw new Error(`Invalid row data in backup sheet: ${title}`);
+        }
+        rows.forEach(row => {
+            if (row.length > MAX_RESTORE_COLUMNS) {
+                throw new Error(`Backup sheet ${title} exceeds column AZ`);
+            }
+            row.forEach(cell => {
+                const valid = cell === null || cell === undefined ||
+                    ['string', 'number', 'boolean'].includes(typeof cell);
+                if (!valid) throw new Error(`Unsupported cell value in backup sheet: ${title}`);
+            });
+            cells += MAX_RESTORE_COLUMNS;
+        });
+    });
+    if (cells > MAX_RESTORE_CELLS) throw new Error('Backup is too large to restore safely in one operation');
+    return sheets;
+}
+
 export async function createBackup(spreadsheetId) {
     const sheets = await collectAllData(spreadsheetId);
     const payload = { format: 'lifetracker-backup', version: 3, createdAt: new Date().toISOString(), sheets };
@@ -60,17 +92,36 @@ export function parseBackupFile(file) {
     return file.text().then(text => {
         const parsed = JSON.parse(text);
         const sheets = parsed?.format === 'lifetracker-backup' ? parsed.sheets : parsed;
-        if (!sheets || typeof sheets !== 'object' || Array.isArray(sheets)) throw new Error('Not a LifeTracker backup');
+        validateBackupSheets(sheets);
         return { ...parsed, sheets };
     });
 }
 
 export async function restoreBackup(spreadsheetId, backup) {
+    const sheets = validateBackupSheets(backup?.sheets);
     const metadata = await getSpreadsheet(spreadsheetId, { forceRefresh: true });
     const existing = new Set(metadata.sheets.map(sheet => sheet.properties.title));
-    for (const title of Object.keys(backup.sheets)) if (!existing.has(title)) await addSheet(spreadsheetId, title);
-    await batchClear(spreadsheetId, Object.keys(backup.sheets).map(title => `'${title.replaceAll("'", "''")}'!A:AZ`));
-    const writes = Object.entries(backup.sheets).filter(([, rows]) => rows?.length).map(([title, rows]) => ({ range: `'${title.replaceAll("'", "''")}'!A1`, values: rows }));
+    for (const title of Object.keys(sheets)) if (!existing.has(title)) await addSheet(spreadsheetId, title);
+
+    // First overwrite every backed-up row, padding through AZ so stale cells
+    // to the right are removed. Only after all replacement values succeed do
+    // we clear rows below the restored snapshot. A failed write therefore
+    // leaves the original workbook recoverable instead of pre-cleared.
+    const writes = Object.entries(sheets)
+        .filter(([, rows]) => rows.length)
+        .map(([title, rows]) => ({
+            range: `'${title.replaceAll("'", "''")}'!A1:AZ${rows.length}`,
+            values: rows.map(row => [
+                ...row.map(cell => cell ?? ''),
+                ...Array(MAX_RESTORE_COLUMNS - row.length).fill(''),
+            ]),
+        }));
     if (writes.length) await batchWrite(spreadsheetId, writes);
+
+    const trailingRanges = Object.entries(sheets).map(([title, rows]) => {
+        const escaped = title.replaceAll("'", "''");
+        return rows.length ? `'${escaped}'!A${rows.length + 1}:AZ` : `'${escaped}'!A:AZ`;
+    });
+    if (trailingRanges.length) await batchClear(spreadsheetId, trailingRanges);
     return validateWorkbook(spreadsheetId);
 }

@@ -66,7 +66,7 @@ LifeTracker is built on the principle of **Data Sovereignty**.
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v18+)
+- Node.js (v20.19+ or v22.12+)
 - A Google Cloud Project with Google Sheets and Google Drive APIs enabled.
 
 ### Setup

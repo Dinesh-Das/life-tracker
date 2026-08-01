@@ -66,7 +66,7 @@ export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
                 range: `Weekly!G${task.sheetRow}`,
                 values: [[newVal]]
             }]);
-        } catch (error) {
+        } catch (_error) {
             toast.error('Sync failed');
             loadTasks();
         }
@@ -96,7 +96,7 @@ export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
                 String(order),
             ]]);
             loadTasks(); // Reload to get correct sheetRow
-        } catch (error) {
+        } catch (_error) {
             toast.error('Add failed');
             loadTasks();
         }
@@ -116,7 +116,7 @@ export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
                 range: `Weekly!A${task.sheetRow}:I${task.sheetRow}`,
                 values: [['', '', '', '', '', '', '', '', '']]
             }]);
-        } catch (error) {
+        } catch (_error) {
             toast.error('Delete failed');
             loadTasks();
         }
@@ -137,7 +137,7 @@ export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
                     range: `Weekly!F${task.sheetRow}`,
                     values: [[updates.text]]
                 }]);
-            } catch (error) {
+            } catch (_error) {
                 toast.error('Update failed');
             }
         }

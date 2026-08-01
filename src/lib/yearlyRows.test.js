@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     aggregationDayLimit,
     calendarConsistencyPct,
+    inferLegacyMonthYears,
     monthHasRecordedActivity,
     monthTabSources,
     mergeMonthHabitRows,
@@ -9,6 +10,13 @@ import {
 import { computeStreaks } from './streakLogic';
 
 describe('monthTabSources', () => {
+    it('keeps a bare legacy tab attached to the year recorded in its header', () => {
+        const years = inferLegacyMonthYears(['Jul'], [{ values: [['🌟 Jul 2025 Tracking']] }], 2026);
+        expect(years).toEqual({ Jul: 2025 });
+        expect(monthTabSources(['Jul'], 2025, years)).toEqual([{ month: 'Jul', title: 'Jul' }]);
+        expect(monthTabSources(['Jul'], 2026, years)).toEqual([]);
+    });
+
     it('includes both legacy and year-suffixed tabs for the current year', () => {
         expect(monthTabSources(['Jul', 'Jul 2026'], 2026, 2026)).toEqual([
             { month: 'Jul', title: 'Jul 2026' },

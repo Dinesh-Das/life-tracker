@@ -6,14 +6,14 @@ const mocks = vi.hoisted(() => ({
     readDataRows: vi.fn(),
     ensureDailyWinsSheet: vi.fn(),
     resilientBatchWrite: vi.fn(),
-    resilientAppendRows: vi.fn(),
+    resilientUpsertDateRow: vi.fn(),
 }));
 
 vi.mock('../lib/sheetsApi', () => ({ readDataRows: mocks.readDataRows }));
 vi.mock('../lib/sheetScaffold', () => ({ ensureDailyWinsSheet: mocks.ensureDailyWinsSheet }));
 vi.mock('../lib/syncQueue', () => ({
     resilientBatchWrite: mocks.resilientBatchWrite,
-    resilientAppendRows: mocks.resilientAppendRows,
+    resilientUpsertDateRow: mocks.resilientUpsertDateRow,
 }));
 vi.mock('react-hot-toast', () => ({ default: { error: vi.fn() } }));
 
