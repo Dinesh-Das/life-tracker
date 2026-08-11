@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { findLifeTrackerSpreadsheet, getSpreadsheet, tagLifeTrackerSpreadsheet } from '../lib/sheetsApi';
 import { scaffoldSheet } from '../lib/sheetScaffold';
 import { loadAllHabits, migrateHabitIdsAcrossMonths } from '../lib/habitRepository';
+import { resetQuoteForNextLogin } from '../lib/quoteSession';
 
 const AuthContext = createContext();
 
@@ -276,6 +277,7 @@ export function AuthProvider({ children }) {
             return;
         }
         if (tokenClient.current) {
+            resetQuoteForNextLogin();
             tokenClient.current.requestAccessToken({ prompt: 'consent' });
         } else {
             toast.error('Google Auth is still initializing. Please wait a moment.');
@@ -286,6 +288,7 @@ export function AuthProvider({ children }) {
         if (tokenRefreshTimer.current) clearTimeout(tokenRefreshTimer.current);
         localStorage.removeItem(SIGNED_IN_KEY);
         sessionStorage.removeItem(SESSION_KEY);
+        resetQuoteForNextLogin();
         import('../lib/syncQueue').then(({ setActiveSpreadsheet }) => setActiveSpreadsheet(null));
         setUser(null);
         setToken(null);

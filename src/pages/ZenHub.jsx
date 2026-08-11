@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useAppContext } from '../context/AppContext';
@@ -12,14 +13,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router';
 import WeeklyReviewCard from '../components/ui/WeeklyReviewCard';
-
-const QUOTES = [
-    { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
-    { text: "Quality is not an act, it is a habit.", author: "Aristotle" },
-    { text: "Well begun is half done.", author: "Aristotle" },
-    { text: "Your future is created by what you do today, not tomorrow.", author: "Robert Kiyosaki" },
-    { text: "Discipline is the bridge between goals and accomplishment.", author: "Jim Rohn" },
-];
+import { getQuoteForCurrentLogin } from '../lib/quoteDeck';
 
 const hubCards = [
     { title: "Daily Check-in",   desc: "Log your habits and mental state for today.",     icon: CheckSquare, to: "/daily",    delay: 0.1 },
@@ -32,7 +26,7 @@ const hubCards = [
 function ZenHub() {
     const { user } = useAuth();
     const { currentMonth, currentYear } = useAppContext();
-    const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+    const [quote] = useState(getQuoteForCurrentLogin);
     const firstName = user?.getName?.()?.split(' ')[0] || user?.firstName || 'Friend';
 
     const todayStr = new Date().toLocaleDateString('en-US', {
@@ -100,6 +94,24 @@ function ZenHub() {
                     position: 'relative', zIndex: 1,
                 }}>
                     — {quote.author}
+                </p>
+                <p style={{
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '10px',
+                    color: 'var(--text-muted)',
+                    opacity: 0.78,
+                    marginTop: '5px',
+                    position: 'relative', zIndex: 1,
+                }}>
+                    <a
+                        href={quote.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '2px' }}
+                    >
+                        {quote.source}
+                    </a>
+                    {quote.section ? ` · ${quote.section.length > 72 ? `${quote.section.slice(0, 69)}…` : quote.section}` : ''} · {quote.topic}
                 </p>
             </motion.div>
 
