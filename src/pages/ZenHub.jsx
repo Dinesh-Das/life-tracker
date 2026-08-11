@@ -14,6 +14,7 @@ import {
 import { Link } from 'react-router';
 import WeeklyReviewCard from '../components/ui/WeeklyReviewCard';
 import { getQuoteForCurrentLogin } from '../lib/quoteDeck';
+import { getQuoteGuide } from '../lib/quoteGuide';
 
 const hubCards = [
     { title: "Daily Check-in",   desc: "Log your habits and mental state for today.",     icon: CheckSquare, to: "/daily",    delay: 0.1 },
@@ -27,6 +28,7 @@ function ZenHub() {
     const { user } = useAuth();
     const { currentMonth, currentYear } = useAppContext();
     const [quote] = useState(getQuoteForCurrentLogin);
+    const guide = getQuoteGuide(quote);
     const firstName = user?.getName?.()?.split(' ')[0] || user?.firstName || 'Friend';
 
     const todayStr = new Date().toLocaleDateString('en-US', {
@@ -113,6 +115,34 @@ function ZenHub() {
                     </a>
                     {quote.section ? ` · ${quote.section.length > 72 ? `${quote.section.slice(0, 69)}…` : quote.section}` : ''} · {quote.topic}
                 </p>
+                <div style={{
+                    marginTop: '18px',
+                    padding: '16px 18px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(45,79,65,0.2)',
+                    background: 'rgba(45,79,65,0.08)',
+                    position: 'relative', zIndex: 1,
+                }}>
+                    {guide.modernText && (
+                        <div style={{ marginBottom: '12px' }}>
+                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                                Easier wording
+                            </p>
+                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.55, color: 'var(--text-heading)' }}>
+                                {guide.modernText}
+                            </p>
+                        </div>
+                    )}
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>
+                        Simple meaning
+                    </p>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.55, color: 'var(--text-heading)' }}>
+                        {guide.meaning}
+                    </p>
+                    <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', lineHeight: 1.5, color: 'var(--text-muted)', marginTop: '8px' }}>
+                        <strong style={{ color: 'var(--text-heading)' }}>Use it today:</strong> {guide.action}
+                    </p>
+                </div>
             </motion.div>
 
             {/* Weekly review — last 7 days at a glance */}
