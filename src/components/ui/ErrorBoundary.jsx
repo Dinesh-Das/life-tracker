@@ -1,4 +1,5 @@
 import React from 'react';
+import { reloadWithFreshAssets } from '../../lib/chunkLoadRecovery';
 
 /**
  * ErrorBoundary catches unhandled React render errors and shows
@@ -21,7 +22,7 @@ class ErrorBoundary extends React.Component {
 
     handleReload = () => {
         this.setState({ hasError: false, error: null });
-        window.location.reload();
+        reloadWithFreshAssets();
     };
 
     render() {

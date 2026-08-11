@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
+import { installChunkLoadRecovery } from './lib/chunkLoadRecovery.js'
 // Self-hosted fonts — offline-capable, no external font requests
 import '@fontsource/manrope/300.css'
 import '@fontsource/manrope/400.css'
@@ -16,6 +17,10 @@ import '@fontsource/newsreader/400-italic.css'
 import '@fontsource/newsreader/500-italic.css'
 
 import './index.css'
+
+// A newly deployed app may invalidate lazy chunks requested by an older tab.
+// Refresh the app shell once while keeping the user on their current route.
+installChunkLoadRecovery()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
     <React.StrictMode>
