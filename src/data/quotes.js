@@ -1,6 +1,6 @@
-import quotes from './quotes.generated.json';
+import { MOTIVATIONAL_QUOTES } from './motivationalQuotes';
 
-export const QUOTES = quotes;
+export const QUOTES = MOTIVATIONAL_QUOTES;
 export const QUOTE_COUNT = QUOTES.length;
 
 export const QUOTE_SOURCES = [...new Map(QUOTES.map(quote => [

@@ -2,8 +2,8 @@ import { QUOTES } from '../data/quotes';
 import { CURRENT_QUOTE_KEY } from './quoteSession';
 export { resetQuoteForNextLogin } from './quoteSession';
 
-const QUOTE_DECK_KEY = 'lt_quote_deck_v2';
-const LAST_QUOTE_KEY = 'lt_last_quote_v2';
+const QUOTE_DECK_KEY = 'lt_quote_deck_v3';
+const LAST_QUOTE_KEY = 'lt_last_quote_v3';
 
 const quotesById = new Map(QUOTES.map(quote => [quote.id, quote]));
 let fallbackLastQuoteId = null;
@@ -18,26 +18,50 @@ function randomValue() {
 }
 
 function randomQuoteWithoutImmediateRepeat() {
-    const available = QUOTES.filter(quote => quote.id !== fallbackLastQuoteId);
+    const lastTopic = quotesById.get(fallbackLastQuoteId)?.topic;
+    const available = QUOTES.filter(quote => (
+        quote.id !== fallbackLastQuoteId && quote.topic !== lastTopic
+    ));
     const quote = available[Math.floor(randomValue() * available.length)] || QUOTES[0];
     fallbackLastQuoteId = quote.id;
     return quote;
 }
 
 export function buildShuffledQuoteDeck(lastQuoteId = null, random = randomValue) {
-    const ids = QUOTES.map(quote => quote.id);
-
-    for (let index = ids.length - 1; index > 0; index -= 1) {
-        const swapIndex = Math.floor(random() * (index + 1));
-        [ids[index], ids[swapIndex]] = [ids[swapIndex], ids[index]];
+    const buckets = new Map();
+    for (const quote of QUOTES) {
+        const ids = buckets.get(quote.topic) || [];
+        ids.push(quote.id);
+        buckets.set(quote.topic, ids);
     }
 
-    // The first item is consumed next. Avoid a repeat where two complete decks meet.
-    if (ids.length > 1 && ids[0] === lastQuoteId) {
-        [ids[0], ids[1]] = [ids[1], ids[0]];
+    for (const ids of buckets.values()) {
+        for (let index = ids.length - 1; index > 0; index -= 1) {
+            const swapIndex = Math.floor(random() * (index + 1));
+            [ids[index], ids[swapIndex]] = [ids[swapIndex], ids[index]];
+        }
     }
 
-    return ids;
+    const deck = [];
+    let previousTopic = quotesById.get(lastQuoteId)?.topic || null;
+
+    while (deck.length < QUOTES.length) {
+        const nonEmptyBuckets = [...buckets.entries()].filter(([, ids]) => ids.length > 0);
+        const eligibleBuckets = nonEmptyBuckets.some(([topic]) => topic !== previousTopic)
+            ? nonEmptyBuckets.filter(([topic]) => topic !== previousTopic)
+            : nonEmptyBuckets;
+        const largestBucketSize = Math.max(...eligibleBuckets.map(([, ids]) => ids.length));
+        const topics = eligibleBuckets
+            .filter(([, ids]) => ids.length === largestBucketSize)
+            .map(([topic]) => topic);
+        const topic = topics[Math.floor(random() * topics.length)];
+        const ids = buckets.get(topic);
+
+        deck.push(ids.pop());
+        previousTopic = topic;
+    }
+
+    return deck;
 }
 
 function readStoredDeck() {

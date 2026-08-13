@@ -1,4 +1,4 @@
-export const CURRENT_QUOTE_KEY = 'lt_current_quote_v2';
+export const CURRENT_QUOTE_KEY = 'lt_current_quote_v3';
 
 export function resetQuoteForNextLogin() {
     try {

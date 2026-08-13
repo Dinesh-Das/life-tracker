@@ -122,7 +122,8 @@ export function modernizeArchaicLanguage(text) {
 export function getQuoteGuide(quote) {
     const guide = TOPIC_GUIDES[quote.topic] || TOPIC_GUIDES.wisdom;
     return {
-        ...guide,
+        meaning: quote.meaning || guide.meaning,
+        action: quote.action || guide.action,
         modernText: modernizeArchaicLanguage(quote.text),
     };
 }

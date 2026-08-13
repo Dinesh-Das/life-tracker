@@ -9,11 +9,12 @@ import {
     BookOpen as JournalIcon,
     CheckSquare,
     TrendingUp,
-    ArrowRight
+    ArrowRight,
+    RefreshCw,
 } from 'lucide-react';
 import { Link } from 'react-router';
 import WeeklyReviewCard from '../components/ui/WeeklyReviewCard';
-import { getQuoteForCurrentLogin } from '../lib/quoteDeck';
+import { getQuoteForCurrentLogin, resetQuoteForNextLogin } from '../lib/quoteDeck';
 import { getQuoteGuide } from '../lib/quoteGuide';
 
 const hubCards = [
@@ -27,7 +28,7 @@ const hubCards = [
 function ZenHub() {
     const { user } = useAuth();
     const { currentMonth, currentYear } = useAppContext();
-    const [quote] = useState(getQuoteForCurrentLogin);
+    const [quote, setQuote] = useState(getQuoteForCurrentLogin);
     const guide = getQuoteGuide(quote);
     const firstName = user?.getName?.()?.split(' ')[0] || user?.firstName || 'Friend';
 
@@ -42,6 +43,11 @@ function ZenHub() {
     const item = {
         hidden: { opacity: 0, y: 18 },
         show: { opacity: 1, y: 0 },
+    };
+
+    const showAnotherQuote = () => {
+        resetQuoteForNextLogin();
+        setQuote(getQuoteForCurrentLogin());
     };
 
     return (
@@ -75,12 +81,27 @@ function ZenHub() {
                 <Sparkles
                     style={{ position: 'absolute', right: '-8px', top: '-8px', width: '80px', height: '80px', color: 'rgba(45,79,65,0.15)', transform: 'rotate(12deg)' }}
                 />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px', position: 'relative', zIndex: 1 }}>
+                    <span style={{
+                        fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 800,
+                        letterSpacing: '0.1em', textTransform: 'uppercase', color: '#2d4f41',
+                        background: 'rgba(45,79,65,0.13)', border: '1px solid rgba(45,79,65,0.2)',
+                        borderRadius: '999px', padding: '5px 9px',
+                    }}>
+                        {quote.category || quote.topic}
+                    </span>
+                    {quote.inspiredBy && (
+                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                            {quote.inspiredBy}-inspired
+                        </span>
+                    )}
+                </div>
                 <p style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: '20px',
-                    fontStyle: 'italic',
+                    fontSize: 'clamp(20px, 3vw, 25px)',
+                    fontWeight: 600,
                     color: 'var(--text-heading)',
-                    lineHeight: 1.5,
+                    lineHeight: 1.4,
                     marginBottom: '12px',
                     position: 'relative', zIndex: 1,
                 }}>
@@ -105,15 +126,16 @@ function ZenHub() {
                     marginTop: '5px',
                     position: 'relative', zIndex: 1,
                 }}>
-                    <a
-                        href={quote.sourceUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '2px' }}
-                    >
-                        {quote.source}
-                    </a>
-                    {quote.section ? ` · ${quote.section.length > 72 ? `${quote.section.slice(0, 69)}…` : quote.section}` : ''} · {quote.topic}
+                    {quote.sourceUrl ? (
+                        <a
+                            href={quote.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '2px' }}
+                        >
+                            {quote.source}
+                        </a>
+                    ) : 'Original motivational writing · not official dialogue'}
                 </p>
                 <div style={{
                     marginTop: '18px',
@@ -134,15 +156,29 @@ function ZenHub() {
                         </div>
                     )}
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                        Simple meaning
+                        What it means
                     </p>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', lineHeight: 1.55, color: 'var(--text-heading)' }}>
                         {guide.meaning}
                     </p>
                     <p style={{ fontFamily: 'var(--font-body)', fontSize: '12px', lineHeight: 1.5, color: 'var(--text-muted)', marginTop: '8px' }}>
-                        <strong style={{ color: 'var(--text-heading)' }}>Use it today:</strong> {guide.action}
+                        <strong style={{ color: 'var(--text-heading)' }}>Your move:</strong> {guide.action}
                     </p>
                 </div>
+                <button
+                    type="button"
+                    onClick={showAnotherQuote}
+                    style={{
+                        marginTop: '14px', display: 'inline-flex', alignItems: 'center', gap: '7px',
+                        border: '1px solid rgba(45,79,65,0.3)', borderRadius: '999px',
+                        background: 'rgba(255,255,255,0.45)', color: 'var(--text-heading)',
+                        padding: '8px 13px', fontFamily: 'var(--font-body)', fontSize: '11px',
+                        fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                        cursor: 'pointer', position: 'relative', zIndex: 1,
+                    }}
+                >
+                    <RefreshCw size={13} /> Another boost
+                </button>
             </motion.div>
 
             {/* Weekly review — last 7 days at a glance */}

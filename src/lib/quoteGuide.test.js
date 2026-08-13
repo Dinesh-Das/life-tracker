@@ -11,6 +11,15 @@ describe('plain-language quote guide', () => {
         }
     });
 
+    it('uses the quote-specific plain meaning and action', () => {
+        const quote = QUOTES[0];
+
+        expect(getQuoteGuide(quote)).toMatchObject({
+            meaning: quote.meaning,
+            action: quote.action,
+        });
+    });
+
     it('modernizes common archaic language without changing the source quote', () => {
         const original = 'Thou hast power over thy response, and thou shalt use it.';
 
