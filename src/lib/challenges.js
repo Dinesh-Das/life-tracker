@@ -1,39 +1,59 @@
+import {
+    isCompletedStatus,
+    isEligibleHabitDay,
+    summarizeHabitPerformance,
+} from './habitAnalytics';
+
 /**
  * Monthly challenges computed from this month's checks.
- * A day counts as "complete" when every habit is done (skips tolerated,
- * but at least one real completion required).
+ * Frozen, paused, and unscheduled cells are neutral throughout.
  */
-export function monthlyChallenges(habits, checks, daysInMonth, upToDay) {
+export function monthlyChallenges(habits, checks, daysInMonth, upToDay, options = {}) {
     const list = [];
     if (!habits || habits.length === 0 || !upToDay) return list;
+    const limit = Math.max(0, Math.min(daysInMonth, upToDay));
 
-    const dayComplete = (d) =>
-        habits.every(h => checks[h.id]?.[d] === true || checks[h.id]?.[d] === 'skip') &&
-        habits.some(h => checks[h.id]?.[d] === true);
+    const eligibleStatuses = (d) => {
+        const date = Number.isInteger(options.year) && Number.isInteger(options.monthIndex)
+            ? new Date(options.year, options.monthIndex, d)
+            : null;
+        return habits.flatMap(habit => {
+            const status = checks[habit.id]?.[d];
+            return isEligibleHabitDay(habit, status, date, options.globalPause) ? [status] : [];
+        });
+    };
 
-    // Perfect Week — 7 consecutive fully-completed days
+    const dayComplete = (d) => {
+        const statuses = eligibleStatuses(d);
+        if (statuses.length === 0) return null;
+        return statuses.every(isCompletedStatus);
+    };
+
+    // Perfect Week — seven completed active days without an eligible miss.
+    // A fully neutral calendar day neither advances nor breaks the run.
     let run = 0;
     let bestRun = 0;
-    for (let d = 1; d <= upToDay; d++) {
-        run = dayComplete(d) ? run + 1 : 0;
+    for (let d = 1; d <= limit; d++) {
+        const complete = dayComplete(d);
+        if (complete === null) continue;
+        run = complete ? run + 1 : 0;
         if (run > bestRun) bestRun = run;
     }
     list.push({
         id: 'perfect_week', emoji: '🏅', label: 'Perfect Week',
-        desc: '7 consecutive days with every habit done',
+        desc: '7 consecutive active days with every scheduled habit done',
         progress: Math.min(bestRun, 7), target: 7, achieved: bestRun >= 7,
     });
 
     // Consistency 80 — hold ≥80% overall completion
-    let done = 0;
-    let possible = 0;
-    for (let d = 1; d <= upToDay; d++) {
-        habits.forEach(h => {
-            possible++;
-            if (checks[h.id]?.[d] === true) done++;
-        });
-    }
-    const pct = possible > 0 ? Math.round((done / possible) * 100) : 0;
+    const { performance } = summarizeHabitPerformance(habits, checks, {
+        ...options,
+        daysInMonth,
+        upToDay: limit,
+    });
+    const target = performance.reduce((sum, item) => sum + item.target, 0);
+    const progress = performance.reduce((sum, item) => sum + Math.min(item.completed, item.target), 0);
+    const pct = target > 0 ? Math.round((progress / target) * 100) : 0;
     list.push({
         id: 'consistency_80', emoji: '🎯', label: 'Consistency 80',
         desc: 'Hold 80%+ completion all month',
@@ -43,11 +63,17 @@ export function monthlyChallenges(habits, checks, daysInMonth, upToDay) {
 
     // Iron Habit — keep at least one habit unbroken all month
     const iron = habits.filter(h => {
-        for (let d = 1; d <= upToDay; d++) {
-            const v = checks[h.id]?.[d];
-            if (v !== true && v !== 'skip') return false;
+        let eligible = 0;
+        for (let d = 1; d <= limit; d++) {
+            const status = checks[h.id]?.[d];
+            const date = Number.isInteger(options.year) && Number.isInteger(options.monthIndex)
+                ? new Date(options.year, options.monthIndex, d)
+                : null;
+            if (!isEligibleHabitDay(h, status, date, options.globalPause)) continue;
+            eligible++;
+            if (!isCompletedStatus(status)) return false;
         }
-        return true;
+        return eligible > 0;
     });
     list.push({
         id: 'iron_habit', emoji: '🛡️', label: 'Iron Habit',

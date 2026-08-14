@@ -3,7 +3,7 @@ import StreakBadge from '../ui/StreakBadge';
 import { X } from 'lucide-react';
 import { memo, useState } from 'react';
 
-function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate }) {
+function HabitRow({ habit, days, checks, streak, upToDay = days.length, onToggle, onDelete, onUpdate }) {
     const [isHovered, setIsHovered] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [tempName, setTempName] = useState(habit.name);
@@ -15,7 +15,9 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
         }
     };
 
-    const actual = Object.values(checks || {}).filter(status => status === true).length;
+    const actual = Object.entries(checks || {})
+        .filter(([day, status]) => Number(day) <= upToDay && status === true)
+        .length;
     const progressPct = Math.round((actual / habit.goal) * 100);
 
     return (
@@ -28,7 +30,7 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
             {/* Sticky Habit Name Column */}
             <td className="theme-table sticky left-0 z-10 min-w-[160px] md:min-w-[200px] p-0 border-r shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
                 <div className="flex items-center px-3 py-3 h-full gap-2 group/name max-w-[160px] md:max-w-[200px]">
-                    <span className="text-base md:text-lg cursor-pointer hover:scale-125 transition-transform shrink-0" title="Click to change emoji">
+                    <span className="text-base md:text-lg shrink-0" aria-hidden="true">
                         {habit.emoji}
                     </span>
 
@@ -40,20 +42,24 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
                             onChange={(e) => setTempName(e.target.value)}
                             onBlur={handleBlur}
                             onKeyDown={(e) => e.key === 'Enter' && handleBlur()}
+                            aria-label={`Edit ${habit.name} name`}
                         />
                     ) : (
-                        <span
-                            className="theme-heading flex-1 text-[11px] md:text-sm font-bold cursor-text hover:text-primary transition-colors leading-tight line-clamp-2 whitespace-normal"
+                        <button
+                            type="button"
+                            className="theme-heading flex-1 text-left text-[11px] md:text-sm font-bold cursor-text hover:text-primary transition-colors leading-tight line-clamp-2 whitespace-normal"
                             onClick={() => setIsEditing(true)}
+                            aria-label={`Edit ${habit.name} name`}
                         >
                             {habit.name}
-                        </span>
+                        </button>
                     )}
 
                     <button
+                        type="button"
                         onClick={() => onDelete(habit.id)}
                         aria-label={`Archive ${habit.name}`}
-                        className={`text-red-400 hover:text-red-600 transition-opacity p-1 rounded-full hover:bg-red-50 shrink-0 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
+                        className={`text-red-400 hover:text-red-600 focus:opacity-100 group-focus-within:opacity-100 transition-opacity p-1 rounded-full hover:bg-red-50 shrink-0 ${isHovered ? 'opacity-100' : 'opacity-0'}`}
                     >
                         <X size={14} />
                     </button>
@@ -69,7 +75,9 @@ function HabitRow({ habit, days, checks, streak, onToggle, onDelete, onUpdate })
                         className={`p-[3px] text-center min-w-[22px] ${isNewWeek ? 'border-l-2 border-gray-200' : 'border-l border-gray-100'}`}
                     >
                         <HabitCheckbox
-                            done={checks?.[day] === true}
+                            status={checks?.[day]}
+                            label={`${habit.name}, day ${day}`}
+                            disabled={day > upToDay}
                             onClick={() => onToggle(habit.id, day)}
                         />
                     </td>

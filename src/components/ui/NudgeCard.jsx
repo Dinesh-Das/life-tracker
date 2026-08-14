@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Lightbulb, X } from 'lucide-react';
 import { habitMoodCorrelations, habitNextDayMoodCorrelations, weekdayCompletion } from '../../lib/correlations';
+import { elapsedDayLimit } from '../../lib/habitAnalytics';
 import { generateNudges, visibleNudges, dismissNudge } from '../../lib/nudges';
 
 /**
@@ -11,16 +12,16 @@ import { generateNudges, visibleNudges, dismissNudge } from '../../lib/nudges';
 function NudgeCard({ habits, checks, mentalState, daysInMonth, year, monthIndex }) {
     const [dismissedTick, setDismissedTick] = useState(0);
     const today = new Date();
-    const isCurrentMonth = today.getFullYear() === year && today.getMonth() === monthIndex;
-    const upToDay = isCurrentMonth ? Math.min(today.getDate(), daysInMonth) : daysInMonth;
+    const upToDay = elapsedDayLimit(year, monthIndex, daysInMonth, today);
 
     const nudges = useMemo(() => {
         void dismissedTick;
-        const moodInsights = habitMoodCorrelations(habits, checks, mentalState, daysInMonth);
-        const nextDayInsights = habitNextDayMoodCorrelations(habits, checks, mentalState, daysInMonth);
+        const options = { year, monthIndex };
+        const moodInsights = habitMoodCorrelations(habits, checks, mentalState, upToDay, 3, options);
+        const nextDayInsights = habitNextDayMoodCorrelations(habits, checks, mentalState, upToDay, 3, options);
         const weekday = weekdayCompletion(habits, checks, upToDay, year, monthIndex);
         return visibleNudges(generateNudges({ moodInsights, nextDayInsights, weekday }));
-    }, [habits, checks, mentalState, daysInMonth, upToDay, year, monthIndex, dismissedTick]);
+    }, [habits, checks, mentalState, upToDay, year, monthIndex, dismissedTick]);
 
     if (nudges.length === 0) return null;
 

@@ -16,6 +16,8 @@ import AnalysisPanel from '../components/habits/AnalysisPanel'
 import CorrelationInsights from '../components/charts/CorrelationInsights'
 import { useHabits } from '../hooks/useHabits'
 import { useStreaks } from '../hooks/useStreaks'
+import { useProductSettings } from '../hooks/useProductSettings'
+import { buildCompletionTrend, elapsedDayLimit, isFutureDay, isFutureMonth } from '../lib/habitAnalytics'
 
 // Task Components
 import DayColumn from '../components/weekly/DayColumn'
@@ -36,7 +38,18 @@ function Planner() {
         error: habitsError, reload: reloadHabits
     } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
 
-    const { habitStreaks } = useStreaks(habits, checks);
+    const { settings: productSettings, loading: productSettingsLoading } = useProductSettings(spreadsheetId);
+    const today = new Date();
+    const upToDay = elapsedDayLimit(currentYear, currentMonthIndex, daysInMonth, today);
+    const globalPause = useMemo(() => ({
+        from: productSettings.pauseFrom || '',
+        until: productSettings.pauseUntil || '',
+    }), [productSettings.pauseFrom, productSettings.pauseUntil]);
+    const { habitStreaks } = useStreaks(habits, checks, {
+        year: currentYear,
+        monthIndex: currentMonthIndex,
+        globalPause,
+    });
 
     const visibleHabits = useMemo(() => {
         if (gender === 'female') return habits;
@@ -44,23 +57,21 @@ function Planner() {
     }, [habits, gender]);
 
     const trendData = useMemo(() => {
-        return Array.from({ length: daysInMonth }, (_, i) => {
-            const day = i + 1;
-            let done = 0;
-            visibleHabits.forEach(h => {
-                if (checks[h.id]?.[day]) done++;
-            });
-            const pct = visibleHabits.length > 0 ? Math.round((done / visibleHabits.length) * 100) : 0;
-            return { day, pct };
+        return buildCompletionTrend(visibleHabits, checks, {
+            year: currentYear,
+            monthIndex: currentMonthIndex,
+            daysInMonth,
+            upToDay,
+            globalPause,
         });
-    }, [visibleHabits, checks, daysInMonth]);
+    }, [visibleHabits, checks, currentYear, currentMonthIndex, daysInMonth, upToDay, globalPause]);
 
     const moodData = useMemo(() => {
-        return Array.from({ length: daysInMonth }, (_, i) => {
+        return Array.from({ length: upToDay }, (_, i) => {
             const day = i + 1;
             return { day, val: mentalState[day] || null };
         }).filter(d => d.val !== null);
-    }, [mentalState, daysInMonth]);
+    }, [mentalState, upToDay]);
 
     // -- TASKS STATE --
     const [currentWeekIdx, setCurrentWeekIdx] = useState(0);
@@ -89,7 +100,7 @@ function Planner() {
     }, [currentWeek]);
 
 
-    const isLoading = habitsLoading || tasksLoading;
+    const isLoading = habitsLoading || tasksLoading || productSettingsLoading;
 
     const dataError = habitsError || tasksError;
 
@@ -129,10 +140,16 @@ function Planner() {
             }}>
                 <p style={{ fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '10px' }}>Select Month</p>
                 <div className="month-picker-grid">
-                    {MONTHS.map((m, idx) => (
+                    {MONTHS.map((m, idx) => {
+                        const disabled = isFutureMonth(currentYear, idx, today);
+                        return (
                         <button
                             key={m}
+                            type="button"
                             onClick={() => setMonth(idx)}
+                            disabled={disabled}
+                            aria-label={disabled ? `${m} ${currentYear} is in the future` : `Show ${m} ${currentYear}`}
+                            title={disabled ? 'Future months cannot be edited' : undefined}
                             style={{
                                 padding: '8px 18px',
                                 borderRadius: 'var(--radius-full)',
@@ -143,7 +160,8 @@ function Planner() {
                                 textTransform: 'uppercase',
                                 flexShrink: 0,
                                 border: 'none',
-                                cursor: 'pointer',
+                                cursor: disabled ? 'not-allowed' : 'pointer',
+                                opacity: disabled ? 0.45 : 1,
                                 transition: 'all 0.2s',
                                 ...(idx === currentMonthIndex
                                     ? { background: 'rgba(45,79,65,0.75)', color: '#a9cfbc', boxShadow: '0 2px 12px rgba(45,79,65,0.25)' }
@@ -153,7 +171,7 @@ function Planner() {
                         >
                             {m}
                         </button>
-                    ))}
+                    )})}
                 </div>
             </div>
 
@@ -168,6 +186,10 @@ function Planner() {
                         habits={visibleHabits}
                         checks={checks}
                         daysInMonth={daysInMonth}
+                        upToDay={upToDay}
+                        currentYear={currentYear}
+                        currentMonthIndex={currentMonthIndex}
+                        globalPause={globalPause}
                         onAddHabit={() => navigate('/settings')}
                     />
 
@@ -179,8 +201,10 @@ function Planner() {
                             streaks={habitStreaks}
                             mentalState={mentalState}
                             daysInMonth={daysInMonth}
+                            upToDay={upToDay}
                             currentYear={currentYear}
                             currentMonthIndex={currentMonthIndex}
+                            globalPause={globalPause}
                             onToggle={toggleCheck}
                             onDelete={deleteHabit}
                             onUpdate={updateHabit}
@@ -194,17 +218,24 @@ function Planner() {
                                     <span>{habit.emoji}</span>{habit.name}
                                 </strong>
                                 <div className="mobile-month-checks">
-                                    {Array.from({ length: daysInMonth }, (_, index) => index + 1).map(day => (
-                                        <button
-                                            key={day}
-                                            onClick={() => toggleCheck(habit.id, day)}
-                                            aria-label={`${habit.name}, day ${day}`}
-                                            aria-pressed={checks[habit.id]?.[day] === true}
-                                            className={checks[habit.id]?.[day] === true ? 'is-done' : ''}
-                                        >
-                                            {day}
-                                        </button>
-                                    ))}
+                                    {Array.from({ length: daysInMonth }, (_, index) => index + 1).map(day => {
+                                        const disabled = isFutureDay(currentYear, currentMonthIndex, day, today);
+                                        const status = checks[habit.id]?.[day];
+                                        const state = disabled ? 'future' : status === true ? 'completed' : status === 'skip' ? 'frozen' : 'not completed';
+                                        return (
+                                            <button
+                                                key={day}
+                                                type="button"
+                                                onClick={() => toggleCheck(habit.id, day)}
+                                                disabled={disabled}
+                                                aria-label={`${habit.name}, ${currentMonth} ${day}: ${state}`}
+                                                aria-pressed={status === true}
+                                                className={status === true ? 'is-done' : status === 'skip' ? 'is-frozen' : ''}
+                                            >
+                                                {day}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         ))}
@@ -215,7 +246,15 @@ function Planner() {
                         <MoodLineChart data={moodData} />
                     </div>
 
-                    <AnalysisPanel habits={visibleHabits} checks={checks} daysInMonth={daysInMonth} />
+                    <AnalysisPanel
+                        habits={visibleHabits}
+                        checks={checks}
+                        daysInMonth={daysInMonth}
+                        upToDay={upToDay}
+                        year={currentYear}
+                        monthIndex={currentMonthIndex}
+                        globalPause={globalPause}
+                    />
                     
                     <CorrelationInsights
                         habits={visibleHabits}
@@ -224,6 +263,7 @@ function Planner() {
                         daysInMonth={daysInMonth}
                         year={currentYear}
                         monthIndex={currentMonthIndex}
+                        globalPause={globalPause}
                     />
                 </div>
 

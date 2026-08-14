@@ -1,15 +1,17 @@
 import React from 'react';
 import { Target, TrendingUp, AlertCircle } from 'lucide-react';
+import { summarizeHabitPerformance } from '../../lib/habitAnalytics';
 
-const AnalysisPanel = ({ habits = [], checks = {}, daysInMonth = 31 }) => {
-    // Basic analysis logic
-    const totalPossible = habits.length * daysInMonth;
-    let totalDone = 0;
-    habits.forEach(h => {
-        totalDone += Object.values(checks[h.id] || {}).filter(Boolean).length;
+const formatTarget = value => Number.isInteger(value) ? value : value.toFixed(1);
+
+const AnalysisPanel = ({ habits = [], checks = {}, daysInMonth = 31, upToDay = daysInMonth, year, monthIndex, globalPause = null }) => {
+    const { completionPct, top, needsAttention } = summarizeHabitPerformance(habits, checks, {
+        year,
+        monthIndex,
+        daysInMonth,
+        upToDay,
+        globalPause,
     });
-
-    const completionPct = totalPossible > 0 ? Math.round((totalDone / totalPossible) * 100) : 0;
 
     return (
         <div className="theme-panel-muted grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 p-8 rounded-[2rem] border">
@@ -31,9 +33,11 @@ const AnalysisPanel = ({ habits = [], checks = {}, daysInMonth = 31 }) => {
                 <div>
                     <h4 className="theme-muted text-[10px] font-black uppercase tracking-widest mb-1">Top Performer</h4>
                     <p className="theme-heading text-xl font-serif font-black">
-                        {habits[0]?.name || '–'}
+                        {top?.habit.name || '—'}
                     </p>
-                    <p className="theme-muted text-xs font-medium italic">Highest consistency this week</p>
+                    <p className="theme-muted text-xs font-medium italic">
+                        {top ? `${top.pacePct}% of target pace · ${top.completed}/${formatTarget(top.target)}` : 'No eligible days recorded'}
+                    </p>
                 </div>
             </div>
 
@@ -44,9 +48,13 @@ const AnalysisPanel = ({ habits = [], checks = {}, daysInMonth = 31 }) => {
                 <div>
                     <h4 className="theme-muted text-[10px] font-black uppercase tracking-widest mb-1">Attention Needed</h4>
                     <p className="theme-heading text-xl font-serif font-black">
-                        {habits.length > 2 ? habits[habits.length - 1].name : 'None'}
+                        {needsAttention?.habit.name || 'None'}
                     </p>
-                    <p className="theme-muted text-xs font-medium italic">Falling behind target goal</p>
+                    <p className="theme-muted text-xs font-medium italic">
+                        {needsAttention
+                            ? `${needsAttention.pacePct}% of target pace · ${formatTarget(needsAttention.shortfall)} behind`
+                            : 'No target shortfalls recorded'}
+                    </p>
                 </div>
             </div>
         </div>

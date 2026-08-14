@@ -5,7 +5,9 @@ import { useAuth } from '../../context/AuthContext';
 import { useAppContext } from '../../context/AppContext';
 import { useHabits } from '../../hooks/useHabits';
 import { useStreaks } from '../../hooks/useStreaks';
+import { useProductSettings } from '../../hooks/useProductSettings';
 import { buildWeeklyReview } from '../../lib/weeklyReview';
+import { elapsedDayLimit } from '../../lib/habitAnalytics';
 import { earnedMilestones } from '../../lib/milestones';
 
 const Stat = ({ label, children }) => (
@@ -46,22 +48,34 @@ const WeeklyReviewSkeleton = () => (
 function WeeklyReviewCard() {
     const { spreadsheetId } = useAuth();
     const { currentMonth, currentYear, currentMonthIndex, gender } = useAppContext();
-    const { habits, checks, mentalState, loading } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
+    const { habits, checks, mentalState, daysInMonth, loading } = useHabits(spreadsheetId, currentMonth, currentYear, currentMonthIndex);
+    const { settings: productSettings, loading: settingsLoading } = useProductSettings(spreadsheetId);
 
     const visibleHabits = useMemo(() => {
         if (gender === 'female') return habits;
         return habits.filter(h => !h.femaleOnly);
     }, [habits, gender]);
 
-    const { habitStreaks } = useStreaks(visibleHabits, checks);
-
     const today = new Date();
-    const isCurrentMonth = today.getMonth() === currentMonthIndex && today.getFullYear() === currentYear;
-    const todayDay = isCurrentMonth ? today.getDate() : 1;
+    const todayDay = elapsedDayLimit(currentYear, currentMonthIndex, daysInMonth, today);
+    const globalPause = useMemo(() => ({
+        from: productSettings.pauseFrom || '',
+        until: productSettings.pauseUntil || '',
+    }), [productSettings.pauseFrom, productSettings.pauseUntil]);
+    const { habitStreaks } = useStreaks(visibleHabits, checks, {
+        year: currentYear,
+        monthIndex: currentMonthIndex,
+        globalPause,
+    });
 
     const review = useMemo(
-        () => buildWeeklyReview(visibleHabits, checks, mentalState, todayDay),
-        [visibleHabits, checks, mentalState, todayDay]
+        () => buildWeeklyReview(visibleHabits, checks, mentalState, todayDay, 7, {
+            year: currentYear,
+            monthIndex: currentMonthIndex,
+            daysInMonth,
+            globalPause,
+        }),
+        [visibleHabits, checks, mentalState, todayDay, currentYear, currentMonthIndex, daysInMonth, globalPause]
     );
 
     const milestones = useMemo(
@@ -69,7 +83,7 @@ function WeeklyReviewCard() {
         [visibleHabits, habitStreaks]
     );
 
-    if (loading) return <WeeklyReviewSkeleton />;
+    if (loading || settingsLoading) return <WeeklyReviewSkeleton />;
     if (!review) return null;
 
     const moodDelta = review.moodAvg !== null && review.moodPrevAvg !== null
@@ -87,12 +101,14 @@ function WeeklyReviewCard() {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <Stat label="Completion">{review.completionPct}%</Stat>
-                <Stat label="Star Habit">
-                    {review.best.emoji} {review.best.name} ({review.best.count}/{review.days})
-                </Stat>
+                {review.best && (
+                    <Stat label="Star Habit">
+                        {review.best.emoji} {review.best.name} ({review.best.pacePct}% of pace)
+                    </Stat>
+                )}
                 {review.worst && (
                     <Stat label="Needs Attention">
-                        {review.worst.emoji} {review.worst.name} ({review.worst.count}/{review.days})
+                        {review.worst.emoji} {review.worst.name} ({review.worst.pacePct}% of pace)
                     </Stat>
                 )}
                 <Stat label="Avg Mood">

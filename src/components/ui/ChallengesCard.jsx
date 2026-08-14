@@ -2,9 +2,9 @@ import { Medal, CheckCircle2 } from 'lucide-react';
 import { monthlyChallenges } from '../../lib/challenges';
 
 /** Monthly challenge progress — Perfect Week, Consistency 80, Iron Habit. */
-function ChallengesCard({ habits, checks, daysInMonth, upToDay, monthLabel }) {
+function ChallengesCard({ habits, checks, daysInMonth, upToDay, monthLabel, year, monthIndex, globalPause = null }) {
     if (!upToDay || !habits || habits.length === 0) return null;
-    const challenges = monthlyChallenges(habits, checks, daysInMonth, upToDay);
+    const challenges = monthlyChallenges(habits, checks, daysInMonth, upToDay, { year, monthIndex, globalPause });
     if (challenges.length === 0) return null;
 
     return (

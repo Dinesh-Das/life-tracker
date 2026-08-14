@@ -1,29 +1,29 @@
 import { useMemo } from 'react';
 import { Sparkles, TrendingUp, TrendingDown, CalendarDays } from 'lucide-react';
 import { habitMoodCorrelations, habitNextDayMoodCorrelations, weekdayCompletion } from '../../lib/correlations';
+import { elapsedDayLimit } from '../../lib/habitAnalytics';
 /**
  * "What moves your mood" — correlates habit completion with mental-state
  * ratings and surfaces the strongest effects, plus weekday patterns.
  * Pure client-side analytics over data the app already collects.
  */
-function CorrelationInsights({ habits, checks, mentalState, daysInMonth, year, monthIndex }) {
+function CorrelationInsights({ habits, checks, mentalState, daysInMonth, year, monthIndex, globalPause = null }) {
     const today = new Date();
-    const isCurrentMonth = today.getFullYear() === year && today.getMonth() === monthIndex;
-    const upToDay = isCurrentMonth ? Math.min(today.getDate(), daysInMonth) : daysInMonth;
+    const upToDay = elapsedDayLimit(year, monthIndex, daysInMonth, today);
 
     const moodInsights = useMemo(
-        () => habitMoodCorrelations(habits, checks, mentalState, daysInMonth).slice(0, 3),
-        [habits, checks, mentalState, daysInMonth]
+        () => habitMoodCorrelations(habits, checks, mentalState, upToDay, 3, { year, monthIndex, globalPause }).slice(0, 3),
+        [habits, checks, mentalState, upToDay, year, monthIndex, globalPause]
     );
 
     const nextDayInsights = useMemo(
-        () => habitNextDayMoodCorrelations(habits, checks, mentalState, daysInMonth).slice(0, 2),
-        [habits, checks, mentalState, daysInMonth]
+        () => habitNextDayMoodCorrelations(habits, checks, mentalState, upToDay, 3, { year, monthIndex, globalPause }).slice(0, 2),
+        [habits, checks, mentalState, upToDay, year, monthIndex, globalPause]
     );
 
     const { best, worst } = useMemo(
-        () => weekdayCompletion(habits, checks, upToDay, year, monthIndex),
-        [habits, checks, upToDay, year, monthIndex]
+        () => weekdayCompletion(habits, checks, upToDay, year, monthIndex, { globalPause }),
+        [habits, checks, upToDay, year, monthIndex, globalPause]
     );
 
     const hasWeekdayInsight = best && worst && best.day !== worst.day && best.pct !== worst.pct;
@@ -55,7 +55,7 @@ function CorrelationInsights({ habits, checks, mentalState, daysInMonth, year, m
                         <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-body)', lineHeight: 1.5 }}>
                             <strong>{ins.emoji} {ins.habitName}:</strong> your mental state averages{' '}
                             <strong>{ins.doneAvg}</strong> on days you complete it vs{' '}
-                            <strong>{ins.missAvg}</strong> when you skip it ({ins.delta >= 0 ? '+' : ''}{ins.delta}).
+                            <strong>{ins.missAvg}</strong> when you miss it ({ins.delta >= 0 ? '+' : ''}{ins.delta}).
                         </p>
                     </div>
                 ))}

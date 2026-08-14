@@ -1,5 +1,6 @@
 import HabitRow from './HabitRow';
 import { useEffect, useMemo, useState } from 'react';
+import { buildCompletionTrend } from '../../lib/habitAnalytics';
 
 const PAGE_SIZE = 50;
 
@@ -9,6 +10,8 @@ function HabitGrid({
     streaks = {},
     mentalState = {},
     daysInMonth = 31,
+    upToDay = daysInMonth,
+    globalPause = null,
     onToggle,
     onDelete,
     onUpdate,
@@ -25,18 +28,18 @@ function HabitGrid({
         [habits, page]
     );
     const dailyStats = useMemo(() => {
-        const result = {};
-        days.forEach(day => {
-            let done = 0;
-            habits.forEach(habit => { if (checks[habit.id]?.[day] === true) done += 1; });
-            result[day] = {
-                done,
-                notDone: habits.length - done,
-                pct: habits.length ? Math.round((done / habits.length) * 100) : 0,
-            };
+        const result = Object.fromEntries(days.map(day => [day, { done: 0, notDone: 0, pct: 0, eligible: 0 }]));
+        buildCompletionTrend(habits, checks, {
+            year: currentYear,
+            monthIndex: currentMonthIndex,
+            daysInMonth,
+            upToDay,
+            globalPause,
+        }).forEach(({ day, completed, eligible, pct }) => {
+            result[day] = { done: completed, notDone: eligible - completed, pct, eligible };
         });
         return result;
-    }, [checks, days, habits]);
+    }, [checks, days, habits, currentYear, currentMonthIndex, daysInMonth, upToDay, globalPause]);
 
     return (
         <div>
@@ -83,6 +86,7 @@ function HabitGrid({
                             days={days}
                             checks={checks[habit.id]}
                             streak={streaks[habit.id]}
+                            upToDay={upToDay}
                             onToggle={onToggle}
                             onDelete={onDelete}
                             onUpdate={onUpdate}
@@ -103,7 +107,7 @@ function HabitGrid({
                                     key={day}
                                     className={`p-1 text-center ${isNewWeek ? 'border-l-2 border-gray-200' : 'border-l border-gray-100'} ${stats.pct > 0 ? 'text-primary' : 'text-gray-300'}`}
                                 >
-                                    {stats.pct > 0 ? `${stats.pct}%` : '–'}
+                                    {stats.eligible > 0 ? `${stats.pct}%` : '–'}
                                 </td>
                             );
                         })}
@@ -165,7 +169,9 @@ function HabitGrid({
                                         className="table-mental-input w-5 text-center font-black appearance-none"
                                         value={mentalState[day] || ''}
                                         onChange={(e) => onMentalStateChange(day, e.target.value)}
-                                        aria-label={`Mental state for day ${day}`}
+                                        disabled={day > upToDay}
+                                        title={day > upToDay ? 'Future dates cannot be edited' : undefined}
+                                        aria-label={`Mental state for day ${day}${day > upToDay ? ' (future, unavailable)' : ''}`}
                                     />
                                 </td>
                             );

@@ -1,22 +1,24 @@
+import { summarizeHabitPerformance } from '../../lib/habitAnalytics';
+
 function MonthHeader({
     month = 'March',
     habits = [],
     checks = {},
     daysInMonth = 31,
+    upToDay = daysInMonth,
+    currentYear,
+    currentMonthIndex,
+    globalPause = null,
     onAddHabit
 }) {
-    // Compute global stats
     const totalHabits = habits.length;
-    const totalSlots = totalHabits * daysInMonth;
-
-    let completedCount = 0;
-    Object.values(checks).forEach(habitChecks => {
-        Object.values(habitChecks).forEach(status => {
-            if (status === true) completedCount++;
-        });
+    const { completed: completedCount, completionPct: progressPct } = summarizeHabitPerformance(habits, checks, {
+        year: currentYear,
+        monthIndex: currentMonthIndex,
+        daysInMonth,
+        upToDay,
+        globalPause,
     });
-
-    const progressPct = totalSlots > 0 ? Math.round((completedCount / totalSlots) * 100) : 0;
 
     return (
         <div className="theme-panel-solid p-6 border shadow-sm rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">

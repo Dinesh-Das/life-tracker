@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import Modal from './Modal';
 import { habitMoodCorrelations } from '../../lib/correlations';
+import { isCompletedStatus, isEligibleHabitDay, isNeutralStatus } from '../../lib/habitAnalytics';
 import { loadNotesForHabit, saveNote } from '../../lib/habitNotes';
 import { tiersForHabit, setCustomTiersForHabit, getCustomTiers } from '../../lib/milestones';
 
@@ -19,7 +20,21 @@ const fieldStyle = {
  * measured mood effect, and a per-day note ("why did it go well or not").
  * All colors come from theme tokens so the modal adapts to dark mode.
  */
-function HabitDetailModal({ isOpen, onClose, habit, checks, mentalState, daysInMonth, streak, spreadsheetId, monthLabel }) {
+function HabitDetailModal({
+    isOpen,
+    onClose,
+    habit,
+    checks,
+    mentalState,
+    daysInMonth,
+    upToDay = daysInMonth,
+    year,
+    monthIndex,
+    globalPause = null,
+    streak,
+    spreadsheetId,
+    monthLabel,
+}) {
     const [notes, setNotes] = useState([]);
     const [noteInput, setNoteInput] = useState('');
     const [savingNote, setSavingNote] = useState(false);
@@ -64,16 +79,16 @@ function HabitDetailModal({ isOpen, onClose, habit, checks, mentalState, daysInM
     const doneDays = useMemo(() => {
         if (!habit) return 0;
         let c = 0;
-        for (let d = 1; d <= daysInMonth; d++) {
-            if (checks[habit.id]?.[d]) c++;
+        for (let d = 1; d <= upToDay; d++) {
+            if (isCompletedStatus(checks[habit.id]?.[d])) c++;
         }
         return c;
-    }, [habit, checks, daysInMonth]);
+    }, [habit, checks, upToDay]);
 
     const moodEffect = useMemo(() => {
         if (!habit) return null;
-        return habitMoodCorrelations([habit], checks, mentalState, daysInMonth)[0] || null;
-    }, [habit, checks, mentalState, daysInMonth]);
+        return habitMoodCorrelations([habit], checks, mentalState, upToDay, 3, { year, monthIndex, globalPause })[0] || null;
+    }, [habit, checks, mentalState, upToDay, year, monthIndex, globalPause]);
 
     const handleSaveNote = useCallback(async () => {
         if (!habit) return;
@@ -158,18 +173,28 @@ function HabitDetailModal({ isOpen, onClose, habit, checks, mentalState, daysInM
                     <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={labelStyle}>{monthLabel}</p>
                     <div className="grid grid-cols-7 gap-1">
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((d) => {
-                            const done = !!checks[habit.id]?.[d];
+                            const isFuture = d > upToDay;
+                            const status = checks[habit.id]?.[d];
+                            const done = !isFuture && isCompletedStatus(status);
+                            const frozen = !isFuture && isNeutralStatus(status);
+                            const date = Number.isInteger(year) && Number.isInteger(monthIndex)
+                                ? new Date(year, monthIndex, d)
+                                : null;
+                            const neutral = !isFuture && !done && !frozen && !isEligibleHabitDay(habit, status, date, globalPause);
+                            const stateLabel = isFuture ? 'future' : done ? 'completed' : frozen ? 'frozen (neutral)' : neutral ? 'not scheduled (neutral)' : 'not completed';
                             return (
                                 <div
                                     key={d}
-                                    title={`Day ${d}${done ? ' — completed' : ''}`}
+                                    aria-label={`Day ${d}: ${stateLabel}`}
+                                    title={`Day ${d} — ${stateLabel}`}
                                     className="aspect-square rounded-md flex items-center justify-center text-[9px] font-bold"
                                     style={{
-                                        background: done ? 'rgba(var(--heat-rgb),0.9)' : 'var(--ring-track)',
+                                        background: done ? 'rgba(var(--heat-rgb),0.9)' : frozen || neutral ? 'var(--info-bg)' : 'var(--ring-track)',
                                         color: done ? 'var(--card-solid-bg)' : 'var(--text-muted)',
+                                        opacity: isFuture ? 0.45 : neutral ? 0.65 : 1,
                                     }}
                                 >
-                                    {d}
+                                    {frozen ? '❄' : d}
                                 </div>
                             );
                         })}
@@ -183,7 +208,7 @@ function HabitDetailModal({ isOpen, onClose, habit, checks, mentalState, daysInM
                         style={{ background: 'var(--positive-bg)', border: '1px solid var(--divider)', color: 'var(--text-body)' }}
                     >
                         Your mental state averages <strong>{moodEffect.doneAvg}</strong> on days you complete this habit vs{' '}
-                        <strong>{moodEffect.missAvg}</strong> when you skip it ({moodEffect.delta >= 0 ? '+' : ''}{moodEffect.delta}).
+                        <strong>{moodEffect.missAvg}</strong> when you miss it ({moodEffect.delta >= 0 ? '+' : ''}{moodEffect.delta}).
                     </p>
                 )}
 

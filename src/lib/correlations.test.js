@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { habitMoodCorrelations, weekdayCompletion } from './correlations';
+import { habitMoodCorrelations, habitNextDayMoodCorrelations, weekdayCompletion } from './correlations';
 
 const habit = { id: 'h1', name: 'Exercise', emoji: '💪' };
 
@@ -43,6 +43,45 @@ describe('habitMoodCorrelations', () => {
         expect(res[1].habitId).toBe('h2');
         expect(res[1].delta).toBe(2);
     });
+
+    it('excludes frozen days from both comparison groups', () => {
+        const checks = { h1: {
+            1: true, 2: true, 3: true,
+            4: false, 5: false, 6: false,
+            7: 'skip', 8: 'skip', 9: 'skip',
+        } };
+        const mentalState = { 1: 8, 2: 8, 3: 8, 4: 4, 5: 4, 6: 4, 7: 10, 8: 10, 9: 10 };
+        const res = habitMoodCorrelations([habit], checks, mentalState, 9);
+        expect(res[0]).toMatchObject({ doneAvg: 8, missAvg: 4, samples: 6 });
+    });
+
+    it('excludes vacation dates from both comparison groups', () => {
+        const checks = { h1: {
+            1: true, 2: true, 3: true,
+            4: false, 5: false, 6: false,
+            7: false,
+        } };
+        const mentalState = { 1: 8, 2: 8, 3: 8, 4: 4, 5: 4, 6: 4, 7: 1 };
+        const res = habitMoodCorrelations([habit], checks, mentalState, 7, 3, {
+            year: 2026,
+            monthIndex: 7,
+            globalPause: { from: '2026-08-07', until: '2026-08-07' },
+        });
+        expect(res[0]).toMatchObject({ doneAvg: 8, missAvg: 4, samples: 6 });
+    });
+});
+
+describe('habitNextDayMoodCorrelations', () => {
+    it('does not classify a frozen day as a miss', () => {
+        const checks = { h1: {
+            1: true, 2: true, 3: true,
+            4: false, 5: false, 6: false,
+            7: 'skip', 8: 'skip', 9: 'skip',
+        } };
+        const mentalState = { 2: 8, 3: 8, 4: 8, 5: 4, 6: 4, 7: 4, 8: 10, 9: 10, 10: 10 };
+        const res = habitNextDayMoodCorrelations([habit], checks, mentalState, 10);
+        expect(res[0]).toMatchObject({ doneAvg: 8, missAvg: 4, samples: 6 });
+    });
 });
 
 describe('weekdayCompletion', () => {
@@ -59,5 +98,11 @@ describe('weekdayCompletion', () => {
         const { best, worst } = weekdayCompletion([], {}, 0, 2024, 0);
         expect(best).toBeNull();
         expect(worst).toBeNull();
+    });
+
+    it('does not add frozen days to the denominator', () => {
+        const checks = { h1: { 1: true, 8: 'skip' } };
+        const { best } = weekdayCompletion([habit], checks, 8, 2024, 0);
+        expect(best).toMatchObject({ day: 'Monday', pct: 100, samples: 1 });
     });
 });

@@ -18,15 +18,6 @@ function FocusPage() {
         { label: 'Sessions', value: totalSessions, icon: Flame },
     ];
 
-    if (error) {
-        return (
-            <div className="flex-1 flex flex-col min-h-screen">
-                <Header title="Focus Mode" />
-                <LoadErrorState title="Focus history could not be loaded" error={error} onRetry={reload} />
-            </div>
-        );
-    }
-
     return (
         <div className="flex-1 flex flex-col min-h-screen">
             <Header title="Focus Mode" />
@@ -41,10 +32,18 @@ function FocusPage() {
                         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Eliminate distractions and find your flow.</p>
                     </div>
 
-                    <FocusTimer onSessionComplete={logSession} />
+                    <FocusTimer spreadsheetId={spreadsheetId} onSessionComplete={logSession} />
+
+                    {error && (
+                        <LoadErrorState
+                            title="Focus history is unavailable"
+                            error={error}
+                            onRetry={reload}
+                        />
+                    )}
 
                     {/* Focus stats — sessions persist to the FocusLogs sheet */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                    {!error && <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
                         {stats.map((s) => (
                             <div key={s.label} className="glass-card" style={{ padding: '16px 12px', textAlign: 'center' }}>
                                 <s.icon size={16} style={{ color: 'var(--accent-strong)', marginBottom: '6px', display: 'inline-block' }} />
@@ -56,7 +55,7 @@ function FocusPage() {
                                 </p>
                             </div>
                         ))}
-                    </div>
+                    </div>}
                 </div>
             </motion.div>
         </div>

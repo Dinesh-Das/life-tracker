@@ -43,4 +43,48 @@ describe('buildWeeklyReview', () => {
         const r = buildWeeklyReview([habits[0]], { a: { 14: true } }, {}, 14);
         expect(r.worst).toBeNull();
     });
+
+    it('treats frozen days as neutral instead of completed or missed', () => {
+        const r = buildWeeklyReview(
+            habits,
+            { a: { 8: true, 9: 'skip' }, b: { 8: false, 9: 'skip' } },
+            {},
+            9,
+            2,
+        );
+        expect(r.completionPct).toBe(50);
+        expect(r.best).toMatchObject({ id: 'a', count: 1, possible: 1, pct: 100 });
+        expect(r.worst).toMatchObject({ id: 'b', count: 0, possible: 1, pct: 0 });
+    });
+
+    it('returns no rankings when every day is frozen', () => {
+        const r = buildWeeklyReview(habits, { a: { 7: 'skip' }, b: { 7: 'skip' } }, {}, 7, 1);
+        expect(r.completionPct).toBe(0);
+        expect(r.best).toBeNull();
+        expect(r.worst).toBeNull();
+    });
+
+    it('uses configured cadence for star and attention rankings', () => {
+        const flexible = { id: 'flex', name: 'Flexible', emoji: '🎯', scheduleType: 'frequency', frequency: '3x/week', goal: 30 };
+        const daily = { id: 'daily', name: 'Daily', emoji: '☀️', scheduleType: 'frequency', frequency: 'Daily', goal: 28 };
+        const r = buildWeeklyReview([daily, flexible], {
+            daily: { 1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: false },
+            flex: { 1: true, 2: true, 3: true, 4: false, 5: false, 6: false, 7: false },
+        }, {}, 7, 7, { daysInMonth: 28 });
+
+        expect(r.best).toMatchObject({ id: 'flex', count: 3, pacePct: 100 });
+        expect(r.worst).toMatchObject({ id: 'daily', count: 6, pacePct: 86, shortfall: 1 });
+    });
+
+    it('excludes vacation dates from the weekly denominator', () => {
+        const r = buildWeeklyReview([habits[0]], { a: { 8: true, 9: false } }, {}, 9, 2, {
+            year: 2026,
+            monthIndex: 7,
+            daysInMonth: 31,
+            globalPause: { from: '2026-08-09', until: '2026-08-09' },
+        });
+        expect(r.completionPct).toBe(100);
+        expect(r.best).toMatchObject({ possible: 1, pacePct: 100 });
+        expect(r.worst).toBeNull();
+    });
 });

@@ -34,7 +34,7 @@ export function useMonthlyWrapped(spreadsheetId, currentMonth, currentYear, curr
 
                 let focusRows = [];
                 try {
-                    focusRows = await readDataRows(spreadsheetId, 'FocusLogs!A:D');
+                    focusRows = await readDataRows(spreadsheetId, 'FocusLogs!A:E');
                 } catch {
                     // FocusLogs tab may not exist yet — focus time simply reads 0
                 }

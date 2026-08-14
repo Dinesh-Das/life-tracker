@@ -1,3 +1,5 @@
+import { isCompletedStatus, isEligibleHabitDay, isNeutralStatus } from './habitAnalytics';
+
 /**
  * Pure analytics over month-level habit checks and mental-state ratings.
  * Turns recorded data into insight: which habits actually move your mood,
@@ -15,7 +17,7 @@
  * @param {number} daysInMonth
  * @param {number} minSamples
  */
-export function habitMoodCorrelations(habits, checks, mentalState, daysInMonth, minSamples = 3) {
+export function habitMoodCorrelations(habits, checks, mentalState, daysInMonth, minSamples = 3, options = {}) {
     const results = [];
 
     for (const habit of habits) {
@@ -24,7 +26,13 @@ export function habitMoodCorrelations(habits, checks, mentalState, daysInMonth, 
         for (let d = 1; d <= daysInMonth; d++) {
             const mood = mentalState[d];
             if (mood === undefined || mood === null) continue;
-            if (checks[habit.id]?.[d]) {
+            const status = checks[habit.id]?.[d];
+            if (isNeutralStatus(status)) continue;
+            const date = Number.isInteger(options.year) && Number.isInteger(options.monthIndex)
+                ? new Date(options.year, options.monthIndex, d)
+                : null;
+            if (!isEligibleHabitDay(habit, status, date, options.globalPause)) continue;
+            if (isCompletedStatus(status)) {
                 doneSum += mood;
                 doneN++;
             } else {
@@ -64,15 +72,17 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
  * @param {number} year
  * @param {number} monthIndex 0-based month
  */
-export function weekdayCompletion(habits, checks, upToDay, year, monthIndex) {
+export function weekdayCompletion(habits, checks, upToDay, year, monthIndex, options = {}) {
     const done = Array(7).fill(0);
     const possible = Array(7).fill(0);
 
     for (let d = 1; d <= upToDay; d++) {
         const wd = new Date(year, monthIndex, d).getDay();
         for (const habit of habits) {
+            const status = checks[habit.id]?.[d];
+            if (!isEligibleHabitDay(habit, status, new Date(year, monthIndex, d), options.globalPause)) continue;
             possible[wd]++;
-            if (checks[habit.id]?.[d]) done[wd]++;
+            if (isCompletedStatus(status)) done[wd]++;
         }
     }
 
@@ -88,14 +98,14 @@ export function weekdayCompletion(habits, checks, upToDay, year, monthIndex) {
 
     const sorted = [...rates].sort((a, b) => b.pct - a.pct);
     return { best: sorted[0], worst: sorted[sorted.length - 1] };
-    }
+}
 
 /**
  * Next-day causality: average mood the day AFTER completing a habit vs
  * the day after missing it. Highlights habits whose effect carries over
  * into the next day (e.g. evening workouts → better mornings).
  */
-export function habitNextDayMoodCorrelations(habits, checks, mentalState, daysInMonth, minSamples = 3) {
+export function habitNextDayMoodCorrelations(habits, checks, mentalState, daysInMonth, minSamples = 3, options = {}) {
     const results = [];
 
     for (const habit of habits) {
@@ -104,7 +114,13 @@ export function habitNextDayMoodCorrelations(habits, checks, mentalState, daysIn
         for (let d = 1; d < daysInMonth; d++) {
             const nextMood = mentalState[d + 1];
             if (nextMood === undefined || nextMood === null) continue;
-            if (checks[habit.id]?.[d] === true) {
+            const status = checks[habit.id]?.[d];
+            if (isNeutralStatus(status)) continue;
+            const date = Number.isInteger(options.year) && Number.isInteger(options.monthIndex)
+                ? new Date(options.year, options.monthIndex, d)
+                : null;
+            if (!isEligibleHabitDay(habit, status, date, options.globalPause)) continue;
+            if (isCompletedStatus(status)) {
                 doneSum += nextMood;
                 doneN++;
             } else {
