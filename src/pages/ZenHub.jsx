@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useAppContext } from '../context/AppContext';
@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router';
 import WeeklyReviewCard from '../components/ui/WeeklyReviewCard';
-import { getQuoteForCurrentLogin, resetQuoteForNextLogin } from '../lib/quoteDeck';
+import { resetQuoteForNextLogin } from '../lib/quoteSession';
 import { getQuoteGuide } from '../lib/quoteGuide';
 
 const hubCards = [
@@ -28,8 +28,9 @@ const hubCards = [
 function ZenHub() {
     const { user } = useAuth();
     const { currentMonth, currentYear } = useAppContext();
-    const [quote, setQuote] = useState(getQuoteForCurrentLogin);
-    const guide = getQuoteGuide(quote);
+    const [quote, setQuote] = useState(null);
+    const [quoteError, setQuoteError] = useState(false);
+    const guide = quote ? getQuoteGuide(quote) : null;
     const firstName = user?.getName?.()?.split(' ')[0] || user?.firstName || 'Friend';
 
     const todayStr = new Date().toLocaleDateString('en-US', {
@@ -45,9 +46,29 @@ function ZenHub() {
         show: { opacity: 1, y: 0 },
     };
 
-    const showAnotherQuote = () => {
+    useEffect(() => {
+        let active = true;
+        import('../lib/quoteDeck')
+            .then(({ getQuoteForCurrentLogin }) => {
+                if (active) setQuote(getQuoteForCurrentLogin());
+            })
+            .catch(error => {
+                console.error('Quote library failed to load', error);
+                if (active) setQuoteError(true);
+            });
+        return () => { active = false; };
+    }, []);
+
+    const showAnotherQuote = async () => {
         resetQuoteForNextLogin();
-        setQuote(getQuoteForCurrentLogin());
+        setQuoteError(false);
+        try {
+            const { getQuoteForCurrentLogin } = await import('../lib/quoteDeck');
+            setQuote(getQuoteForCurrentLogin());
+        } catch (error) {
+            console.error('Quote library failed to load', error);
+            setQuoteError(true);
+        }
     };
 
     return (
@@ -81,6 +102,18 @@ function ZenHub() {
                 <Sparkles
                     style={{ position: 'absolute', right: '-8px', top: '-8px', width: '80px', height: '80px', color: 'rgba(45,79,65,0.15)', transform: 'rotate(12deg)' }}
                 />
+                {!quote ? (
+                    <div role={quoteError ? 'alert' : 'status'} style={{ position: 'relative', zIndex: 1 }}>
+                        <p style={{ fontFamily: 'var(--font-body)', color: 'var(--text-muted)', marginBottom: quoteError ? '12px' : 0 }}>
+                            {quoteError ? 'Today’s quote could not be loaded.' : 'Choosing a fresh quote for you…'}
+                        </p>
+                        {quoteError && (
+                            <button type="button" className="system-action-button" onClick={showAnotherQuote}>
+                                Retry quote
+                            </button>
+                        )}
+                    </div>
+                ) : <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px', position: 'relative', zIndex: 1 }}>
                     <span style={{
                         fontFamily: 'var(--font-body)', fontSize: '10px', fontWeight: 800,
@@ -88,13 +121,13 @@ function ZenHub() {
                         background: 'rgba(45,79,65,0.13)', border: '1px solid rgba(45,79,65,0.2)',
                         borderRadius: '999px', padding: '5px 9px',
                     }}>
-                        {quote.category || quote.topic}
+                        {quote.kind === 'quotation' ? quote.topic : (quote.category || quote.topic)}
                     </span>
-                    {quote.inspiredBy && (
-                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>
-                            {quote.inspiredBy}-inspired
-                        </span>
-                    )}
+                    <span style={{ fontFamily: 'var(--font-body)', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>
+                        {quote.kind === 'quotation'
+                            ? 'Source-linked classic quotation'
+                            : `${quote.inspiredBy}-inspired original`}
+                    </span>
                 </div>
                 <p style={{
                     fontFamily: 'var(--font-display)',
@@ -126,14 +159,14 @@ function ZenHub() {
                     marginTop: '5px',
                     position: 'relative', zIndex: 1,
                 }}>
-                    {quote.sourceUrl ? (
+                    {quote.kind === 'quotation' && quote.sourceUrl ? (
                         <a
                             href={quote.sourceUrl}
                             target="_blank"
                             rel="noreferrer"
                             style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: '2px' }}
                         >
-                            {quote.source}
+                            {quote.source}{quote.translator ? ` · translated by ${quote.translator}` : ''}
                         </a>
                     ) : 'Original motivational writing · not official dialogue'}
                 </p>
@@ -179,6 +212,7 @@ function ZenHub() {
                 >
                     <RefreshCw size={13} /> Another boost
                 </button>
+                </>}
             </motion.div>
 
             {/* Weekly review — last 7 days at a glance */}

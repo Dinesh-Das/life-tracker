@@ -1,7 +1,9 @@
 /* LifeTracker service worker — app shell + runtime caching.
-   Bump CACHE_VERSION to invalidate old caches on deploy. */
-const CACHE_VERSION = 'lifetracker-v5';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/logo.png'];
+   The production build replaces both markers below after Vite emits its
+   hashed bundles, so a first install is executable without a second visit. */
+const CACHE_VERSION = 'lifetracker-__BUILD_CACHE_VERSION__';
+const BUILD_ASSETS = /* __BUILD_ASSETS__ */ [];
+const APP_SHELL = ['/', '/manifest.webmanifest', '/logo.png', ...BUILD_ASSETS];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
@@ -15,7 +17,9 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys()
             .then((keys) => Promise.all(
-                keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k))
+                keys
+                    .filter((k) => k.startsWith('lifetracker-') && k !== CACHE_VERSION)
+                    .map((k) => caches.delete(k))
             ))
             .then(() => self.clients.claim())
     );
@@ -50,8 +54,11 @@ self.addEventListener('fetch', (event) => {
         event.respondWith(
             fetch(request)
                 .then((res) => {
-                    const copy = res.clone();
-                    caches.open(CACHE_VERSION).then((cache) => cache.put('/', copy));
+                    const contentType = res.headers.get('content-type') || '';
+                    if (res.ok && contentType.includes('text/html')) {
+                        const copy = res.clone();
+                        event.waitUntil(caches.open(CACHE_VERSION).then((cache) => cache.put('/', copy)));
+                    }
                     return res;
                 })
                 .catch(() => caches.match('/'))

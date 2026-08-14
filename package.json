@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "postbuild": "node scripts/inject-sw-assets.mjs",
     "quotes:generate": "node scripts/generate-quotes.mjs",
     "lint": "eslint src --report-unused-disable-directives --max-warnings 0",
     "test": "vitest run",

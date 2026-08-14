@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router';
 
+export const TERMS_LAST_UPDATED = 'August 1, 2026';
+
 function TermsOfService() {
     return (
         <div style={{ minHeight: '100vh', background: 'var(--background)', color: 'var(--text-heading)', padding: '40px 24px', fontFamily: 'var(--font-body)' }}>
             <div style={{ maxWidth: '800px', margin: '0 auto', background: 'rgba(255,255,255,0.6)', padding: '40px', borderRadius: '24px', backdropFilter: 'blur(20px)' }}>
                 <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', marginBottom: '24px' }}>Terms of Service</h1>
-                <p style={{ marginBottom: '16px' }}>Last updated: {new Date().toLocaleDateString()}</p>
+                <p style={{ marginBottom: '16px' }}>Last updated: {TERMS_LAST_UPDATED}</p>
                 
                 <h2 style={{ fontSize: '20px', marginTop: '24px', marginBottom: '12px' }}>1. Acceptance of Terms</h2>
                 <p style={{ marginBottom: '16px', lineHeight: 1.6 }}>By accessing and using LifeTracker, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use the application.</p>

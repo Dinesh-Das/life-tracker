@@ -2,8 +2,8 @@ import { QUOTES } from '../data/quotes';
 import { CURRENT_QUOTE_KEY } from './quoteSession';
 export { resetQuoteForNextLogin } from './quoteSession';
 
-const QUOTE_DECK_KEY = 'lt_quote_deck_v3';
-const LAST_QUOTE_KEY = 'lt_last_quote_v3';
+const QUOTE_DECK_KEY = 'lt_quote_deck_v4';
+const LAST_QUOTE_KEY = 'lt_last_quote_v4';
 
 const quotesById = new Map(QUOTES.map(quote => [quote.id, quote]));
 let fallbackLastQuoteId = null;
