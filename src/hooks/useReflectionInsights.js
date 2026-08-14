@@ -22,10 +22,12 @@ export function useReflectionInsights(spreadsheetId, year = new Date().getFullYe
             setInsights([]);
             setLoadedYear(null);
             try {
-                await Promise.all([
-                    ensureDailyWinsSheet(spreadsheetId),
-                    ensureJournalSheet(spreadsheetId),
-                ]);
+                if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+                    await Promise.all([
+                        ensureDailyWinsSheet(spreadsheetId),
+                        ensureJournalSheet(spreadsheetId),
+                    ]);
+                }
                 const [winsRows, journalRows] = await Promise.all([
                     readDataRows(spreadsheetId, 'DailyWins!A:F'),
                     readDataRows(spreadsheetId, 'JournalLogs!A:D'),

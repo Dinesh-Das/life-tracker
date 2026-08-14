@@ -45,7 +45,7 @@ export async function ensureHabitsSheet(spreadsheetId) {
     if (ensurePromises.has(spreadsheetId)) return ensurePromises.get(spreadsheetId);
 
     const promise = (async () => {
-        const metadata = await getSpreadsheet(spreadsheetId);
+        const metadata = await getSpreadsheet(spreadsheetId, { allowOfflineFallback: false });
         const exists = metadata.sheets?.some(sheet => sheet.properties?.title === HABITS_TAB);
         if (exists) {
             await batchWrite(spreadsheetId, [{ range: `${HABITS_TAB}!A1:V1`, values: [HABIT_HEADERS] }]);
@@ -72,7 +72,9 @@ export async function ensureHabitsSheet(spreadsheetId) {
 }
 
 export async function loadAllHabits(spreadsheetId) {
-    await ensureHabitsSheet(spreadsheetId);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+        await ensureHabitsSheet(spreadsheetId);
+    }
     const rows = await readRange(spreadsheetId, `${HABITS_TAB}!A2:V`);
     return (rows || [])
         .map((row, index) => parseHabitRow(row, index, index + 2))
@@ -96,7 +98,7 @@ export async function migrateHabitIdsAcrossMonths(spreadsheetId, habits = null) 
     const promise = (async () => {
         const definitions = habits || await loadAllHabits(spreadsheetId);
         const byId = new Map(definitions.map(habit => [habit.id, habit]));
-        const metadata = await getSpreadsheet(spreadsheetId);
+        const metadata = await getSpreadsheet(spreadsheetId, { allowOfflineFallback: false });
         const tabs = (metadata.sheets || [])
             .map(sheet => sheet.properties?.title)
             .filter(title => MONTH_TAB_PATTERN.test(title));

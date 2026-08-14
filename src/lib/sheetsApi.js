@@ -21,7 +21,6 @@ const SHEETS = () => window.gapi.client.sheets.spreadsheets;
 const cache = new Map();    // key -> { data, time }
 const inflight = new Map(); // key -> Promise
 const generations = new Map(); // spreadsheetId -> invalidation generation
-const offlineKeys = new Map(); // spreadsheetId -> persisted cache keys used this session
 const READ_TTL = 60_000;
 
 /**
@@ -44,11 +43,14 @@ function trimLeadingRows(values, skipRows) {
 }
 
 function canUseOfflineFallback(error) {
-    void error;
-    // Persisted rows are retained for diagnostics/cache migration, but reads
-    // never silently substitute them for live Sheets data. The caller must be
-    // able to distinguish an empty day from a failed/offline request.
-    return false;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+    const status = error?.status ?? error?.result?.error?.code;
+    if (status === 0 || status === 408 || status === 429 || status >= 500) return true;
+    const message = String(error?.message || '').toLowerCase();
+    return error instanceof TypeError
+        || message.includes('failed to fetch')
+        || message.includes('networkerror')
+        || message.includes('network request failed');
 }
 
 function fresh(key) {
@@ -56,7 +58,7 @@ function fresh(key) {
     return hit && Date.now() - hit.time < READ_TTL ? hit.data : undefined;
 }
 
-/** Drop all cached reads + metadata for one spreadsheet (called on writes). */
+/** Drop in-memory reads + metadata for one spreadsheet (called on writes). */
 function invalidateSpreadsheet(spreadsheetId) {
     generations.set(spreadsheetId, (generations.get(spreadsheetId) || 0) + 1);
     const marker = `:${spreadsheetId}:`;
@@ -67,8 +69,9 @@ function invalidateSpreadsheet(spreadsheetId) {
     for (const key of [...inflight.keys()]) {
         if (key.includes(marker) || key === metaKey) inflight.delete(key);
     }
-    for (const key of offlineKeys.get(spreadsheetId) || []) void cacheDelete(key);
-    offlineKeys.delete(spreadsheetId);
+    // Keep the last persisted snapshot. A write invalidates live in-memory
+    // reads, but deleting IndexedDB here would make the next offline restart
+    // lose all fallback data. Explicit account/cache clearing handles removal.
 }
 
 /** Clear this spreadsheet's in-memory and persisted API read cache. */
@@ -78,6 +81,7 @@ export async function clearSpreadsheetCache(spreadsheetId) {
     await Promise.all([
         cacheDeletePrefix(`read:${spreadsheetId}-`),
         cacheDeletePrefix(`batch:${spreadsheetId}-`),
+        cacheDelete(`meta:${spreadsheetId}`),
     ]);
 }
 
@@ -97,16 +101,24 @@ function dedupe(key, fn) {
  * IndexedDB copy when the network fails.
  * @param {string} spreadsheetId
  * @param {string} range
+ * @param {{forceRefresh?: boolean, allowOfflineFallback?: boolean}} [options]
  */
-export async function readRange(spreadsheetId, range) {
+export async function readRange(
+    spreadsheetId,
+    range,
+    { forceRefresh = false, allowOfflineFallback = true } = {},
+) {
     const key = `r:${spreadsheetId}:${range}`;
     const offlineKey = `read:${spreadsheetId}-${range}`; // legacy key format — keep
-    const hit = fresh(key);
+    const hit = forceRefresh ? undefined : fresh(key);
     if (hit !== undefined) return hit;
 
     const { apiRange, skipRows } = normalizeReadRange(range);
     const generation = generations.get(spreadsheetId) || 0;
-    return dedupe(key, async () => {
+    // A network-only mutation precondition must never share an in-flight
+    // request whose caller is allowed to recover from persisted stale data.
+    const requestKey = `${key}:${forceRefresh ? 'force' : 'cached'}:${allowOfflineFallback ? 'fallback' : 'network-only'}`;
+    return dedupe(requestKey, async () => {
         try {
             const res = await SHEETS().values.get({
                 spreadsheetId,
@@ -116,13 +128,11 @@ export async function readRange(spreadsheetId, range) {
             const data = trimLeadingRows(res.result.values, skipRows);
             if ((generations.get(spreadsheetId) || 0) === generation) {
                 cache.set(key, { data, time: Date.now() });
-                if (!offlineKeys.has(spreadsheetId)) offlineKeys.set(spreadsheetId, new Set());
-                offlineKeys.get(spreadsheetId).add(offlineKey);
                 void cacheSet(offlineKey, data);
             }
             return data;
         } catch (err) {
-            if (canUseOfflineFallback(err)) {
+            if (allowOfflineFallback && canUseOfflineFallback(err)) {
                 const fallback = await cacheGet(offlineKey);
                 if (fallback !== undefined) return fallback;
             }
@@ -132,8 +142,8 @@ export async function readRange(spreadsheetId, range) {
 }
 
 /** Read a valid whole-column range and remove its header rows. */
-export async function readDataRows(spreadsheetId, range, headerRows = 1) {
-    const rows = await readRange(spreadsheetId, range);
+export async function readDataRows(spreadsheetId, range, headerRows = 1, options = {}) {
+    const rows = await readRange(spreadsheetId, range, options);
     return (rows || []).slice(headerRows);
 }
 
@@ -163,8 +173,6 @@ export async function batchRead(spreadsheetId, ranges) {
             }));
             if ((generations.get(spreadsheetId) || 0) === generation) {
                 cache.set(key, { data, time: Date.now() });
-                if (!offlineKeys.has(spreadsheetId)) offlineKeys.set(spreadsheetId, new Set());
-                offlineKeys.get(spreadsheetId).add(offlineKey);
                 void cacheSet(offlineKey, data);
             }
             return data;
@@ -259,29 +267,38 @@ export async function createSpreadsheet(title) {
  * Get spreadsheet details including sheets.
  * Cached for 60s and deduped — several hooks request this on every mount.
  * @param {string} spreadsheetId
+ * @param {{forceRefresh?: boolean, allowOfflineFallback?: boolean}} [options]
  */
-export async function getSpreadsheet(spreadsheetId, { forceRefresh = false } = {}) {
+export async function getSpreadsheet(
+    spreadsheetId,
+    { forceRefresh = false, allowOfflineFallback = true } = {},
+) {
     const key = `m:${spreadsheetId}`;
+    const offlineKey = `meta:${spreadsheetId}`;
     const hit = forceRefresh ? undefined : fresh(key);
     if (hit !== undefined) return hit;
 
     // Sheet tabs can be added/deleted directly in Google Sheets while the app
     // is open. Callers that must verify a tab before reading can bypass cached
     // metadata so a deleted tab is never mistaken for an existing one.
-    if (forceRefresh) {
-        const res = await SHEETS().get({ spreadsheetId });
-        const data = res.result;
-        cache.set(key, { data, time: Date.now() });
-        return data;
-    }
-
     const generation = generations.get(spreadsheetId) || 0;
-    return dedupe(key, async () => {
-        const res = await SHEETS().get({ spreadsheetId });
-        if ((generations.get(spreadsheetId) || 0) === generation) {
-            cache.set(key, { data: res.result, time: Date.now() });
+    const requestKey = `${key}:${forceRefresh ? 'force' : 'cached'}:${allowOfflineFallback ? 'fallback' : 'network-only'}`;
+    return dedupe(requestKey, async () => {
+        try {
+            const res = await SHEETS().get({ spreadsheetId });
+            const data = res.result;
+            if ((generations.get(spreadsheetId) || 0) === generation) {
+                cache.set(key, { data, time: Date.now() });
+                await cacheSet(offlineKey, data);
+            }
+            return data;
+        } catch (error) {
+            if (allowOfflineFallback && canUseOfflineFallback(error)) {
+                const fallback = await cacheGet(offlineKey);
+                if (fallback !== undefined) return fallback;
+            }
+            throw error;
         }
-        return res.result;
     });
 }
 

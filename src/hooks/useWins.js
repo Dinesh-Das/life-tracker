@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { readDataRows } from '../lib/sheetsApi';
 import { findLatestDateRowIndex } from '../lib/dateRows';
-import { resilientBatchWrite, resilientUpsertDateRow } from '../lib/syncQueue';
+import { resilientUpsertDateRow } from '../lib/syncQueue';
 import { ensureDailyWinsSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { createSerializedWriter } from '../lib/serializedWriter';
 
 const EMPTY = { Physical: '', Mental: '', Social: '', Financial: '', Spiritual: '' };
 const CATEGORIES = Object.keys(EMPTY);
@@ -20,21 +21,15 @@ export function useWins(spreadsheetId, dateStr) {
     const currentRow = useRef(null);
     const latest = useRef(EMPTY);
     const generation = useRef(0);
+    const writer = useRef(createSerializedWriter());
     const targetDateStr = dateStr || format(new Date(), 'yyyy-MM-dd');
 
     const persistSnapshot = useCallback(async (snapshot) => {
         if (!snapshot || !spreadsheetId) return;
         const row = [snapshot.date, ...CATEGORIES.map(category => snapshot.values[category] || '')];
-        if (snapshot.rowIndex) {
-            await resilientBatchWrite(spreadsheetId, [{
-                range: `DailyWins!A${snapshot.rowIndex}:F${snapshot.rowIndex}`,
-                values: [row],
-            }]);
-        } else {
-            const result = await resilientUpsertDateRow(spreadsheetId, 'DailyWins!A:F', row);
-            const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
-            if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
-        }
+        const result = await resilientUpsertDateRow(spreadsheetId, 'DailyWins!A:F', row, snapshot.rowIndex);
+        const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
+        if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
     }, [spreadsheetId]);
 
     const flushPending = useCallback(async () => {
@@ -45,12 +40,12 @@ export function useWins(spreadsheetId, dateStr) {
         if (!snapshot) return;
         setSaving(true);
         try {
-            await persistSnapshot(snapshot);
+            await writer.current.run(() => persistSnapshot(snapshot));
         } catch (error) {
             console.error('Failed to save wins', error);
             toast.error('Failed to save daily wins');
         } finally {
-            setSaving(false);
+            if (!writer.current.hasPending() && !pending.current) setSaving(false);
         }
     }, [persistSnapshot]);
 
@@ -64,7 +59,9 @@ export function useWins(spreadsheetId, dateStr) {
         currentRow.current = { date: targetDateStr, index: null };
         setWins(empty);
         try {
-            await ensureDailyWinsSheet(spreadsheetId);
+            if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+                await ensureDailyWinsSheet(spreadsheetId);
+            }
             const rows = await readDataRows(spreadsheetId, 'DailyWins!A:F');
             if (request !== generation.current) return;
             const index = findLatestDateRowIndex(rows, targetDateStr);

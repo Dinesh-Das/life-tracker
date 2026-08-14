@@ -118,11 +118,14 @@ function DailyCheckin() {
     }, [mentalState, activeDay]);
 
     const globalPause = useMemo(() => ({ from: productSettings.pauseFrom || '', until: productSettings.pauseUntil || '' }), [productSettings.pauseFrom, productSettings.pauseUntil]);
+    const genderVisibleHabits = useMemo(() => (
+        habits.filter(h => gender === 'female' || !h.femaleOnly)
+    ), [habits, gender]);
     // Filter habits by gender and the selected day's schedule. Paused/rest days are
     // neutral: they do not appear as failures and do not dilute completion.
     const visibleHabits = useMemo(() => {
-        return habits.filter(h => (gender === 'female' || !h.femaleOnly) && isHabitScheduledForDate(h, selectedDate, globalPause));
-    }, [globalPause, habits, gender, selectedDate]);
+        return genderVisibleHabits.filter(h => isHabitScheduledForDate(h, selectedDate, globalPause));
+    }, [genderVisibleHabits, globalPause, selectedDate]);
 
     const { habitStreaks } = useStreaks(visibleHabits, checks, { year: currentYear, monthIndex: currentMonthIndex, globalPause });
     const [detailHabit, setDetailHabit] = useState(null);
@@ -344,17 +347,21 @@ function DailyCheckin() {
                 
                 {/* Monthly Challenges */}
                 <ChallengesCard
-                    habits={visibleHabits}
+                    habits={genderVisibleHabits}
                     checks={checks}
                     daysInMonth={daysInMonth}
                     upToDay={isCurrentMonth ? todayDay : (isFutureMonth ? 0 : daysInMonth)}
                     monthLabel={currentMonth}
+                    year={currentYear}
+                    monthIndex={currentMonthIndex}
+                    globalPause={globalPause}
                 />
 
                 <GoalForecastCard habits={visibleHabits} checks={checks} selectedDate={selectedDate} daysInMonth={daysInMonth} />
 
                 {/* Streak Bank — freeze-token budget, progress and history */}
                 <StreakBankCard
+                    spreadsheetId={spreadsheetId}
                     tokens={skipTokens}
                     used={usedTokens}
                     bestStreak={bankBestStreak}
@@ -404,7 +411,7 @@ function DailyCheckin() {
                                         const ok = await skipDay(activeDay, habits, checks);
                                         if (ok) {
                                             setLocalSkipped(prev => ({ ...prev, [activeDay]: true }));
-                                            recordFreezeEvent({ type: 'freeze', date: selectedDateStr });
+                                            recordFreezeEvent(spreadsheetId, { type: 'freeze', date: selectedDateStr });
                                             const reason = window.prompt('Optional: why are you skipping today? (feeds future insights)');
                                             if (reason && reason.trim()) {
                                                 saveNote(spreadsheetId, '_skip', selectedDateStr, reason.trim()).catch(() => {});
@@ -459,7 +466,7 @@ function DailyCheckin() {
                                                 if (ok) {
                                                     setRepaired(prev => ({ ...prev, [h.id]: true }));
                                                     const missedDateStr = format(new Date(currentYear, currentMonthIndex, todayDay - 1), 'yyyy-MM-dd');
-                                                    recordFreezeEvent({ type: 'repair', date: missedDateStr, habitName: h.name });
+                                                    recordFreezeEvent(spreadsheetId, { type: 'repair', date: missedDateStr, habitName: h.name });
                                                     const reason = window.prompt(`Optional: why was ${h.name} missed yesterday?`);
                                                     if (reason && reason.trim()) {
                                                         saveNote(spreadsheetId, h.id, missedDateStr, reason.trim()).catch(() => {});
@@ -621,12 +628,13 @@ function DailyCheckin() {
                 {/* Mood ↔ Habit causality — same-day and next-day effects */}
                 <div style={{ marginBottom: '24px' }}>
                     <CorrelationInsights
-                        habits={visibleHabits}
+                        habits={genderVisibleHabits}
                         checks={checks}
                         mentalState={mentalState}
                         daysInMonth={daysInMonth}
                         year={currentYear}
                         monthIndex={currentMonthIndex}
+                        globalPause={globalPause}
                     />
                 </div>
 
@@ -731,6 +739,10 @@ function DailyCheckin() {
                 checks={checks}
                 mentalState={mentalState}
                 daysInMonth={daysInMonth}
+                upToDay={isCurrentMonth ? todayDay : (isFutureMonth ? 0 : daysInMonth)}
+                year={currentYear}
+                monthIndex={currentMonthIndex}
+                globalPause={globalPause}
                 streak={detailHabit ? habitStreaks[detailHabit.id] : null}
                 spreadsheetId={spreadsheetId}
                 monthLabel={`${currentMonth} ${currentYear}`}

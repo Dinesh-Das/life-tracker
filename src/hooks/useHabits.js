@@ -13,6 +13,7 @@ import {
     normalizeHabitLabel, normalizeHabitName,
 } from '../lib/sheetLayout';
 import toast from 'react-hot-toast';
+import { isFutureDay } from '../lib/habitAnalytics';
 
 const localDateKey = (date) => format(date, 'yyyy-MM-dd');
 
@@ -30,6 +31,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
     const checksRef = useRef({});
     const habitWriteChains = useRef(new Map());
     const cellWriteVersions = useRef(new Map());
+    const mentalStateWriteVersions = useRef(new Map());
 
     const daysInMonth = currentYear && currentMonthIndex !== undefined
         ? getDaysInMonth(new Date(currentYear, currentMonthIndex))
@@ -49,6 +51,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
         setError(null);
 
         try {
+            const canMutateSheet = typeof navigator === 'undefined' || navigator.onLine !== false;
             const monthStartKey = localDateKey(new Date(currentYear, currentMonthIndex, 1));
             const monthEndKey = localDateKey(new Date(currentYear, currentMonthIndex + 1, 0));
             const allHabits = await loadAllHabits(spreadsheetId);
@@ -58,10 +61,12 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             );
             const tabName = `${currentMonth} ${currentYear}`;
 
-            await Promise.all([
-                ensureMonthTab(spreadsheetId, currentMonth, currentYear, activeHabits),
-                ensureDailyStateSheet(spreadsheetId),
-            ]);
+            if (canMutateSheet) {
+                await Promise.all([
+                    ensureMonthTab(spreadsheetId, currentMonth, currentYear, activeHabits),
+                    ensureDailyStateSheet(spreadsheetId),
+                ]);
+            }
 
             const [monthRows, dailyRows] = await Promise.all([
                 readRange(spreadsheetId, monthHabitRange(tabName)),
@@ -104,7 +109,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             });
 
             const missing = activeHabits.filter(habit => !resolvedRows.has(habit.id));
-            if (missing.length) {
+            if (missing.length && canMutateSheet) {
                 const firstRow = MONTH_HABIT_START_ROW + (monthRows?.length || 0);
                 const values = missing.map(habit => [habitLabel(habit), ...Array(31).fill(''), habit.id]);
                 await appendRows(spreadsheetId, `'${tabName}'!A:AG`, values);
@@ -148,7 +153,7 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
                 nextMental[day] = score;
                 legacyRowsToAppend.push([date, score, new Date().toISOString()]);
             });
-            if (legacyRowsToAppend.length) {
+            if (legacyRowsToAppend.length && canMutateSheet) {
                 const first = stateRows.length + 2;
                 await appendRows(spreadsheetId, `${DAILY_STATE_TAB}!A:C`, legacyRowsToAppend);
                 legacyRowsToAppend.forEach((row, index) => stateRowMap.set(row[0], first + index));
@@ -195,6 +200,10 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
     }, []);
 
     const toggleCheck = useCallback(async (habitId, day) => {
+        if (!Number.isInteger(day) || day < 1 || day > daysInMonth || isFutureDay(currentYear, currentMonthIndex, day)) {
+            toast.error('Future dates cannot be edited.');
+            return;
+        }
         if (!trustedSnapshot.current || status === 'error') {
             toast.error('Habit data is not loaded. Retry before editing.');
             return;
@@ -251,39 +260,43 @@ export function useHabits(spreadsheetId, currentMonth, currentYear, currentMonth
             }
             toast.error(`Failed to save ${format(date, 'MMM d')} checkmark`);
         }
-    }, [currentMonth, currentYear, currentMonthIndex, serializeHabitWrite, spreadsheetId, status, withPending]);
+    }, [currentMonth, currentYear, currentMonthIndex, daysInMonth, serializeHabitWrite, spreadsheetId, status, withPending]);
 
     const updateMentalState = useCallback(async (day, rawValue) => {
+        if (!Number.isInteger(day) || day < 1 || day > daysInMonth || isFutureDay(currentYear, currentMonthIndex, day)) {
+            toast.error('Future dates cannot be edited.');
+            return;
+        }
         const value = Number.parseInt(rawValue, 10);
         if (rawValue !== '' && (value < 1 || value > 10 || Number.isNaN(value))) {
             toast.error('Mental state must be between 1 and 10.');
             return;
         }
         const previous = mentalState[day];
+        const version = (mentalStateWriteVersions.current.get(day) || 0) + 1;
+        mentalStateWriteVersions.current.set(day, version);
         setMentalState(state => ({ ...state, [day]: rawValue === '' ? undefined : value }));
         const date = localDateKey(new Date(currentYear, currentMonthIndex, day));
         try {
             await withPending(async () => {
                 const sheetRow = dailyStateRowByDate.current.get(date);
-                if (sheetRow) {
-                    await resilientBatchWrite(spreadsheetId, [{
-                        range: `${DAILY_STATE_TAB}!B${sheetRow}:C${sheetRow}`,
-                        values: [[rawValue === '' ? '' : value, new Date().toISOString()]],
-                    }]);
-                } else {
-                    const result = await resilientUpsertDateRow(spreadsheetId, `${DAILY_STATE_TAB}!A:C`, [
-                        date, rawValue === '' ? '' : value, new Date().toISOString(),
-                    ]);
-                    const updatedRange = result?.result?.updates?.updatedRange || '';
-                    const match = updatedRange.match(/!(?:A)?(\d+)/);
-                    if (match) dailyStateRowByDate.current.set(date, Number(match[1]));
-                }
+                // Route both first inserts and existing-row changes through the
+                // same date lock. This keeps rapid values (for example 1 -> 10)
+                // in issue order and verifies a cached row hint before writing.
+                const result = await resilientUpsertDateRow(spreadsheetId, `${DAILY_STATE_TAB}!A:C`, [
+                    date, rawValue === '' ? '' : value, new Date().toISOString(),
+                ], sheetRow);
+                const updatedRange = result?.result?.updates?.updatedRange || '';
+                const match = updatedRange.match(/!(?:A)?(\d+)/);
+                if (match) dailyStateRowByDate.current.set(date, Number(match[1]));
             });
         } catch (_saveError) {
-            setMentalState(state => ({ ...state, [day]: previous }));
+            if (mentalStateWriteVersions.current.get(day) === version) {
+                setMentalState(state => ({ ...state, [day]: previous }));
+            }
             toast.error('Failed to save mental state');
         }
-    }, [currentYear, currentMonthIndex, mentalState, spreadsheetId, withPending]);
+    }, [currentYear, currentMonthIndex, daysInMonth, mentalState, spreadsheetId, withPending]);
 
     const addHabit = useCallback(async (input) => {
         if (!trustedSnapshot.current) return false;

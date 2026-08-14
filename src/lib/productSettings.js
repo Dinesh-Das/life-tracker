@@ -2,7 +2,9 @@ import { appendRows, batchWrite, readDataRows } from './sheetsApi';
 import { ensureAppSettingsSheet } from './sheetScaffold';
 
 export async function loadProductSettings(spreadsheetId) {
-    await ensureAppSettingsSheet(spreadsheetId);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+        await ensureAppSettingsSheet(spreadsheetId);
+    }
     const rows = await readDataRows(spreadsheetId, 'AppSettings!A:C');
     return Object.fromEntries((rows || []).filter(row => row[0]).map(row => [String(row[0]), String(row[1] ?? '')]));
 }

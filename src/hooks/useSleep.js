@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { readDataRows } from '../lib/sheetsApi';
 import { findLatestDateRowIndex } from '../lib/dateRows';
-import { resilientBatchWrite, resilientUpsertDateRow } from '../lib/syncQueue';
+import { resilientUpsertDateRow } from '../lib/syncQueue';
 import { ensureSleepSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { createSerializedWriter } from '../lib/serializedWriter';
 
 const EMPTY = { bedtime: '', wakeTime: '', quality: '', nap: '' };
 
@@ -28,22 +29,16 @@ export function useSleep(spreadsheetId, dateStr) {
     const currentRow = useRef(null);
     const latest = useRef(EMPTY);
     const generation = useRef(0);
+    const writer = useRef(createSerializedWriter());
     const targetDateStr = dateStr || format(new Date(), 'yyyy-MM-dd');
 
     const persistSnapshot = useCallback(async (snapshot) => {
         const value = snapshot.values;
         const hours = computeSleepHours(value.bedtime, value.wakeTime);
         const row = [snapshot.date, value.bedtime, value.wakeTime, hours ?? '', value.quality, value.nap];
-        if (snapshot.rowIndex) {
-            await resilientBatchWrite(spreadsheetId, [{
-                range: `SleepLogs!A${snapshot.rowIndex}:F${snapshot.rowIndex}`,
-                values: [row],
-            }]);
-        } else {
-            const result = await resilientUpsertDateRow(spreadsheetId, 'SleepLogs!A:F', row);
-            const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
-            if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
-        }
+        const result = await resilientUpsertDateRow(spreadsheetId, 'SleepLogs!A:F', row, snapshot.rowIndex);
+        const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
+        if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
     }, [spreadsheetId]);
 
     const flushPending = useCallback(async () => {
@@ -54,12 +49,12 @@ export function useSleep(spreadsheetId, dateStr) {
         if (!snapshot) return;
         setSaving(true);
         try {
-            await persistSnapshot(snapshot);
+            await writer.current.run(() => persistSnapshot(snapshot));
         } catch (error) {
             console.error('Failed to save sleep', error);
             toast.error('Failed to save sleep');
         } finally {
-            setSaving(false);
+            if (!writer.current.hasPending() && !pending.current) setSaving(false);
         }
     }, [persistSnapshot]);
 
@@ -73,7 +68,9 @@ export function useSleep(spreadsheetId, dateStr) {
         currentRow.current = { date: targetDateStr, index: null };
         setData(empty);
         try {
-            await ensureSleepSheet(spreadsheetId);
+            if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+                await ensureSleepSheet(spreadsheetId);
+            }
             const rows = await readDataRows(spreadsheetId, 'SleepLogs!A:F');
             if (request !== generation.current) return;
             const index = findLatestDateRowIndex(rows, targetDateStr);

@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { readDataRows } from '../lib/sheetsApi';
 import { findLatestDateRowIndex } from '../lib/dateRows';
-import { resilientBatchWrite, resilientUpsertDateRow } from '../lib/syncQueue';
+import { resilientUpsertDateRow } from '../lib/syncQueue';
 import { ensureMetricsSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { createSerializedWriter } from '../lib/serializedWriter';
 
 const EMPTY = { water: '', weight: '' };
 
@@ -18,20 +19,14 @@ export function useMetrics(spreadsheetId, dateStr) {
     const currentRow = useRef(null);
     const latest = useRef(EMPTY);
     const generation = useRef(0);
+    const writer = useRef(createSerializedWriter());
     const targetDateStr = dateStr || format(new Date(), 'yyyy-MM-dd');
 
     const persistSnapshot = useCallback(async (snapshot) => {
         const row = [snapshot.date, snapshot.values.water, snapshot.values.weight];
-        if (snapshot.rowIndex) {
-            await resilientBatchWrite(spreadsheetId, [{
-                range: `MetricsLogs!A${snapshot.rowIndex}:C${snapshot.rowIndex}`,
-                values: [row],
-            }]);
-        } else {
-            const result = await resilientUpsertDateRow(spreadsheetId, 'MetricsLogs!A:C', row);
-            const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
-            if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
-        }
+        const result = await resilientUpsertDateRow(spreadsheetId, 'MetricsLogs!A:C', row, snapshot.rowIndex);
+        const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
+        if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
     }, [spreadsheetId]);
 
     const flushPending = useCallback(async () => {
@@ -42,12 +37,12 @@ export function useMetrics(spreadsheetId, dateStr) {
         if (!snapshot) return;
         setSaving(true);
         try {
-            await persistSnapshot(snapshot);
+            await writer.current.run(() => persistSnapshot(snapshot));
         } catch (error) {
             console.error('Failed to save metric', error);
             toast.error('Failed to save metric');
         } finally {
-            setSaving(false);
+            if (!writer.current.hasPending() && !pending.current) setSaving(false);
         }
     }, [persistSnapshot]);
 
@@ -61,7 +56,9 @@ export function useMetrics(spreadsheetId, dateStr) {
         currentRow.current = { date: targetDateStr, index: null };
         setData(empty);
         try {
-            await ensureMetricsSheet(spreadsheetId);
+            if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+                await ensureMetricsSheet(spreadsheetId);
+            }
             const rows = await readDataRows(spreadsheetId, 'MetricsLogs!A:C');
             if (request !== generation.current) return;
             const index = findLatestDateRowIndex(rows, targetDateStr);

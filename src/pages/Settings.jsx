@@ -55,7 +55,7 @@ function Settings() {
     const commitHabitChange = async (next, type, label) => {
         const snapshot = habits;
         const saved = await saveHabits(next);
-        if (saved) recordActivity(type, label, snapshot);
+        if (saved) recordActivity(spreadsheetId, type, label, snapshot);
         return saved;
     };
 

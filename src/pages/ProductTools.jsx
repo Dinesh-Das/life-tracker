@@ -37,11 +37,12 @@ export default function ProductTools() {
     const [report, setReport] = useState(null);
     const [busy, setBusy] = useState('');
     const [pause, setPause] = useState({ from: settings.pauseFrom || '', until: settings.pauseUntil || '' });
-    const [activity, setActivity] = useState(getActivityLog);
+    const [activity, setActivity] = useState([]);
     const [backupPreview, setBackupPreview] = useState(null);
     const fileRef = useRef(null);
     const push = useMemo(pushConfiguration, []);
     useEffect(() => setPause({ from: settings.pauseFrom || '', until: settings.pauseUntil || '' }), [settings.pauseFrom, settings.pauseUntil]);
+    useEffect(() => setActivity(getActivityLog(spreadsheetId)), [spreadsheetId]);
 
     const run = async (name, operation, success) => {
         setBusy(name);
@@ -57,13 +58,13 @@ export default function ProductTools() {
         }));
         if (!additions.length) return toast('This routine is already present.');
         if (await saveHabits([...habits, ...additions])) {
-            recordActivity('template', `Added ${name} routine`, snapshot);
-            setActivity(getActivityLog());
+            recordActivity(spreadsheetId, 'template', `Added ${name} routine`, snapshot);
+            setActivity(getActivityLog(spreadsheetId));
         }
     };
     const undo = async entry => {
-        if (!entry.undoSnapshot || !Array.isArray(entry.undoSnapshot)) return;
-        if (await saveHabits(entry.undoSnapshot)) { removeActivity(entry.id); setActivity(getActivityLog()); toast.success('Change undone'); }
+        if (entry.spreadsheetId !== spreadsheetId || !entry.undoSnapshot || !Array.isArray(entry.undoSnapshot)) return;
+        if (await saveHabits(entry.undoSnapshot)) { removeActivity(spreadsheetId, entry.id); setActivity(getActivityLog(spreadsheetId)); toast.success('Change undone'); }
     };
     return <div className="flex-1 flex flex-col">
         <Header title="Tools & Safety" subtitle="Backup, repair, routines, pauses and notifications" />
@@ -107,7 +108,7 @@ export default function ProductTools() {
             </section>
 
             <section className="glass-card" style={{ ...card, gridColumn: '1 / -1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}><h2 className="tool-title"><History size={19} /> Activity & undo</h2><button className="glass-button" onClick={() => { clearActivityLog(); setActivity([]); }}>Clear history</button></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}><h2 className="tool-title"><History size={19} /> Activity & undo</h2><button className="glass-button" onClick={() => { clearActivityLog(spreadsheetId); setActivity([]); }}>Clear history</button></div>
                 {!activity.length ? <p className="tool-copy">No reversible habit-management actions on this device yet.</p> : activity.map(entry => <div className="activity-row" key={entry.id}><span><strong>{entry.label}</strong><small>{new Date(entry.at).toLocaleString()}</small></span>{entry.undoSnapshot && <button className={action} disabled={saving} onClick={() => undo(entry)}><RotateCcw size={14} /> Undo</button>}</div>)}
             </section>
         </div>

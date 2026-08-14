@@ -148,8 +148,8 @@ export async function scaffoldSheet(userName) {
 
         // Focus Sessions Tab
         spreadsheetRanges.push({
-            range: 'FocusLogs!A1:D1',
-            values: [['Date', 'Start Time', 'Minutes', 'Mode']]
+            range: 'FocusLogs!A1:E1',
+            values: [['Date', 'Start Time', 'Minutes', 'Mode', 'Session ID']]
         });
 
         await batchWrite(spreadsheetId, spreadsheetRanges);
@@ -176,7 +176,7 @@ export async function scaffoldSheet(userName) {
 
 export async function ensureJournalSheet(spreadsheetId) {
     try {
-        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        const spreadsheet = await getSpreadsheet(spreadsheetId, { allowOfflineFallback: false });
         const hasJournal = spreadsheet.sheets.some(s => s.properties.title === 'JournalLogs');
 
         if (!hasJournal) {
@@ -197,7 +197,7 @@ export async function ensureJournalSheet(spreadsheetId) {
 }
 export async function ensureDailyWinsSheet(spreadsheetId) {
     try {
-        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        const spreadsheet = await getSpreadsheet(spreadsheetId, { allowOfflineFallback: false });
         const hasDailyWins = spreadsheet.sheets.some(s => s.properties.title === 'DailyWins');
 
         if (!hasDailyWins) {
@@ -218,7 +218,7 @@ export async function ensureDailyWinsSheet(spreadsheetId) {
 }
 export async function ensureMonthTab(spreadsheetId, month, year, suppliedHabits = null) {
     try {
-        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        const spreadsheet = await getSpreadsheet(spreadsheetId, { allowOfflineFallback: false });
         const tabName = `${month} ${year}`;
         const hasMonthTab = spreadsheet.sheets.some(s => s.properties.title === tabName);
 
@@ -248,7 +248,7 @@ export async function ensureMonthTab(spreadsheetId, month, year, suppliedHabits 
 
 export async function ensureSleepSheet(spreadsheetId) {
     try {
-        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        const spreadsheet = await getSpreadsheet(spreadsheetId, { allowOfflineFallback: false });
         const hasSleep = spreadsheet.sheets.some(s => s.properties.title === 'SleepLogs');
 
         if (!hasSleep) {
@@ -268,7 +268,7 @@ export async function ensureSleepSheet(spreadsheetId) {
 
 async function ensureMetricsSheetOnce(spreadsheetId) {
     try {
-        const spreadsheet = await getSpreadsheet(spreadsheetId);
+        const spreadsheet = await getSpreadsheet(spreadsheetId, { allowOfflineFallback: false });
         const hasMetrics = spreadsheet.sheets.some(s => s.properties.title === 'MetricsLogs');
 
         if (!hasMetrics) {
@@ -317,17 +317,26 @@ export async function ensureFocusSheet(spreadsheetId) {
     try {
         // FocusLogs is optional in older workbooks and may have been deleted
         // manually. Always verify live metadata before deciding it exists.
-        const spreadsheet = await getSpreadsheet(spreadsheetId, { forceRefresh: true });
+        const spreadsheet = await getSpreadsheet(spreadsheetId, {
+            forceRefresh: true,
+            allowOfflineFallback: false,
+        });
         const hasFocus = spreadsheet.sheets.some(s => s.properties.title === 'FocusLogs');
 
         if (!hasFocus) {
             console.info('FocusLogs sheet missing. Adding now...');
             await addSheet(spreadsheetId, 'FocusLogs');
             await batchWrite(spreadsheetId, [{
-                range: 'FocusLogs!A1:D1',
-                values: [['Date', 'Start Time', 'Minutes', 'Mode']]
+                range: 'FocusLogs!A1:E1',
+                values: [['Date', 'Start Time', 'Minutes', 'Mode', 'Session ID']]
             }]);
             console.info('FocusLogs sheet initialized.');
+        } else {
+            // Extends older four-column FocusLogs tabs without modifying rows.
+            await batchWrite(spreadsheetId, [{
+                range: 'FocusLogs!E1',
+                values: [['Session ID']]
+            }]);
         }
     } catch (e) {
         console.error('Failed to ensure FocusLogs sheet:', e);
@@ -336,7 +345,7 @@ export async function ensureFocusSheet(spreadsheetId) {
 }
 
 export async function ensureDailyStateSheet(spreadsheetId) {
-    const spreadsheet = await getSpreadsheet(spreadsheetId);
+    const spreadsheet = await getSpreadsheet(spreadsheetId, { allowOfflineFallback: false });
     const exists = spreadsheet.sheets.some(s => s.properties.title === 'DailyState');
     if (!exists) {
         await addSheet(spreadsheetId, 'DailyState');
@@ -348,7 +357,7 @@ export async function ensureDailyStateSheet(spreadsheetId) {
 }
 
 export async function ensureAppSettingsSheet(spreadsheetId) {
-    const spreadsheet = await getSpreadsheet(spreadsheetId);
+    const spreadsheet = await getSpreadsheet(spreadsheetId, { allowOfflineFallback: false });
     const exists = spreadsheet.sheets.some(s => s.properties.title === 'AppSettings');
     if (!exists) {
         await addSheet(spreadsheetId, 'AppSettings');

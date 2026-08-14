@@ -1,5 +1,5 @@
 import { getSpreadsheet, addSheet, batchWrite, readRange } from './sheetsApi';
-import { resilientAppendRows, resilientBatchWrite } from './syncQueue';
+import { resilientUpsertKeyedRow, withOperationLock } from './syncQueue';
 
 /**
  * Per-habit, per-day notes stored in a dedicated 'HabitNotes' tab
@@ -11,8 +11,11 @@ const ensurePromises = new Map();
 export async function ensureHabitNotesSheet(spreadsheetId) {
     if (!spreadsheetId) return;
     if (ensurePromises.has(spreadsheetId)) return ensurePromises.get(spreadsheetId);
-    const promise = (async () => {
-        const meta = await getSpreadsheet(spreadsheetId, { forceRefresh: true });
+    const promise = withOperationLock(`life-tracker:ensure-sheet:${spreadsheetId}:${TAB}`, async () => {
+        const meta = await getSpreadsheet(spreadsheetId, {
+            forceRefresh: true,
+            allowOfflineFallback: false,
+        });
         const exists = (meta.sheets || []).some(s => s.properties?.title === TAB);
         if (!exists) {
             await addSheet(spreadsheetId, TAB);
@@ -21,7 +24,7 @@ export async function ensureHabitNotesSheet(spreadsheetId) {
                 values: [['Date', 'HabitID', 'Note']]
             }]);
         }
-    })().catch(error => {
+    }).catch(error => {
         ensurePromises.delete(spreadsheetId);
         throw error;
     });
@@ -31,7 +34,9 @@ export async function ensureHabitNotesSheet(spreadsheetId) {
 
 /** All non-empty notes for one habit, oldest first. */
 export async function loadNotesForHabit(spreadsheetId, habitId) {
-    await ensureHabitNotesSheet(spreadsheetId);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+        await ensureHabitNotesSheet(spreadsheetId);
+    }
     const rows = await readRange(spreadsheetId, `${TAB}!A2:C`);
     return rows
         .map((r, i) => ({ row: i + 2, date: r[0], habitId: r[1], note: r[2] || '' }))
@@ -40,15 +45,13 @@ export async function loadNotesForHabit(spreadsheetId, habitId) {
 
 /** Upsert the note for (habit, date). Offline-safe. */
 export async function saveNote(spreadsheetId, habitId, dateStr, note) {
-    await ensureHabitNotesSheet(spreadsheetId);
-    const rows = await readRange(spreadsheetId, `${TAB}!A2:C`);
-    const idx = rows.findIndex(r => r[0] === dateStr && r[1] === habitId);
-    if (idx !== -1) {
-        await resilientBatchWrite(spreadsheetId, [{
-            range: `${TAB}!C${idx + 2}`,
-            values: [[note]]
-        }]);
-    } else {
-        await resilientAppendRows(spreadsheetId, `${TAB}!A:C`, [[dateStr, habitId, note]]);
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+        await ensureHabitNotesSheet(spreadsheetId);
     }
+    return resilientUpsertKeyedRow(
+        spreadsheetId,
+        `${TAB}!A:C`,
+        [dateStr, habitId, note],
+        [0, 1],
+    );
 }

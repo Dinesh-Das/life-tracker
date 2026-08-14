@@ -12,7 +12,7 @@ const REQUIRED = {
     Streaks: ['Habit ID', 'Current Streak', 'Best Streak', 'Last Done Date', 'Total Days'],
     DailyWins: ['Date', 'Physical', 'Mental', 'Social', 'Financial', 'Spiritual'],
     JournalLogs: ['Date', 'Gratitude', 'Review', 'Focus'],
-    FocusLogs: ['Date', 'Start Time', 'Minutes', 'Mode'],
+    FocusLogs: ['Date', 'Start Time', 'Minutes', 'Mode', 'Session ID'],
 };
 
 const MAX_RESTORE_COLUMNS = 52; // A:AZ — the same range used by exports
@@ -55,7 +55,10 @@ export async function createBackup(spreadsheetId) {
 }
 
 export async function validateWorkbook(spreadsheetId) {
-    const [metadata, data] = await Promise.all([getSpreadsheet(spreadsheetId, { forceRefresh: true }), collectAllData(spreadsheetId)]);
+    const [metadata, data] = await Promise.all([getSpreadsheet(spreadsheetId, {
+        forceRefresh: true,
+        allowOfflineFallback: false,
+    }), collectAllData(spreadsheetId)]);
     const titles = new Set(metadata.sheets.map(sheet => sheet.properties.title));
     const issues = [];
     Object.entries(REQUIRED).forEach(([title, headers]) => {
@@ -74,7 +77,10 @@ export async function validateWorkbook(spreadsheetId) {
 }
 
 export async function repairWorkbook(spreadsheetId) {
-    const metadata = await getSpreadsheet(spreadsheetId, { forceRefresh: true });
+    const metadata = await getSpreadsheet(spreadsheetId, {
+        forceRefresh: true,
+        allowOfflineFallback: false,
+    });
     const titles = new Set(metadata.sheets.map(sheet => sheet.properties.title));
     const writes = [];
     for (const [title, headers] of Object.entries(REQUIRED)) {
@@ -99,7 +105,10 @@ export function parseBackupFile(file) {
 
 export async function restoreBackup(spreadsheetId, backup) {
     const sheets = validateBackupSheets(backup?.sheets);
-    const metadata = await getSpreadsheet(spreadsheetId, { forceRefresh: true });
+    const metadata = await getSpreadsheet(spreadsheetId, {
+        forceRefresh: true,
+        allowOfflineFallback: false,
+    });
     const existing = new Set(metadata.sheets.map(sheet => sheet.properties.title));
     for (const title of Object.keys(sheets)) if (!existing.has(title)) await addSheet(spreadsheetId, title);
 

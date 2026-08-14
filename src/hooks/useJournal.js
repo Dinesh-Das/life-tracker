@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { readDataRows } from '../lib/sheetsApi';
 import { findLatestDateRowIndex } from '../lib/dateRows';
-import { resilientBatchWrite, resilientUpsertDateRow } from '../lib/syncQueue';
+import { resilientUpsertDateRow } from '../lib/syncQueue';
 import { ensureJournalSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
+import { createSerializedWriter } from '../lib/serializedWriter';
 
 const EMPTY = { gratitude: '', review: '', focus: '' };
 const FIELDS = Object.keys(EMPTY);
@@ -20,20 +21,14 @@ export function useJournal(spreadsheetId, dateStr) {
     const currentRow = useRef(null);
     const latest = useRef(EMPTY);
     const generation = useRef(0);
+    const writer = useRef(createSerializedWriter());
     const targetDateStr = dateStr || format(new Date(), 'yyyy-MM-dd');
 
     const persistSnapshot = useCallback(async (snapshot) => {
         const row = [snapshot.date, ...FIELDS.map(field => snapshot.values[field] || '')];
-        if (snapshot.rowIndex) {
-            await resilientBatchWrite(spreadsheetId, [{
-                range: `JournalLogs!A${snapshot.rowIndex}:D${snapshot.rowIndex}`,
-                values: [row],
-            }]);
-        } else {
-            const result = await resilientUpsertDateRow(spreadsheetId, 'JournalLogs!A:D', row);
-            const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
-            if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
-        }
+        const result = await resilientUpsertDateRow(spreadsheetId, 'JournalLogs!A:D', row, snapshot.rowIndex);
+        const match = result?.result?.updates?.updatedRange?.match(/!A(\d+)/);
+        if (match && currentRow.current?.date === snapshot.date) currentRow.current.index = Number(match[1]);
     }, [spreadsheetId]);
 
     const flushPending = useCallback(async () => {
@@ -44,12 +39,12 @@ export function useJournal(spreadsheetId, dateStr) {
         if (!snapshot) return;
         setSaving(true);
         try {
-            await persistSnapshot(snapshot);
+            await writer.current.run(() => persistSnapshot(snapshot));
         } catch (error) {
             console.error('Failed to save reflection', error);
             toast.error('Failed to save reflection');
         } finally {
-            setSaving(false);
+            if (!writer.current.hasPending() && !pending.current) setSaving(false);
         }
     }, [persistSnapshot]);
 
@@ -63,7 +58,9 @@ export function useJournal(spreadsheetId, dateStr) {
         currentRow.current = { date: targetDateStr, index: null };
         setJournal(empty);
         try {
-            await ensureJournalSheet(spreadsheetId);
+            if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+                await ensureJournalSheet(spreadsheetId);
+            }
             const rows = await readDataRows(spreadsheetId, 'JournalLogs!A:D');
             if (request !== generation.current) return;
             const index = findLatestDateRowIndex(rows, targetDateStr);

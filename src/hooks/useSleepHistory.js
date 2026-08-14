@@ -18,7 +18,9 @@ export function useSleepHistory(spreadsheetId, year = new Date().getFullYear(), 
             setSleepRows([]);
             setLoadedYear(null);
             try {
-                await ensureSleepSheet(spreadsheetId);
+                if (typeof navigator === 'undefined' || navigator.onLine !== false) {
+                    await ensureSleepSheet(spreadsheetId);
+                }
                 const rows = await readDataRows(spreadsheetId, 'SleepLogs!A:F');
                 const parsed = rows
                     .filter(r => String(r?.[0] || '').startsWith(`${year}-`))
