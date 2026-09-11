@@ -20,7 +20,7 @@ vi.mock('react-hot-toast', () => {
 });
 
 import {
-    enqueue, flush, pendingCount, removeQueuedRecompute,
+    enqueue, flush, getPendingDateRow, pendingCount, removeQueuedRecompute,
     resilientAppendRows, resilientAppendUniqueRow, resilientBatchWrite, resilientUpsertDateRow,
     resilientUpsertKeyedRow, setActiveSpreadsheet,
 } from './syncQueue';
@@ -246,6 +246,35 @@ describe('resilientBatchWrite', () => {
         await expect(resilientBatchWrite('id', [])).rejects.toMatchObject({ status: 400 });
         expect(pendingCount()).toBe(0);
     });
+
+    it('retires an older queued write when a newer write to the same range succeeds', async () => {
+        setOnline(false);
+        await resilientBatchWrite('id', [{ range: 'August 2026!B6', values: [[false]] }]);
+        expect(pendingCount()).toBe(1);
+
+        setOnline(true);
+        mocks.batchWrite.mockResolvedValue({ ok: true });
+        await resilientBatchWrite('id', [{ range: 'August 2026!B6', values: [[true]] }]);
+
+        expect(pendingCount()).toBe(0);
+        await flush('id');
+        expect(mocks.batchWrite).toHaveBeenCalledTimes(1);
+        expect(mocks.batchWrite.mock.calls[0][1][0].values).toEqual([[true]]);
+    });
+
+    it('coalesces queued batch writes per range without dropping unrelated ranges', async () => {
+        setOnline(false);
+        await resilientBatchWrite('id', [
+            { range: 'Sheet1!A1', values: [['old-a']] },
+            { range: 'Sheet1!B1', values: [['keep-b']] },
+        ]);
+        await resilientBatchWrite('id', [{ range: 'Sheet1!A1', values: [['new-a']] }]);
+
+        const queue = storedQueue();
+        expect(queue).toHaveLength(2);
+        expect(queue.find(item => item.writeRange === 'Sheet1!A1').data[0].values).toEqual([['new-a']]);
+        expect(queue.find(item => item.writeRange === 'Sheet1!B1').data[0].values).toEqual([['keep-b']]);
+    });
 });
 
 describe('resilientAppendRows', () => {
@@ -266,6 +295,14 @@ describe('resilientUpsertDateRow', () => {
         const queue = storedQueue();
         expect(queue).toHaveLength(1);
         expect(queue[0].row[1]).toBe('latest');
+    });
+
+    it('exposes the latest queued date row so offline reloads preserve unsynced fields', async () => {
+        setOnline(false);
+        await resilientUpsertDateRow('id', 'JournalLogs!A:D', ['2026-09-07', 'gratitude', '', '']);
+
+        expect(getPendingDateRow('id', 'JournalLogs!A:D', '2026-09-07'))
+            .toEqual(['2026-09-07', 'gratitude', '', '']);
     });
 
     it('updates the latest existing date row instead of appending a duplicate', async () => {

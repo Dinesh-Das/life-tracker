@@ -88,7 +88,7 @@ function Planner() {
 
     const {
         tasks, loading: tasksLoading, error: tasksError, toggleTask, addTask, deleteTask, updateTask, reload: reloadTasks
-    } = useTasks(spreadsheetId, currentYear, currentMonthIndex, currentWeekIdx + 1);
+    } = useTasks(spreadsheetId, currentYear, currentMonthIndex, currentWeekIdx + 1, currentWeek?.days?.[0]);
 
     const days = useMemo(() => {
         if (!currentWeek?.days) return [];

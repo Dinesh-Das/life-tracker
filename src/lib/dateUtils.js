@@ -1,4 +1,8 @@
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, getWeek, getYear, getMonth } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format } from 'date-fns';
+
+export function getWeekKey(date) {
+    return `week:${format(startOfWeek(date, { weekStartsOn: 1 }), 'yyyy-MM-dd')}`;
+}
 
 /**
  * Returns an array of weeks for a given month, where each week starts on Monday.
@@ -21,7 +25,7 @@ export function getWeeksInMonth(date) {
         currentWeek.push(day);
         if ((i + 1) % 7 === 0) {
             weeks.push({
-                key: `${getYear(day)}-W${getWeek(day, { weekStartsOn: 1 })}-M${getMonth(start)}`,
+                key: getWeekKey(currentWeek[0]),
                 days: currentWeek,
                 weekNumber: Math.floor(weeks.length + 1)
             });
@@ -30,6 +34,20 @@ export function getWeeksInMonth(date) {
     });
 
     return weeks;
+}
+
+export function normalizeWeekKey(key) {
+    const value = String(key || '');
+    if (!value || value.startsWith('week:')) return value;
+    const match = value.match(/^(\d{4})-W(\d+)-M(\d+)$/);
+    if (!match) return value;
+    const [, yearText, weekText, monthText] = match;
+    const year = Number(yearText);
+    const monthIndex = Number(monthText);
+    const weekIndex = Number(weekText) - 1;
+    if (!Number.isInteger(year) || monthIndex < 0 || monthIndex > 11 || weekIndex < 0) return value;
+    const week = getWeeksInMonth(new Date(year, monthIndex, 1))[weekIndex];
+    return week?.key || value;
 }
 
 export function getDayAbbr(date) {

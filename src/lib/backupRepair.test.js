@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
     batchWrite: vi.fn(),
     getSpreadsheet: vi.fn(),
     collectAllData: vi.fn(),
+    clearQueuedOperations: vi.fn(),
+    withWorkbookWriteBarrier: vi.fn((_spreadsheetId, operation) => operation()),
 }));
 
 vi.mock('./sheetsApi', () => ({
@@ -29,12 +31,19 @@ vi.mock('./sheetScaffold', () => ({
     ensureFocusSheet: vi.fn(),
     ensureMetricsSheet: vi.fn(),
 }));
+vi.mock('./syncQueue', () => ({
+    clearQueuedOperations: mocks.clearQueuedOperations,
+    withWorkbookWriteBarrier: mocks.withWorkbookWriteBarrier,
+}));
 
 import { restoreBackup } from './backupRepair';
 
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.getSpreadsheet.mockResolvedValue({ sheets: [{ properties: { title: 'Habits' } }] });
+    mocks.collectAllData.mockResolvedValue({ Habits: [['ID', 'Habit Name']] });
+    mocks.batchWrite.mockResolvedValue({});
+    mocks.batchClear.mockResolvedValue({});
 });
 
 describe('restoreBackup', () => {
@@ -52,5 +61,17 @@ describe('restoreBackup', () => {
 
         expect(mocks.batchWrite).toHaveBeenCalledOnce();
         expect(mocks.batchClear).not.toHaveBeenCalled();
+        expect(mocks.clearQueuedOperations).not.toHaveBeenCalled();
+    });
+
+    it('serializes restore with workbook writes and invalidates pre-restore queued operations', async () => {
+        const backup = { sheets: { Habits: [['ID', 'Habit Name'], ['h1', 'Walk']] } };
+
+        await restoreBackup('sheet', backup);
+
+        expect(mocks.withWorkbookWriteBarrier).toHaveBeenCalledWith('sheet', expect.any(Function));
+        expect(mocks.batchWrite).toHaveBeenCalledOnce();
+        expect(mocks.batchClear).toHaveBeenCalledOnce();
+        expect(mocks.clearQueuedOperations).toHaveBeenCalledWith('sheet');
     });
 });

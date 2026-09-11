@@ -19,6 +19,9 @@ let lastEnqueueTimestamp = 0;
 const operationLocks = new Map();
 
 function operationStorageKey(entry, preserveLegacyId = false) {
+    if (!preserveLegacyId && entry.type === 'batchWrite' && entry.writeRange) {
+        return `${OP_PREFIX}batch:${encodeURIComponent(entry.spreadsheetId)}:${encodeURIComponent(entry.writeRange)}`;
+    }
     if (!preserveLegacyId && entry.type === 'recomputeStreak') {
         return `${OP_PREFIX}recompute:${encodeURIComponent(entry.spreadsheetId)}:${encodeURIComponent(entry.habitId)}`;
     }
@@ -112,6 +115,34 @@ function queuedLogicalVersions(operation) {
     return operationRecords()
         .map(record => record.entry)
         .filter(entry => isSameLogicalOperation(entry, operation));
+}
+
+function queuedBatchWriteVersions(spreadsheetId, data) {
+    const targetRanges = new Set((Array.isArray(data) ? data : [])
+        .map(write => String(write?.range || ''))
+        .filter(Boolean));
+    if (!targetRanges.size) return [];
+    migrateLegacyQueue();
+    return operationRecords()
+        .map(record => record.entry)
+        .filter(entry => {
+            if (entry.type !== 'batchWrite' || entry.spreadsheetId !== spreadsheetId) return false;
+            const writes = Array.isArray(entry.data) ? entry.data : [];
+            return writes.length > 0 && writes.every(write => targetRanges.has(String(write?.range || '')));
+        });
+}
+
+function enqueueBatchWrites(spreadsheetId, data) {
+    const writes = Array.isArray(data) ? data : [];
+    if (!writes.length) return [enqueue({ type: 'batchWrite', spreadsheetId, data: writes })];
+    return writes.map(write => {
+        const writeRange = String(write?.range || '');
+        if (!writeRange) return enqueue({ type: 'batchWrite', spreadsheetId, data: [write] });
+        const staleVersions = queuedBatchWriteVersions(spreadsheetId, [write]);
+        const id = enqueue({ type: 'batchWrite', spreadsheetId, data: [write], writeRange });
+        staleVersions.forEach(removeOperationVersion);
+        return id;
+    });
 }
 
 function persistOperation(entry) {
@@ -302,8 +333,49 @@ export async function withOperationLock(name, operation) {
     }
 }
 
+async function withOperationLocks(names, operation) {
+    const unique = [...new Set(names.filter(Boolean))].sort();
+    const run = index => index >= unique.length
+        ? operation()
+        : withOperationLock(unique[index], () => run(index + 1));
+    return run(0);
+}
+
+function workbookWriteLockName(spreadsheetId) {
+    return `life-tracker:workbook-write:${spreadsheetId}`;
+}
+
+export function withWorkbookWriteBarrier(spreadsheetId, operation) {
+    return withOperationLock(workbookWriteLockName(spreadsheetId), operation);
+}
+
+async function batchWriteOperation(op, options = {}) {
+    const ranges = (Array.isArray(op.data) ? op.data : [])
+        .map(write => String(write?.range || ''))
+        .filter(Boolean);
+    const lockNames = ranges.map(range => `life-tracker:batch-write:${op.spreadsheetId}:${range}`);
+    return withOperationLocks(lockNames, async () => {
+        if (options.requireStored && !hasOperationVersion(op)) return { superseded: true };
+        const versionsToRetire = options.retireCurrentQueued
+            ? queuedBatchWriteVersions(op.spreadsheetId, op.data)
+            : [];
+        try {
+            const result = await batchWrite(op.spreadsheetId, op.data);
+            versionsToRetire.forEach(removeOperationVersion);
+            return result;
+        } catch (error) {
+            if (options.queueOnRetryable && isRetryable(error)) {
+                enqueueBatchWrites(op.spreadsheetId, op.data);
+                notifyQueued();
+                return { queued: true };
+            }
+            throw error;
+        }
+    });
+}
+
 async function runOp(op, options = {}) {
-    if (op.type === 'batchWrite') return batchWrite(op.spreadsheetId, op.data);
+    if (op.type === 'batchWrite') return batchWriteOperation(op, options);
     if (op.type === 'appendRows') return appendRows(op.spreadsheetId, op.range, op.rows);
     if (op.type === 'upsertDateRow') return upsertDateRow(op, options);
     if (op.type === 'upsertKeyedRow') return upsertKeyedRow(op, options);
@@ -365,7 +437,7 @@ export async function flush(spreadsheetId = null) {
                 // waited for its Web Lock.
                 if (!hasOperationVersion(op)) return 'already-handled';
                 try {
-                    await runOp(op, { requireStored: true });
+                    await withWorkbookWriteBarrier(op.spreadsheetId, () => runOp(op, { requireStored: true }));
                     removeOperationVersion(op);
                     return 'synced';
                 } catch (error) {
@@ -400,39 +472,37 @@ export async function flush(spreadsheetId = null) {
 }
 
 export async function resilientBatchWrite(spreadsheetId, data) {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        enqueue({ type: 'batchWrite', spreadsheetId, data });
-        notifyQueued();
-        return { queued: true };
-    }
-    try {
-        return await batchWrite(spreadsheetId, data);
-    } catch (error) {
-        if (isRetryable(error)) {
-            enqueue({ type: 'batchWrite', spreadsheetId, data });
+    return withWorkbookWriteBarrier(spreadsheetId, async () => {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            enqueueBatchWrites(spreadsheetId, data);
             notifyQueued();
             return { queued: true };
         }
-        throw error;
-    }
+        return batchWriteOperation({ type: 'batchWrite', spreadsheetId, data }, {
+            retireCurrentQueued: true,
+            queueOnRetryable: true,
+        });
+    });
 }
 
 export async function resilientAppendRows(spreadsheetId, range, rows) {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        enqueue({ type: 'appendRows', spreadsheetId, range, rows });
-        notifyQueued();
-        return { queued: true };
-    }
-    try {
-        return await appendRows(spreadsheetId, range, rows);
-    } catch (error) {
-        if (isRetryable(error)) {
+    return withWorkbookWriteBarrier(spreadsheetId, async () => {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
             enqueue({ type: 'appendRows', spreadsheetId, range, rows });
             notifyQueued();
             return { queued: true };
         }
-        throw error;
-    }
+        try {
+            return await appendRows(spreadsheetId, range, rows);
+        } catch (error) {
+            if (isRetryable(error)) {
+                enqueue({ type: 'appendRows', spreadsheetId, range, rows });
+                notifyQueued();
+                return { queued: true };
+            }
+            throw error;
+        }
+    });
 }
 
 function enqueueLogicalOperation(op) {
@@ -446,16 +516,25 @@ function enqueueLogicalOperation(op) {
 }
 
 async function runResilientLogicalOperation(op) {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        enqueueLogicalOperation(op);
-        notifyQueued();
-        return { queued: true };
-    }
+    return withWorkbookWriteBarrier(op.spreadsheetId, async () => {
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            enqueueLogicalOperation(op);
+            notifyQueued();
+            return { queued: true };
+        }
 
-    return runOp(op, {
-        retireCurrentQueued: true,
-        queueOnRetryable: true,
+        return runOp(op, {
+            retireCurrentQueued: true,
+            queueOnRetryable: true,
+        });
     });
+}
+
+export function getPendingDateRow(spreadsheetId, range, date) {
+    const matches = queuedLogicalVersions({ type: 'upsertDateRow', spreadsheetId, range, date: String(date) })
+        .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    const row = matches.at(-1)?.row;
+    return Array.isArray(row) ? [...row] : null;
 }
 
 export async function resilientUpsertDateRow(spreadsheetId, range, row, knownRowIndex = null) {

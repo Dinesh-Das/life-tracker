@@ -46,18 +46,7 @@ let oauthCallback;
 let oauthCallbacks;
 let requestAccessToken;
 
-function Probe() {
-    currentAuth = useAuth();
-    return null;
-}
-
-beforeEach(async () => {
-    localStorage.clear();
-    sessionStorage.clear();
-    vi.clearAllMocks();
-    oauthCallback = undefined;
-    requestAccessToken = vi.fn();
-    oauthCallbacks = [];
+function installGoogleMocks() {
     window.gapi = {
         load: (_name, done) => done(),
         client: {
@@ -78,6 +67,21 @@ beforeEach(async () => {
             },
         },
     };
+}
+
+function Probe() {
+    currentAuth = useAuth();
+    return null;
+}
+
+beforeEach(async () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    vi.clearAllMocks();
+    oauthCallback = undefined;
+    requestAccessToken = vi.fn();
+    oauthCallbacks = [];
+    installGoogleMocks();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({ sub: 'account-a', name: 'Account A', email: 'a@example.com' }),
@@ -258,5 +262,31 @@ describe('AuthProvider cached-session admission', () => {
         expect(currentAuth.user?.getEmail()).toBe('offline@example.com');
         expect(currentAuth.spreadsheetId).toBe('offline-book');
         expect(localStorage.getItem('lt_offline_identity_v1')).not.toBeNull();
+    });
+
+    it('initializes Google services when connectivity returns after an offline startup', async () => {
+        await act(async () => root.unmount());
+
+        Object.defineProperty(window.navigator, 'onLine', { value: false, configurable: true });
+        localStorage.setItem('lt_offline_identity_v1', JSON.stringify({
+            profile: { name: 'Cold Start', email: 'cold@example.com', given_name: 'Cold' },
+            spreadsheetId: 'cold-book',
+            gender: 'female',
+        }));
+        delete window.google;
+        delete window.gapi;
+        root = createRoot(container);
+
+        await act(async () => root.render(<AuthProvider><Probe /></AuthProvider>));
+        await vi.waitFor(() => expect(currentAuth.loading).toBe(false));
+        expect(currentAuth.user?.getEmail()).toBe('cold@example.com');
+
+        Object.defineProperty(window.navigator, 'onLine', { value: true, configurable: true });
+        installGoogleMocks();
+        await act(async () => window.dispatchEvent(new Event('online')));
+        await vi.waitFor(() => expect(window.gapi.client.init).toHaveBeenCalledOnce());
+
+        act(() => currentAuth.signIn());
+        expect(window.google.accounts.oauth2.initTokenClient).toHaveBeenCalled();
     });
 });

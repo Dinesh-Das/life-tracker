@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { readDataRows, appendRows, batchWrite } from '../lib/sheetsApi';
 import toast from 'react-hot-toast';
+import { getWeekKey, normalizeWeekKey } from '../lib/dateUtils';
 
-export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
+export function useTasks(spreadsheetId, year, monthIndex, weekNumber, weekStartDate = null) {
     const [tasks, setTasks] = useState({ 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const generation = useRef(0);
 
-    const weekKey = `${year}-W${String(weekNumber).padStart(2, '0')}-M${monthIndex}`;
+    const legacyWeekKey = `${year}-W${String(weekNumber).padStart(2, '0')}-M${monthIndex}`;
+    const weekKey = weekStartDate ? getWeekKey(weekStartDate) : normalizeWeekKey(legacyWeekKey);
 
     const loadTasks = useCallback(async () => {
         if (!spreadsheetId) return;
@@ -22,7 +24,7 @@ export function useTasks(spreadsheetId, year, monthIndex, weekNumber) {
             const grouped = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
             rows.forEach((row, idx) => {
                 // Filter by weekKey if present, otherwise show all
-                const rowWeekKey = row[0];
+                const rowWeekKey = normalizeWeekKey(row[0]);
                 if (rowWeekKey && rowWeekKey !== weekKey) return;
 
                 const dayIdx = parseInt(row[3]);

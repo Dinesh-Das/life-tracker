@@ -22,6 +22,25 @@ const TOKEN_REFRESH_MS = (3600 - 300) * 1000;
 const SIGNED_IN_KEY = 'lt_signed_in';
 const SESSION_KEY = 'lt_google_session';
 const OFFLINE_IDENTITY_KEY = 'lt_offline_identity_v1';
+const GOOGLE_API_SRC = 'https://apis.google.com/js/api.js';
+const GOOGLE_GIS_SRC = 'https://accounts.google.com/gsi/client';
+
+function retryMissingGoogleScript(globalName, src, retryKey) {
+    if (typeof window === 'undefined' || typeof document === 'undefined' || window[globalName]) return;
+    if (document.querySelector(`script[data-lt-google-retry="${retryKey}"]`)) return;
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.defer = true;
+    script.dataset.ltGoogleRetry = retryKey;
+    script.addEventListener('error', () => script.remove(), { once: true });
+    document.head.appendChild(script);
+}
+
+function retryMissingGoogleScripts() {
+    retryMissingGoogleScript('gapi', GOOGLE_API_SRC, 'gapi');
+    retryMissingGoogleScript('google', GOOGLE_GIS_SRC, 'gis');
+}
 
 function toUser(profile) {
     return {
@@ -132,7 +151,11 @@ export function AuthProvider({ children }) {
 
     useEffect(() => {
         let cancelled = false;
+        let initializing = false;
+        let googleInitialized = false;
         const initGisAndGapi = async () => {
+            if (cancelled || initializing || googleInitialized) return;
+            initializing = true;
             const offlineIdentity = readOfflineIdentity();
             const explicitlyOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
             if (offlineIdentity && explicitlyOffline) {
@@ -144,6 +167,16 @@ export function AuthProvider({ children }) {
                 import('../lib/syncQueue').then(({ initSyncQueue }) => {
                     if (authEpoch.current === offlineEpoch) initSyncQueue(offlineIdentity.spreadsheetId);
                 });
+            }
+
+            // A failed async script tag is not automatically retried by every
+            // browser when connectivity returns. Finish the offline admission
+            // immediately and let the online handler reload Google services.
+            if (explicitlyOffline && (!window.google || !window.gapi)) {
+                setGapiError(false);
+                setLoading(false);
+                initializing = false;
+                return;
             }
 
             try {
@@ -163,6 +196,7 @@ export function AuthProvider({ children }) {
                     return;
                 }
 
+                setGapiError(false);
                 console.info("Scripts loaded, initializing GAPI client...");
                 await new Promise((resolve) => window.gapi.load('client', resolve));
                 await window.gapi.client.init({
@@ -372,6 +406,7 @@ export function AuthProvider({ children }) {
                     client.requestAccessToken({ prompt });
                 };
 
+                googleInitialized = true;
                 console.info("Token client initialized successfully.");
                 // Silent re-auth on launch for returning users — restores the session
                 // without a tap (important for the installed PWA experience).
@@ -397,14 +432,23 @@ export function AuthProvider({ children }) {
                 console.error('GAPI/GIS full initialization error:', error);
                 setGapiError(true);
                 setLoading(false);
+            } finally {
+                initializing = false;
             }
         };
 
         initGisAndGapi();
+        const handleOnline = () => {
+            if (cancelled || googleInitialized) return;
+            retryMissingGoogleScripts();
+            void initGisAndGapi();
+        };
+        window.addEventListener('online', handleOnline);
 
         // Cleanup timer on unmount
         return () => {
             cancelled = true;
+            window.removeEventListener('online', handleOnline);
             authEpoch.current += 1;
             requestToken.current = null;
             tokenClient.current = null;

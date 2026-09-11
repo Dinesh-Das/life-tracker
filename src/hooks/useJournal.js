@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { readDataRows } from '../lib/sheetsApi';
 import { findLatestDateRowIndex } from '../lib/dateRows';
-import { resilientUpsertDateRow } from '../lib/syncQueue';
+import { getPendingDateRow, resilientUpsertDateRow } from '../lib/syncQueue';
 import { ensureJournalSheet } from '../lib/sheetScaffold';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
@@ -64,10 +64,12 @@ export function useJournal(spreadsheetId, dateStr) {
             const rows = await readDataRows(spreadsheetId, 'JournalLogs!A:D');
             if (request !== generation.current) return;
             const index = findLatestDateRowIndex(rows, targetDateStr);
-            const next = index === -1 ? { ...EMPTY } : {
-                gratitude: rows[index][1] || '',
-                review: rows[index][2] || '',
-                focus: rows[index][3] || '',
+            const pendingRow = getPendingDateRow(spreadsheetId, 'JournalLogs!A:D', targetDateStr);
+            const sourceRow = pendingRow || (index === -1 ? null : rows[index]);
+            const next = !sourceRow ? { ...EMPTY } : {
+                gratitude: sourceRow[1] || '',
+                review: sourceRow[2] || '',
+                focus: sourceRow[3] || '',
             };
             currentRow.current = { date: targetDateStr, index: index === -1 ? null : index + 2 };
             latest.current = next;

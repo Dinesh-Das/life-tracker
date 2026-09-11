@@ -3,6 +3,7 @@ import { addSheet, batchClear, batchWrite, getSpreadsheet } from './sheetsApi';
 import { collectAllData, download } from './exportData';
 import { ensureHabitsSheet, loadAllHabits, migrateHabitIdsAcrossMonths } from './habitRepository';
 import { ensureAppSettingsSheet, ensureDailyStateSheet, ensureFocusSheet, ensureMetricsSheet } from './sheetScaffold';
+import { clearQueuedOperations, withWorkbookWriteBarrier } from './syncQueue';
 
 const REQUIRED = {
     Settings: ['ID', 'Habit Name'],
@@ -105,32 +106,38 @@ export function parseBackupFile(file) {
 
 export async function restoreBackup(spreadsheetId, backup) {
     const sheets = validateBackupSheets(backup?.sheets);
-    const metadata = await getSpreadsheet(spreadsheetId, {
-        forceRefresh: true,
-        allowOfflineFallback: false,
-    });
-    const existing = new Set(metadata.sheets.map(sheet => sheet.properties.title));
-    for (const title of Object.keys(sheets)) if (!existing.has(title)) await addSheet(spreadsheetId, title);
+    return withWorkbookWriteBarrier(spreadsheetId, async () => {
+        const metadata = await getSpreadsheet(spreadsheetId, {
+            forceRefresh: true,
+            allowOfflineFallback: false,
+        });
+        const existing = new Set(metadata.sheets.map(sheet => sheet.properties.title));
+        for (const title of Object.keys(sheets)) if (!existing.has(title)) await addSheet(spreadsheetId, title);
 
-    // First overwrite every backed-up row, padding through AZ so stale cells
-    // to the right are removed. Only after all replacement values succeed do
-    // we clear rows below the restored snapshot. A failed write therefore
-    // leaves the original workbook recoverable instead of pre-cleared.
-    const writes = Object.entries(sheets)
-        .filter(([, rows]) => rows.length)
-        .map(([title, rows]) => ({
-            range: `'${title.replaceAll("'", "''")}'!A1:AZ${rows.length}`,
-            values: rows.map(row => [
-                ...row.map(cell => cell ?? ''),
-                ...Array(MAX_RESTORE_COLUMNS - row.length).fill(''),
-            ]),
-        }));
-    if (writes.length) await batchWrite(spreadsheetId, writes);
+        // First overwrite every backed-up row, padding through AZ so stale cells
+        // to the right are removed. Only after all replacement values succeed do
+        // we clear rows below the restored snapshot. A failed write therefore
+        // leaves the original workbook recoverable instead of pre-cleared.
+        const writes = Object.entries(sheets)
+            .filter(([, rows]) => rows.length)
+            .map(([title, rows]) => ({
+                range: `'${title.replaceAll("'", "''")}'!A1:AZ${rows.length}`,
+                values: rows.map(row => [
+                    ...row.map(cell => cell ?? ''),
+                    ...Array(MAX_RESTORE_COLUMNS - row.length).fill(''),
+                ]),
+            }));
+        if (writes.length) await batchWrite(spreadsheetId, writes);
 
-    const trailingRanges = Object.entries(sheets).map(([title, rows]) => {
-        const escaped = title.replaceAll("'", "''");
-        return rows.length ? `'${escaped}'!A${rows.length + 1}:AZ` : `'${escaped}'!A:AZ`;
+        const trailingRanges = Object.entries(sheets).map(([title, rows]) => {
+            const escaped = title.replaceAll("'", "''");
+            return rows.length ? `'${escaped}'!A${rows.length + 1}:AZ` : `'${escaped}'!A:AZ`;
+        });
+        if (trailingRanges.length) await batchClear(spreadsheetId, trailingRanges);
+
+        // The restore is now the authoritative workbook state. Retire every
+        // operation queued before the replacement so it cannot replay later.
+        clearQueuedOperations(spreadsheetId);
+        return validateWorkbook(spreadsheetId);
     });
-    if (trailingRanges.length) await batchClear(spreadsheetId, trailingRanges);
-    return validateWorkbook(spreadsheetId);
 }
